@@ -5,7 +5,7 @@ Dev pgrx settings
 Required postgresql.conf settings
 
 ```
-cron.database_name = 'tembo'
+cron.database_name = 'vectorize'
 ```
 
 

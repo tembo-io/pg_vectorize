@@ -25,9 +25,9 @@ use crate::executor::JobMessage;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
-    BackgroundWorkerBuilder::new("PG Tembo Background Worker")
+    BackgroundWorkerBuilder::new("PG Vectorize Background Worker")
         .set_function("background_worker_main")
-        .set_library("tembo")
+        .set_library("vectorize")
         .enable_spi_access()
         .load();
 }

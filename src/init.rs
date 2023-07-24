@@ -5,7 +5,7 @@ use crate::{
     types::{self, Transformer},
 };
 
-pub const PGMQ_QUEUE_NAME: &str = "tembo_vectorize_queue";
+pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
 #[pg_extern]
 fn init_table(
@@ -92,10 +92,10 @@ fn init_pgmq() -> Result<(), spi::Error> {
 fn init_job_query() -> String {
     format!(
         "
-        INSERT INTO {schema}.tembo_meta (name, job_type, transformer, search_alg, params)
+        INSERT INTO {schema}.vectorize_meta (name, job_type, transformer, search_alg, params)
         VALUES ($1, $2, $3, $4, $5);
         ",
-        schema = types::TEMBO_SCHEMA
+        schema = types::VECTORIZE_SCHEMA
     )
 }
 
@@ -109,6 +109,6 @@ fn init_embedding_table(job_name: &str) -> String {
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') not null
         );
         ",
-        schema = types::TEMBO_SCHEMA
+        schema = types::VECTORIZE_SCHEMA
     )
 }

@@ -1,7 +1,0 @@
-comment = 'tembo:  Created by pgrx'
-default_version = '@CARGO_VERSION@'
-module_pathname = '$libdir/tembo'
-relocatable = false
-superuser = true
-schema = 'tembo'
-requires = 'pg_cron,pgmq'

@@ -1,0 +1,7 @@
+comment = 'Vector search in two functions'
+default_version = '@CARGO_VERSION@'
+module_pathname = '$libdir/vectorize'
+relocatable = false
+superuser = true
+schema = 'vectorize'
+requires = 'pg_cron,pgmq'

@@ -15,9 +15,9 @@ use sqlx::types::chrono::Utc;
 use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
 
 // schema for every job
-// also schema for the tembo.tembo_meta table
+// also schema for the vectorize.vectorize_meta table
 #[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
-pub struct TemboMeta {
+pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub job_type: types::JobType,
@@ -42,7 +42,7 @@ pub struct ColumnJobParams {
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct JobMessage {
     pub job_name: String,
-    pub job_meta: TemboMeta,
+    pub job_meta: VectorizeMeta,
     pub inputs: Vec<Inputs>,
 }
 
@@ -66,7 +66,7 @@ fn job_execute(job_name: String) -> pgrx::JsonB {
         let queue = pgmq::PGMQueueExt::new(db_url, 2)
             .await
             .expect("failed to init db connection");
-        let meta = get_tembo_meta(&job_name, conn)
+        let meta = get_vectorize_meta(&job_name, conn)
             .await
             .expect("failed to get job meta");
         let job_params = serde_json::from_value::<ColumnJobParams>(meta.params.clone())
@@ -101,15 +101,15 @@ fn job_execute(job_name: String) -> pgrx::JsonB {
 }
 
 // get job meta
-pub async fn get_tembo_meta(
+pub async fn get_vectorize_meta(
     job_name: &str,
     conn: Pool<Postgres>,
-) -> Result<TemboMeta, DatabaseError> {
+) -> Result<VectorizeMeta, DatabaseError> {
     let row = sqlx::query_as!(
-        TemboMeta,
+        VectorizeMeta,
         "
         SELECT *
-        FROM tembo.tembo_meta
+        FROM vectorize.vectorize_meta
         WHERE name = $1
         ",
         job_name.to_string(),
@@ -188,7 +188,7 @@ fn get_inputs_query(
     WHERE {last_updated_col} > 
     (
         SELECT last_completion
-        FROM tembo_meta
+        FROM vectorize_meta
         WHERE name = '{job_name}'
     )::timestamp
     "
