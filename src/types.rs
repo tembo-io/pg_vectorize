@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-pub const TEMBO_SCHEMA: &str = "tembo";
+pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]

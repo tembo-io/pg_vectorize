@@ -1,4 +1,4 @@
-CREATE TABLE tembo_meta (
+CREATE TABLE vectorize_meta (
     job_id bigserial,
     name TEXT NOT NULL UNIQUE,
     job_type TEXT NOT NULL,

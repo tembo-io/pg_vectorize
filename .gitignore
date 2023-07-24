@@ -4,3 +4,6 @@
 *.iml
 **/*.rs.bk
 Cargo.lock
+.env
+pg_cron
+test.sql
