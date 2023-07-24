@@ -1,5 +1,7 @@
 # pg_vectorize
 
+*under development*
+
 The simplest implementation of LLM-backed vector search on Postgres.
 
 ```sql
