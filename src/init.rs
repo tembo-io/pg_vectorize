@@ -104,7 +104,7 @@ fn init_embedding_table(job_name: &str) -> String {
     // TODO: change from jsonb to specified vector type
     format!(
         "CREATE TABLE IF NOT EXISTS {schema}.{job_name}_embeddings (
-            record_id BIGSERIAL,
+            record_id text,
             embeddings jsonb,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') not null
         );
