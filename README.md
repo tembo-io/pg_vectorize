@@ -6,10 +6,23 @@ The simplest implementation of LLM-backed vector search on Postgres.
 
 ```sql
 -- initialize an existing table
-select vectorize.init_table('public', 'products', 'product_id', ARRAY['keyword_tags','summary'], 'openai', 'pgv_cosine_similarity', 'my-vector-job', 'my_api_key', 'last_updated_at');
+
+select vectorize.table(
+    job_name => 'my_search_job',
+    "schema" => 'public',
+    "table" => 'products',
+    primary_key => 'product_id',
+    columns => ARRAY['description', 'keyword_tags'],
+    args => '{"api_key": my-openai-key"}'
+);
+```
+
+-- trigger the job
+```sql
+select vectorize.job_execute('my_search_job');
 ```
 
 
 ```sql
-select vectorize.search('my-vector-job', 'my_api_key', 'chips made without corn starch');
+select vectorize.search('my_search_job', 'my_api_key', 'chips made without corn starch');
 ```
