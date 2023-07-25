@@ -1,9 +1,6 @@
 use pgrx::prelude::*;
 
-use crate::{
-    query::check_input,
-    types::{self, Transformer},
-};
+use crate::{query::check_input, types};
 
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
@@ -104,7 +101,7 @@ fn init_embedding_table(job_name: &str) -> String {
     // TODO: change from jsonb to specified vector type
     format!(
         "CREATE TABLE IF NOT EXISTS {schema}.{job_name}_embeddings (
-            record_id BIGSERIAL,
+            record_id text unique,
             embeddings jsonb,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') not null
         );
