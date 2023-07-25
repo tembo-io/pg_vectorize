@@ -98,7 +98,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                     let upserted = upsert_embedding_table(
                         &conn,
                         &job_params.schema,
-                        &job_params.table,
+                        &job_meta.name,
                         embeddings.expect("failed to get embeddings"),
                     )
                     .await
@@ -148,7 +148,7 @@ fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedE
 async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
     schema: &str,
-    table: &str,
+    project: &str,
     embeddings: Vec<PairedEmbeddings>,
 ) -> anyhow::Result<()> {
     // // TODO: batch insert
@@ -159,7 +159,7 @@ async fn upsert_embedding_table(
     //     DO UPDATE SET embeddings = $2;
     //     ;");
     // query.execute(conn).await?;
-    let (query, bindings) = build_upsert_query(schema, table, embeddings);
+    let (query, bindings) = build_upsert_query(schema, project, embeddings);
     let mut q = sqlx::query(&query);
     for (record_id, embeddings) in bindings {
         q = q.bind(record_id).bind(embeddings);
@@ -176,27 +176,27 @@ async fn upsert_embedding_table(
 // returns query and bindings
 fn build_upsert_query(
     schema: &str,
-    table: &str,
+    project: &str,
     embeddings: Vec<PairedEmbeddings>,
-) -> (String, Vec<(String, String)>) {
+) -> (String, Vec<(String, serde_json::Value)>) {
     let mut query = format!(
         "
-        INSERT INTO {schema}.{table}_embeddings (record_id, embeddings) VALUES;"
+        INSERT INTO {schema}.{project}_embeddings (record_id, embeddings) VALUES"
     );
-    let mut bindings: Vec<(String, String)> = Vec::new();
+    let mut bindings: Vec<(String, serde_json::Value)> = Vec::new();
 
     for (index, pair) in embeddings.into_iter().enumerate() {
         if index > 0 {
             query.push_str(",");
         }
-        query.push_str(&format!(" (${}, ${})", 2 * index + 1, 2 * index + 2));
+        query.push_str(&format!(" (${}, ${}::jsonb)", 2 * index + 1, 2 * index + 2));
 
-        let embedding_str =
-            serde_json::to_string(&pair.embeddings).expect("failed to serialize embedding");
-        bindings.push((pair.join_key, embedding_str));
+        let embedding =
+            serde_json::to_value(&pair.embeddings).expect("failed to serialize embedding");
+        bindings.push((pair.join_key, embedding));
     }
 
-    query.push_str(" ON CONFLICT (name) DO UPDATE SET data = EXCLUDED.data");
+    query.push_str(" ON CONFLICT (record_id) DO UPDATE SET embeddings = EXCLUDED.embeddings");
     (query, bindings)
 }
 

@@ -92,7 +92,7 @@ fn upsert_embedding_table(
     // TODO: write to pgvector column instead of jsonb
     let create = format!(
         "create table if not exists {schema}.{table}_embeddings (
-            record_id bigserial,
+            record_id text,
             embeddings jsonb
         );
         "
