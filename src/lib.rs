@@ -1,5 +1,4 @@
 use pgrx::prelude::*;
-use pgrx::spi::SpiTupleTable;
 
 mod errors;
 mod executor;
@@ -12,6 +11,7 @@ mod worker;
 
 pgrx::pg_module_magic!();
 
+// example data
 extension_sql!(
     r#"
 
@@ -38,93 +38,6 @@ INSERT INTO extensions(ext_id, ext_name, summary) VALUES (3, 'pg_cron ', 'pg_cro
 );
 
 extension_sql_file!("../sql/meta.sql");
-
-#[pg_extern]
-fn enqueue_event(job_name: &str, event_type: &str) {
-    // queries the meta table to get the job_type for this name
-    // given this job type, create the appropriate message to send to pgmq
-    // send the message to pgmq
-}
-
-// #[pg_extern]
-// fn pg_openai_embed(key: &str) -> bool {
-//     // fn pg_openai_embed(schema: &str, table: &str, column: &str, key: &str) -> String {
-//     let schema = "public";
-//     let table = "extensions";
-//     let column = "summary";
-//     let runtime = tokio::runtime::Builder::new_current_thread()
-//         .enable_io()
-//         .enable_time()
-//         .build()
-//         .unwrap();
-
-//     let inputs = get_inputs(schema, table, column);
-//     let embeddings = runtime.block_on(async {
-//         let embeddings = get_embeddings(&inputs, &key).await;
-//         log!("embeddings: {:?}", embeddings);
-//         embeddings
-//     });
-//     upsert_embedding_table(schema, table, embeddings).unwrap();
-//     true
-// }
-
-// fn get_inputs(schema: &str, table: &str, column: &str) -> Vec<String> {
-//     let mut results: Vec<String> = Vec::new();
-//     let query = format!("select {column} from {schema}.{table}",);
-//     let _: Result<(), pgrx::spi::Error> = Spi::connect(|mut client| {
-//         let mut tup_table: SpiTupleTable = client.update(&query, None, None)?;
-//         while let Some(row) = tup_table.next() {
-//             let input = row[column]
-//                 .value::<String>()?
-//                 .expect("input column missing");
-//             results.push(input);
-//         }
-//         Ok(())
-//     });
-//     results
-// }
-
-fn upsert_embedding_table(
-    schema: &str,
-    table: &str,
-    embeddings: Vec<Vec<f64>>,
-) -> Result<(), spi::Error> {
-    // TODO: write to pgvector column instead of jsonb
-    let create = format!(
-        "create table if not exists {schema}.{table}_embeddings (
-            record_id text,
-            embeddings jsonb
-        );
-        "
-    );
-
-    // TODO: batch insert
-    let insert = format!("insert into {schema}.{table}_embeddings (embeddings) values ($1);");
-
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _ = c.update(&create, None, None)?;
-        Ok(())
-    });
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        for d in embeddings {
-            let jsb = vec_to_jsonb(d);
-            let _ = c.update(
-                &insert,
-                None,
-                Some(vec![(
-                    PgBuiltInOids::JSONBOID.oid(),
-                    Some(jsb.into_datum().expect("error")),
-                )]),
-            );
-        }
-        Ok(())
-    });
-    Ok(ran?)
-}
-
-fn vec_to_jsonb(data: Vec<f64>) -> pgrx::JsonB {
-    pgrx::JsonB(serde_json::Value::from(data))
-}
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]

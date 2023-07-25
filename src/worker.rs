@@ -1,29 +1,12 @@
-use pgrx::prelude::*;
-use pgrx::spi::SpiTupleTable;
-
-use crate::errors::DatabaseError;
-use crate::executor::ColumnJobParams;
+use crate::executor::{ColumnJobParams, JobMessage};
 use crate::init::PGMQ_QUEUE_NAME;
 use crate::openai;
-use crate::query::check_input;
 use crate::types;
-use crate::util::{from_env_default, Config};
-use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
-use chrono::TimeZone;
-use serde::{Deserialize, Serialize};
-use sqlx::error::Error;
-use sqlx::postgres::PgRow;
-use sqlx::types::chrono::Utc;
-use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
-
-use pgrx::spi;
-use std::env;
-
-use std::time::Duration;
-
+use crate::util::Config;
 use pgrx::bgworkers::*;
-
-use crate::executor::JobMessage;
+use pgrx::prelude::*;
+use sqlx::{PgPool, Pool, Postgres};
+use std::time::Duration;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -95,7 +78,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                         }
                     };
                     // write embeddings to result table
-                    let upserted = upsert_embedding_table(
+                    upsert_embedding_table(
                         &conn,
                         &job_params.schema,
                         &job_meta.name,
@@ -103,12 +86,12 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                     )
                     .await
                     .expect("failed to write embeddings");
-                    // let upsert_embedding_table(conn.clone(), &job_params, embeddings).await.expect("failed to write embeddings");
                     // delete message from queue
                     queue
                         .delete(PGMQ_QUEUE_NAME, msg_id)
                         .await
                         .expect("failed to delete message");
+                    // TODO: update job meta updated_timestamp
                 }
                 Ok(None) => {
                     log!("No messages in queue");
@@ -187,7 +170,7 @@ fn build_upsert_query(
 
     for (index, pair) in embeddings.into_iter().enumerate() {
         if index > 0 {
-            query.push_str(",");
+            query.push(',');
         }
         query.push_str(&format!(" (${}, ${}::jsonb)", 2 * index + 1, 2 * index + 2));
 
@@ -198,9 +181,4 @@ fn build_upsert_query(
 
     query.push_str(" ON CONFLICT (record_id) DO UPDATE SET embeddings = EXCLUDED.embeddings");
     (query, bindings)
-}
-
-// todo - replace with vector storage
-fn vec_to_jsonb(data: Vec<f64>) -> pgrx::JsonB {
-    pgrx::JsonB(serde_json::Value::from(data))
 }

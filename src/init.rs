@@ -1,9 +1,6 @@
 use pgrx::prelude::*;
 
-use crate::{
-    query::check_input,
-    types::{self, Transformer},
-};
+use crate::{query::check_input, types};
 
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
