@@ -5,35 +5,36 @@ use crate::{query::check_input, types};
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
 #[pg_extern]
-fn init_table(
-    schema: &str,
+fn table(
     table: &str,
-    join_key: &str,
+    primary_key: &str,
     columns: Vec<String>,
-    transformer: types::Transformer,
-    search_alg: types::SimilarityAlg,
-    alias: Option<String>,
-    api_key: &str,
-    update_col: default!(String, "'updated_at'"),
+    job_name: Option<String>,
+    args: pgrx::Json,
+    schema: default!(String, "'public'"),
+    update_col: default!(String, "'last_updated_at'"),
+    transformer: default!(types::Transformer, "'openai'"),
+    search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
 ) -> String {
     // initialize pgmq
     init_pgmq().expect("error initializing pgmq");
     let job_type = types::JobType::Columns;
+
     // write job to table
     let init_job_q = init_job_query();
-
-    let job_name = match alias {
+    let job_name = match job_name {
         Some(a) => a,
         None => format!("{}_{}_{}", schema, table, columns.join("_")),
     };
-
+    let arguments = serde_json::to_value(args).expect("invalid json for argument `args`");
+    let api_key = arguments.get("api_key");
     // TODO: implement a struct for these params
     let params = pgrx::JsonB(serde_json::json!({
         "schema": schema,
         "table": table,
         "columns": columns,
         "update_time_col": update_col,
-        "join_key": join_key,
+        "join_key": primary_key,
         "api_key": api_key
     }));
 
@@ -103,6 +104,11 @@ fn init_embedding_table(
     transformer: &types::Transformer,
     search_alg: &types::SimilarityAlg,
 ) -> String {
+    // TODO: when adding support for other models, add the output dimension to the transformer attributes
+    // so that they can be read here, not hard-coded here below
+    // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
+    // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
+
     check_input(job_name).expect("invalid job name");
     let col_type = match (transformer, search_alg) {
         // TODO: when adding support for other models, add the output dimension to the transformer attributes
