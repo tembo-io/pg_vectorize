@@ -42,7 +42,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
     // poll at 10s or on a SIGTERM
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(10))) {
+    while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload some external configuration or something
         }
@@ -94,10 +94,10 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                     // TODO: update job meta updated_timestamp
                 }
                 Ok(None) => {
-                    log!("No messages in queue");
+                    log!("pg-vectorize: No messages in queue");
                 }
                 _ => {
-                    log!("Error reading message");
+                    log!("pg-vectorize: Error reading message");
                 }
             }
         });
@@ -134,14 +134,6 @@ async fn upsert_embedding_table(
     project: &str,
     embeddings: Vec<PairedEmbeddings>,
 ) -> anyhow::Result<()> {
-    // // TODO: batch insert
-    // let upsert_stmt = format!("
-    //     INSERT INTO {schema}.{table}_embeddings
-    //     VALUES (record_id, embeddings) values ($1, $2)
-    //     ON CONFLICT (record_id)
-    //     DO UPDATE SET embeddings = $2;
-    //     ;");
-    // query.execute(conn).await?;
     let (query, bindings) = build_upsert_query(schema, project, embeddings);
     let mut q = sqlx::query(&query);
     for (record_id, embeddings) in bindings {
@@ -157,25 +149,30 @@ async fn upsert_embedding_table(
 }
 
 // returns query and bindings
+// only compatible with pg-vector data types
 fn build_upsert_query(
     schema: &str,
     project: &str,
     embeddings: Vec<PairedEmbeddings>,
-) -> (String, Vec<(String, serde_json::Value)>) {
+) -> (String, Vec<(String, String)>) {
     let mut query = format!(
         "
         INSERT INTO {schema}.{project}_embeddings (record_id, embeddings) VALUES"
     );
-    let mut bindings: Vec<(String, serde_json::Value)> = Vec::new();
+    let mut bindings: Vec<(String, String)> = Vec::new();
 
     for (index, pair) in embeddings.into_iter().enumerate() {
         if index > 0 {
             query.push(',');
         }
-        query.push_str(&format!(" (${}, ${}::jsonb)", 2 * index + 1, 2 * index + 2));
+        query.push_str(&format!(
+            " (${}, ${}::vector)",
+            2 * index + 1,
+            2 * index + 2
+        ));
 
         let embedding =
-            serde_json::to_value(&pair.embeddings).expect("failed to serialize embedding");
+            serde_json::to_string(&pair.embeddings).expect("failed to serialize embedding");
         bindings.push((pair.join_key, embedding));
     }
 

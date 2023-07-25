@@ -6,4 +6,5 @@
 Cargo.lock
 .env
 pg_cron
+pgvector
 test.sql
