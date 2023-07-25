@@ -37,6 +37,8 @@ fn init_table(
         "api_key": api_key
     }));
 
+    // using SPI here because it is unlikely that this code will be run anywhere but inside the extension
+    // background worker will likely be moved to an external container or service in near future
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         let _ = c
             .update(
@@ -63,7 +65,7 @@ fn init_table(
         Ok(())
     });
     ran.expect("error creating job");
-    let init_embed_q = init_embedding_table(&job_name);
+    let init_embed_q = init_embedding_table(&job_name, &transformer, &search_alg);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         let _ = c.update(&init_embed_q, None, None);
@@ -96,13 +98,23 @@ fn init_job_query() -> String {
     )
 }
 
-fn init_embedding_table(job_name: &str) -> String {
+fn init_embedding_table(
+    job_name: &str,
+    transformer: &types::Transformer,
+    search_alg: &types::SimilarityAlg,
+) -> String {
     check_input(job_name).expect("invalid job name");
-    // TODO: change from jsonb to specified vector type
+    let col_type = match (transformer, search_alg) {
+        // TODO: when adding support for other models, add the output dimension to the transformer attributes
+        // so that they can be read here, not hard-coded here below
+        // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
+        // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
+        (types::Transformer::openai, types::SimilarityAlg::pgv_cosine_similarity) => "vector(1536)",
+    };
     format!(
         "CREATE TABLE IF NOT EXISTS {schema}.{job_name}_embeddings (
             record_id text unique,
-            embeddings jsonb,
+            embeddings {col_type},
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') not null
         );
         ",
