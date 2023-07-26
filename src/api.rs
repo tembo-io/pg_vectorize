@@ -1,19 +1,26 @@
+use crate::executor::ColumnJobParams;
 use crate::openai::get_embeddings;
-use crate::{query::check_input, types};
+use crate::search::cosine_similarity_search;
 use pgrx::prelude::*;
 
 #[pg_extern]
 fn search(
     job_name: &str,
-    schema: &str,
-    table: &str,
     return_col: &str,
     query: &str,
     api_key: &str,
     num_results: default!(i32, 10),
 ) -> Result<Vec<pgrx::JsonB>, spi::Error> {
-    // TODO: simplify api signature
-    // TODO: user should not have to provide schema and table again
+    // note: this is not the most performant implementation
+    // this requires a query to metadata table to get the projects schema and table
+
+    // TODO: simplify api signature as much as possible
+    // get project metadata
+    let _project_meta = get_vectorize_meta_spi(job_name).expect("metadata for project is missing");
+    let project_meta: ColumnJobParams = serde_json::from_value(
+        serde_json::to_value(_project_meta).expect("failed to deserialize metadata"),
+    )
+    .expect("failed to deserialize metadata");
     // TODO: this needs to introspect the project type to figure out where to get embeddings from
     // assuming default openai API for now
     // get embeddings
@@ -23,58 +30,32 @@ fn search(
         .build()
         .unwrap();
 
+    let schema = project_meta.schema;
+    let table = project_meta.table;
+    // let return_col = project_meta.params.get("return_col").expect("no return_col");
+
     let embeddings =
         runtime.block_on(async { get_embeddings(&vec![query.to_string()], api_key).await });
     cosine_similarity_search(
         job_name,
-        schema,
-        table,
+        &schema,
+        &table,
         return_col,
         num_results,
         &embeddings[0],
     )
 }
 
-fn cosine_similarity_search(
-    project: &str,
-    schema: &str,
-    table: &str,
-    return_col: &str,
-    num_results: i32,
-    embeddings: &[f64],
-) -> Result<Vec<pgrx::JsonB>, spi::Error> {
-    let emb = serde_json::to_string(&embeddings).expect("failed to serialize embeddings");
-    let query = format!(
-        "
-    SELECT 
-        1 - ({project}_embeddings <=> '{emb}'::vector) AS cosine_similarity,
-        *
-    FROM {schema}.{table}
-    ORDER BY cosine_similarity DESC
-    LIMIT {num_results};
-    "
+fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
+    // TODO: change to bind param
+    let query = "
+        SELECT params::jsonb
+        FROM vectorize.vectorize_meta
+        WHERE name = $1
+    ";
+    let r: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(
+        &query,
+        vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())],
     );
-    log!("query: {}", query);
-    Spi::connect(|client| {
-        let mut results: Vec<pgrx::JsonB> = Vec::new();
-        let tup_table = client.select(&query, None, None)?;
-
-        for row in tup_table {
-            let v = row[return_col]
-                .value::<String>()
-                .expect("failed to get value");
-            let score = row["cosine_similarity"]
-                .value::<f64>()
-                .expect("failed to get value");
-
-            let r = serde_json::json!({
-                "column": return_col,
-                "value": v,
-                "similarity_score": score
-            });
-            results.push(pgrx::JsonB(r));
-        }
-
-        Ok(results)
-    })
+    r.expect("failed to query vectorizie metadata table")
 }

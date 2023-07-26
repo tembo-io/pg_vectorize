@@ -16,7 +16,7 @@ use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
 
 // schema for every job
 // also schema for the vectorize.vectorize_meta table
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
+#[derive(Clone, Debug, Deserialize, FromRow, Serialize, PostgresType)]
 pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
