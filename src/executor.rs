@@ -2,7 +2,7 @@ use pgrx::prelude::*;
 use pgrx::spi::SpiTupleTable;
 
 use crate::errors::DatabaseError;
-use crate::init::PGMQ_QUEUE_NAME;
+use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::query::check_input;
 use crate::types;
 use crate::util::{from_env_default, Config};
@@ -33,9 +33,11 @@ pub struct ColumnJobParams {
     pub schema: String,
     pub table: String,
     pub columns: Vec<String>,
-    pub join_key: String,
+    pub primary_key: String,
+    pub pkey_type: String,
     pub update_time_col: String,
     pub api_key: Option<String>,
+    pub table_method: TableMethod,
 }
 
 // schema for all messages that hit pgmq
@@ -96,7 +98,7 @@ fn job_execute(job_name: String) -> pgrx::JsonB {
                 log!("Job -- {} -- no new records", job_name);
             }
         };
-        pgrx::JsonB(serde_json::to_value(meta).unwrap().into())
+        pgrx::JsonB(serde_json::to_value(meta).unwrap())
     })
 }
 
@@ -147,7 +149,7 @@ pub async fn get_new_updates(
         FROM {schema}.{table}
         WHERE {updated_at_col} > '{last_completion}'::timestamp;
     ",
-        record_id = job_params.join_key,
+        record_id = job_params.primary_key,
         schema = job_params.schema,
         table = job_params.table,
         updated_at_col = job_params.update_time_col,
@@ -204,12 +206,11 @@ fn get_inputs(
     columns: Vec<String>,
     updated_at_col: &str,
 ) -> Vec<String> {
-    let cols: String = collapse_to_csv(&columns);
     let mut results: Vec<String> = Vec::new();
     let query = get_inputs_query(job_name, schema, table, columns, updated_at_col);
     let _: Result<(), pgrx::spi::Error> = Spi::connect(|mut client: spi::SpiClient<'_>| {
-        let mut tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        while let Some(row) = tup_table.next() {
+        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
+        for row in tup_table {
             let input = row["input_text"]
                 .value::<String>()?
                 .expect("input column missing");
@@ -224,7 +225,7 @@ fn collapse_to_csv(strings: &[String]) -> String {
     strings
         .iter()
         .map(|s| {
-            check_input(&s).expect("Failed to validate input");
+            check_input(s).expect("Failed to validate input");
             s.as_str()
         })
         .collect::<Vec<_>>()

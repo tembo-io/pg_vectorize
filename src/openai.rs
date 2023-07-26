@@ -2,14 +2,14 @@ use pgrx::prelude::*;
 
 #[derive(serde::Deserialize, Debug)]
 struct EmbeddingResponse {
-    object: String,
+    // object: String,
     data: Vec<DataObject>,
 }
 
 #[derive(serde::Deserialize, Debug)]
 struct DataObject {
-    object: String,
-    index: usize,
+    // object: String,
+    // index: usize,
     embedding: Vec<f64>,
 }
 
@@ -52,10 +52,6 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
             resp.text().await?
         );
         error!("{}", errmsg);
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            errmsg,
-        )));
     }
     let value = resp.json::<T>().await?;
     Ok(value)

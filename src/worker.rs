@@ -1,5 +1,5 @@
 use crate::executor::{ColumnJobParams, JobMessage};
-use crate::init::PGMQ_QUEUE_NAME;
+use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
 use crate::util::Config;
@@ -78,14 +78,33 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                         }
                     };
                     // write embeddings to result table
-                    upsert_embedding_table(
-                        &conn,
-                        &job_params.schema,
-                        &job_meta.name,
-                        embeddings.expect("failed to get embeddings"),
-                    )
-                    .await
-                    .expect("failed to write embeddings");
+                    match job_params.table_method {
+                        TableMethod::append => {
+                            log!("Append method");
+                            update_append_table(
+                                &conn,
+                                embeddings.expect("failed to get embeddings"),
+                                &job_params.schema,
+                                &job_params.table,
+                                &job_meta.name,
+                                &job_params.primary_key,
+                                &job_params.pkey_type,
+                            )
+                            .await
+                            .expect("failed to write embeddings");
+                        }
+                        TableMethod::join => {
+                            log!("Join method");
+                            upsert_embedding_table(
+                                &conn,
+                                &job_params.schema,
+                                &job_meta.name,
+                                embeddings.expect("failed to get embeddings"),
+                            )
+                            .await
+                            .expect("failed to write embeddings");
+                        }
+                    };
                     // delete message from queue
                     queue
                         .delete(PGMQ_QUEUE_NAME, msg_id)
@@ -110,7 +129,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 }
 
 struct PairedEmbeddings {
-    join_key: String,
+    primary_key: String,
     embeddings: Vec<f64>,
 }
 
@@ -122,7 +141,7 @@ fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedE
         .into_iter()
         .zip(values.into_iter())
         .map(|(input, value)| PairedEmbeddings {
-            join_key: input.record_id,
+            primary_key: input.record_id,
             embeddings: value,
         })
         .collect()
@@ -173,9 +192,44 @@ fn build_upsert_query(
 
         let embedding =
             serde_json::to_string(&pair.embeddings).expect("failed to serialize embedding");
-        bindings.push((pair.join_key, embedding));
+        bindings.push((pair.primary_key, embedding));
     }
 
     query.push_str(" ON CONFLICT (record_id) DO UPDATE SET embeddings = EXCLUDED.embeddings");
     (query, bindings)
+}
+
+use serde_json::to_string;
+
+async fn update_append_table(
+    pool: &Pool<Postgres>,
+    embeddings: Vec<PairedEmbeddings>,
+    schema: &str,
+    table: &str,
+    project: &str,
+    pkey: &str,
+    pkey_type: &str,
+) -> anyhow::Result<()> {
+    for embed in embeddings {
+        // Serialize the Vec<f64> to a JSON string
+        let embedding = to_string(&embed.embeddings).expect("failed to serialize embedding");
+
+        // TODO: pkey might not always be integer type
+        let update_query = format!(
+            "
+            UPDATE {schema}.{table}
+            SET 
+                {project}_embeddings = $1::vector,
+                {project}_updated_at = (NOW() at time zone 'utc')
+            WHERE {pkey} = $2::{pkey_type}
+        "
+        );
+        // Prepare and execute the update statement for this pair within the transaction
+        sqlx::query(&update_query)
+            .bind(embedding)
+            .bind(embed.primary_key)
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
 }
