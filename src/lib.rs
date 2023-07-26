@@ -40,6 +40,7 @@ INSERT INTO extensions(ext_id, ext_name, summary) VALUES (3, 'pg_cron ', 'pg_cro
 );
 
 extension_sql_file!("../sql/meta.sql");
+extension_sql_file!("../sql/example.sql");
 
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]

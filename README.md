@@ -4,25 +4,58 @@
 
 The simplest implementation of LLM-backed vector search on Postgres.
 
-```sql
--- initialize an existing table
+Setup a products table. Copy from example data from the extension.
 
-select vectorize.table(
-    job_name => 'my_search_job',
-    "schema" => 'public',
+```sql
+CREATE TABLE products AS 
+SELECT * FROM vectorize.example_products;
+```
+
+```sql
+SELECT * FROM products limit 2;
+```
+
+```text
+ product_id | product_name |                      description                       |        last_updated_at        
+------------+--------------+--------------------------------------------------------+-------------------------------
+          1 | Pencil       | Utensil used for writing and often works best on paper | 2023-07-26 17:20:43.639351-05
+          2 | Laptop Stand | Elevated platform for laptops, enhancing ergonomics    | 2023-07-26 17:20:43.639351-05
+```
+
+Create a job to vectorize the products table. We'll specify the tables primary key (product_id) and the columns that we want to search (product_name and description).
+
+Provide the OpenAI API key for the job.
+
+```sql
+SELECT vectorize.table(
+    job_name => 'product_search',
     "table" => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['description', 'keyword_tags'],
-    args => '{"api_key": my-openai-key"}'
+    columns => ARRAY['product_name', 'description'],
+    args => '{"api_key": "my-openai-key"}'
 );
 ```
 
--- trigger the job
+Trigger the job. This will update embeddings for all records which do not have them, or for records whos embeddings are out of date.
+
+
 ```sql
-select vectorize.job_execute('my_search_job');
+SELECT vectorize.job_execute('my_search_job');
 ```
 
 
+Finally, search. 
+
 ```sql
-select vectorize.search('my_search_job', 'my_api_key', 'chips made without corn starch');
+SELECT * FROM vectorize.search(
+    job_name => 'product_search',
+    return_col => 'product_name',
+    query => 'accessories for mobile devices',
+    api_key => 'my-openai-key"',
+    num_results => 3
+);
+```
+
+```text
+...
 ```
