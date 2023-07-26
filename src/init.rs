@@ -12,6 +12,7 @@ pub enum TableMethod {
     join,
 }
 
+// TODO: move this to api.rs
 #[pg_extern]
 fn table(
     table: &str,

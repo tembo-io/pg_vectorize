@@ -1,5 +1,6 @@
 use pgrx::prelude::*;
 
+mod api;
 mod errors;
 mod executor;
 mod init;
