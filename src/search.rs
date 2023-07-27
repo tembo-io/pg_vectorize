@@ -7,7 +7,7 @@ pub fn cosine_similarity_search(
     return_col: &str,
     num_results: i32,
     embeddings: &[f64],
-) -> Result<Vec<pgrx::JsonB>, spi::Error> {
+) -> Result<Vec<(pgrx::JsonB,)>, spi::Error> {
     let emb = serde_json::to_string(&embeddings).expect("failed to serialize embeddings");
     let query = format!(
         "
@@ -21,7 +21,7 @@ pub fn cosine_similarity_search(
     );
     log!("query: {}", query);
     Spi::connect(|client| {
-        let mut results: Vec<pgrx::JsonB> = Vec::new();
+        let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let tup_table = client.select(&query, None, None)?;
 
         for row in tup_table {
@@ -37,7 +37,7 @@ pub fn cosine_similarity_search(
                 "value": v,
                 "similarity_score": score
             });
-            results.push(pgrx::JsonB(r));
+            results.push((pgrx::JsonB(r),));
         }
 
         Ok(results)

@@ -10,7 +10,7 @@ fn search(
     query: &str,
     api_key: &str,
     num_results: default!(i32, 10),
-) -> Result<Vec<pgrx::JsonB>, spi::Error> {
+) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
     // note: this is not the most performant implementation
     // this requires a query to metadata table to get the projects schema and table
 
@@ -32,18 +32,18 @@ fn search(
 
     let schema = project_meta.schema;
     let table = project_meta.table;
-    // let return_col = project_meta.params.get("return_col").expect("no return_col");
 
     let embeddings =
         runtime.block_on(async { get_embeddings(&vec![query.to_string()], api_key).await });
-    cosine_similarity_search(
+    let search_results = cosine_similarity_search(
         job_name,
         &schema,
         &table,
         return_col,
         num_results,
         &embeddings[0],
-    )
+    )?;
+    Ok(TableIterator::new(search_results.into_iter()))
 }
 
 fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
