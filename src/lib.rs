@@ -1,10 +1,12 @@
 use pgrx::prelude::*;
 
+mod api;
 mod errors;
 mod executor;
 mod init;
 mod openai;
 mod query;
+mod search;
 mod types;
 mod util;
 mod worker;
