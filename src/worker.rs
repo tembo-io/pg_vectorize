@@ -39,7 +39,10 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         (conn, queue)
     });
 
-    log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
+    log!(
+        "pg-vectorize: starting bg workers: {}",
+        BackgroundWorker::get_name(),
+    );
 
     // poll at 10s or on a SIGTERM
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
@@ -50,13 +53,16 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
             match queue.read::<JobMessage>(PGMQ_QUEUE_NAME, 300).await {
                 Ok(Some(msg)) => {
                     let msg_id = msg.msg_id;
-                    log!("Received message: {:?}", msg);
+                    log!(
+                        "pg-vectorize: received message for job: {:?}",
+                        msg.message.job_name
+                    );
                     let job_meta = msg.message.job_meta;
                     let job_params: ColumnJobParams =
                         serde_json::from_value(job_meta.params).expect("invalid job parameters");
                     let embeddings = match job_meta.transformer {
                         types::Transformer::openai => {
-                            log!("OpenAI transformer");
+                            log!("pg-vectorize: OpenAI transformer");
                             let text_inputs: Vec<String> = msg
                                 .message
                                 .inputs
@@ -73,7 +79,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                             Ok(merge_input_output(msg.message.inputs, embeddings))
                         }
                         _ => {
-                            log!("No transformer found");
+                            log!("pg-vectorize: No transformer found");
                             Err(anyhow::anyhow!("Unsupported transformer"))
                         }
                     };

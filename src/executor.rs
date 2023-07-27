@@ -51,7 +51,9 @@ pub struct JobMessage {
 // called by pg_cron on schedule
 // identifiers new inputs and enqueues them
 #[pg_extern]
-fn job_execute(job_name: String) -> pgrx::JsonB {
+#[pg_guard]
+fn job_execute(job_name: String) {
+    log!("pg-vectorize: refresh job: {}", job_name);
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -68,16 +70,16 @@ fn job_execute(job_name: String) -> pgrx::JsonB {
         let queue = pgmq::PGMQueueExt::new(db_url, 2)
             .await
             .expect("failed to init db connection");
-        let meta = get_vectorize_meta(&job_name, conn)
+        let meta = get_vectorize_meta(&job_name, &conn)
             .await
             .expect("failed to get job meta");
         let job_params = serde_json::from_value::<ColumnJobParams>(meta.params.clone())
             .expect("failed to deserialize job params");
-        let last_completion = match meta.last_completion {
+        let _last_completion = match meta.last_completion {
             Some(t) => t,
             None => Utc.with_ymd_and_hms(970, 1, 1, 0, 0, 0).unwrap(),
         };
-        let new_or_updated_rows = get_new_updates(job_params, last_completion)
+        let new_or_updated_rows = get_new_updates_append(&conn, &job_name, job_params)
             .await
             .expect("failed to get new updates");
         match new_or_updated_rows {
@@ -95,17 +97,16 @@ fn job_execute(job_name: String) -> pgrx::JsonB {
                 log!("message sent: {}", msg_id);
             }
             None => {
-                log!("Job -- {} -- no new records", job_name);
+                log!("pg-vectorize: job: {}, no new records", job_name);
             }
         };
-        pgrx::JsonB(serde_json::to_value(meta).unwrap())
     })
 }
 
 // get job meta
 pub async fn get_vectorize_meta(
     job_name: &str,
-    conn: Pool<Postgres>,
+    conn: &Pool<Postgres>,
 ) -> Result<VectorizeMeta, DatabaseError> {
     let row = sqlx::query_as!(
         VectorizeMeta,
@@ -116,7 +117,7 @@ pub async fn get_vectorize_meta(
         ",
         job_name.to_string(),
     )
-    .fetch_one(&conn)
+    .fetch_one(conn)
     .await?;
     Ok(row)
 }
@@ -128,7 +129,59 @@ pub struct Inputs {
 }
 
 // queries a table and returns rows that need new embeddings
-pub async fn get_new_updates(
+// used for the TableMethod::append, which has source and embedding on the same table
+pub async fn get_new_updates_append(
+    pool: &Pool<Postgres>,
+    job_name: &str,
+    job_params: ColumnJobParams,
+) -> Result<Option<Vec<Inputs>>, DatabaseError> {
+    let cols = collapse_to_csv(&job_params.columns);
+
+    // query source and return any new rows that need transformation
+    // return any row where last updated embedding is also null (never populated)
+    let new_rows_query = format!(
+        "
+        SELECT 
+            {record_id}::text as record_id,
+            {cols} as input_text
+        FROM {schema}.{table}
+        WHERE {updated_at_col} > COALESCE
+            (
+                {job_name}_updated_at::timestamp,
+                '0001-01-01 00:00:00'::timestamp
+            );
+    ",
+        record_id = job_params.primary_key,
+        schema = job_params.schema,
+        table = job_params.table,
+        updated_at_col = job_params.update_time_col,
+    );
+
+    let rows: Result<Vec<PgRow>, Error> = sqlx::query(&new_rows_query).fetch_all(pool).await;
+    match rows {
+        Ok(rows) => {
+            if !rows.is_empty() {
+                let mut new_inputs: Vec<Inputs> = Vec::new();
+                for r in rows {
+                    new_inputs.push(Inputs {
+                        record_id: r.get("record_id"),
+                        inputs: r.get("input_text"),
+                    })
+                }
+                log!("pg-vectorize: num new inputs: {}", new_inputs.len());
+                Ok(Some(new_inputs))
+            } else {
+                Ok(None)
+            }
+        }
+        Err(sqlx::error::Error::RowNotFound) => Ok(None),
+        Err(e) => Err(e)?,
+    }
+}
+
+// queries a table and returns rows that need new embeddings
+#[allow(dead_code)]
+pub async fn get_new_updates_shared(
     job_params: ColumnJobParams,
     last_completion: chrono::DateTime<Utc>,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {

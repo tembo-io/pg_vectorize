@@ -1,4 +1,4 @@
-comment = 'Vector search in two functions'
+comment = 'The simplest way to do vector search on Postgres'
 default_version = '@CARGO_VERSION@'
 module_pathname = '$libdir/vectorize'
 relocatable = false

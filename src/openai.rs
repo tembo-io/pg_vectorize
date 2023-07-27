@@ -1,4 +1,5 @@
 use pgrx::prelude::*;
+use serde_json::json;
 
 #[derive(serde::Deserialize, Debug)]
 struct EmbeddingResponse {
@@ -14,8 +15,10 @@ struct DataObject {
 }
 
 pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Vec<Vec<f64>> {
-    use serde_json::json;
+    // let len = inputs.len();
+    // vec![vec![0.0; 1536]; len]
     let url = "https://api.openai.com/v1/embeddings";
+    log!("pg-vectorize: openai request size: {}", inputs.len());
     let client = reqwest::Client::new();
     let resp = client
         .post(url)
