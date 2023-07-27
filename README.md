@@ -57,5 +57,9 @@ SELECT * FROM vectorize.search(
 ```
 
 ```text
-...
+                                          search_results                                          
+--------------------------------------------------------------------------------------------------
+ {"value": "Phone Charger", "column": "product_name", "similarity_score": 0.8530797672121025}
+ {"value": "Tablet Holder", "column": "product_name", "similarity_score": 0.8284493388477342}
+ {"value": "Bluetooth Speaker", "column": "product_name", "similarity_score": 0.8255034841826178}
 ```
