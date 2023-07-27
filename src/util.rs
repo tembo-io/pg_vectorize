@@ -30,7 +30,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
         WHERE name = $1
     ";
     let r: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(
-        &query,
+        query,
         vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())],
     );
     r.expect("failed to query vectorizie metadata table")

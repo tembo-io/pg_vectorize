@@ -23,11 +23,29 @@ pub fn init_pgmq() -> Result<(), spi::Error> {
     })
 }
 
+pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> {
+    let cronjob = format!(
+        "
+        SELECT cron.schedule(
+            '{job_name}',
+            '{cron}',
+            $$select vectorize.job_execute('{job_name}')$$
+        )
+        ;"
+    );
+    Spi::get_one(&cronjob)
+}
+
 pub fn init_job_query() -> String {
     format!(
         "
         INSERT INTO {schema}.vectorize_meta (name, job_type, transformer, search_alg, params)
-        VALUES ($1, $2, $3, $4, $5);
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (name) DO UPDATE SET
+            job_type = EXCLUDED.job_type,
+            transformer = EXCLUDED.transformer,
+            search_alg = EXCLUDED.search_alg,
+            params = EXCLUDED.params;
         ",
         schema = types::VECTORIZE_SCHEMA
     )

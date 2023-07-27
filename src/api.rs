@@ -18,6 +18,7 @@ fn table(
     transformer: default!(types::Transformer, "'openai'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(init::TableMethod, "'append'"),
+    schedule: default!(String, "'* * * * *'"),
 ) -> String {
     // initialize pgmq
     init::init_pgmq().expect("error initializing pgmq");
@@ -88,8 +89,9 @@ fn table(
         Ok(())
     });
     ran.expect("error creating embedding table");
-    // do first batch update
-    // setup recurring cron job
+    // TODO: first batch update
+    // then cron
+    let _ = init::init_cron(&schedule, &job_name); // handle this error
     format!("{schema}.{table}.{columns:?}.{transformer}.{search_alg}")
 }
 
