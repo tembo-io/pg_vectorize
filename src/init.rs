@@ -169,9 +169,21 @@ fn append_embedding_column(job_name: &str, schema: &str, table: &str, col_type: 
     check_input(job_name).expect("invalid job name");
     format!(
         "
-        ALTER TABLE {schema}.{table}
-        ADD COLUMN {job_name}_embeddings {col_type},
-        ADD COLUMN {job_name}_updated_at TIMESTAMP WITH TIME ZONE;
+        DO $$
+        BEGIN
+           IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = '{table}'
+                AND table_schema = '{schema}'
+                AND column_name = '{job_name}_embeddings'
+            )
+            THEN ALTER TABLE {schema}.{table}
+            ADD COLUMN {job_name}_embeddings {col_type},
+            ADD COLUMN {job_name}_updated_at TIMESTAMP WITH TIME ZONE;
+           END IF;
+        END
+        $$;
         ",
     )
 }
