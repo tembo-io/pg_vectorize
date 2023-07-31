@@ -39,10 +39,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         (conn, queue)
     });
 
-    log!(
-        "pg-vectorize: starting bg workers: {}",
-        BackgroundWorker::get_name(),
-    );
+    log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
     // poll at 10s or on a SIGTERM
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
