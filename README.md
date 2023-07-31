@@ -6,9 +6,11 @@ The simplest implementation of LLM-backed vector search on Postgres.
 
 Dependencies:
 - [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
-- [pgvector](https://github.com/pgvector/pgvector)
 - [pg_cron](https://github.com/citusdata/pg_cron)
+- [pgmq](https://github.com/tembo-io/pgmq)
+- [pgvector](https://github.com/pgvector/pgvector)
 - [openai API key](https://platform.openai.com/docs/guides/embeddings)
+
 # Example
 
 Setup a products table. Copy from example data from the extension.
