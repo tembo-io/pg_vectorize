@@ -86,7 +86,7 @@ jobs:
           working-directory: ./
       - name: test
         run: |
-          pgrx15_config=$(stoml ~/.pgrx/15.3/config.toml configs.pg15)
+          pgrx15_config=$(stoml ~/.pgrx/config.toml configs.pg15)
           trunk install pgvector --pg-config ${pgrx15_config}
           trunk install pgmq --pg-config ${pgrx15_config}
           trunk install pg_cron --pg-config ${pgrx15_config}
