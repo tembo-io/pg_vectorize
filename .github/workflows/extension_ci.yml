@@ -99,9 +99,9 @@ jobs:
           path: |
             /usr/local/bin/stoml
             ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-mybins-${{ github.sha }}
+          key: ${{ runner.os }}-bins-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-mybins-
+            ${{ runner.os }}-bins-
       - name: test
         run: |
           pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
