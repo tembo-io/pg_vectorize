@@ -1,0 +1,122 @@
+name: PG Vectorize Extension
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+      - TEM-1423  # remove this line when done
+
+jobs:
+  dependencies:
+    name: Install dependencies
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pg-vectorize-extension-test"
+          workspaces: pg-vectorize
+          # Additional directories to cache
+          cache-directories: /home/runner/.pgrx
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+         cargo install pg-trunk
+
+  lint:
+    name: Run linters
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust minimal nightly with clippy and rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pg-vectorize-extension-lint"
+          workspaces: pg-vectorize/
+          # Additional directories to cache
+          cache-directories: /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: Cargo format
+        run: cargo +nightly fmt --all --check
+      - name: Clippy
+        run: cargo clippy
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pg-vectorize-extension-test"
+          workspaces: pg-vectorize
+          # Additional directories to cache
+          cache-directories: /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: test
+        run: |
+          pgrx15_config=$(stoml ~/.pgrx/15.3/config.toml configs.pg15)
+          trunk install pgvector --pg-config ${pgrx15_config}
+          trunk install pgmq --pg-config ${pgrx15_config}
+          trunk install pg_cron --pg-config ${pgrx15_config}
+          rm -rf ./target/pgrx-test-data-* || true
+          pg_version=$(stoml Cargo.toml features.default)
+          cargo pgrx run ${pg_version} --pgcli || true
+          cargo pgrx test ${pg_version}
+
+  publish:
+    # only publish off main branch
+    if: github.ref == 'refs/heads/main'
+    name: trunk publish
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pg-vectorize-extension-test"
+          workspaces: pg-vectorize
+          # Additional directories to cache
+          cache-directories: /home/runner/.pgrx
+      - name: trunk build
+        working-directory: ./
+        run: trunk build
+      - name: trunk publish
+        working-directory: ./
+        env:
+          TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
+        run: trunk publish
