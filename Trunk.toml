@@ -1,5 +1,5 @@
 [extension]
-name = "pg_vectorize"
+name = "vectorize"
 repository = "https://github.com/tembo-io/pg_vectorize"
 license = "PostgreSQL"
 description = "The simplest implementation of LLM-backed vector search on Postgres."
