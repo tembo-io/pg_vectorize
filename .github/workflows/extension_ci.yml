@@ -131,11 +131,20 @@ jobs:
           workspaces: pg-vectorize
           # Additional directories to cache
           cache-directories: /home/runner/.pgrx
+      - name: Restore cached binaries
+        uses: actions/cache@v2
+        with:
+          path: |
+            /usr/local/bin/stoml
+            ~/.cargo/bin/trunk
+          key: ${{ runner.os }}-bins-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-bins-
       - name: trunk build
         working-directory: ./
-        run: trunk build
+        run: ~/.cargo/bin/trunk build
       - name: trunk publish
         working-directory: ./
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
-        run: trunk publish
+        run: ~/.cargo/bin/trunk publish
