@@ -13,7 +13,6 @@ on:
   push:
     branches:
       - main
-      - TEM-1423  # remove this line when done
 
 jobs:
   dependencies:
@@ -115,7 +114,7 @@ jobs:
 
   publish:
     # only publish off main branch
-#     if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs: dependencies
     name: trunk publish
     runs-on: ubuntu-22.04
