@@ -1,0 +1,59 @@
+{
+  "db": "PostgreSQL",
+  "2570c83389d229bee10f84a4c566feafb8464aebced1ee62dc5e2b0042f0ab9c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "job_id",
+          "ordinal": 0,
+          "type_info": "Int8"
+        },
+        {
+          "name": "name",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "job_type",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "transformer",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "search_alg",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "params",
+          "ordinal": 5,
+          "type_info": "Jsonb"
+        },
+        {
+          "name": "last_completion",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        SELECT *\n        FROM vectorize.vectorize_meta\n        WHERE name = $1\n        "
+  }
+}
