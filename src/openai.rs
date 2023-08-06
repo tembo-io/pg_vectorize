@@ -1,6 +1,8 @@
 use pgrx::prelude::*;
 use serde_json::json;
 
+use anyhow::Result;
+
 #[derive(serde::Deserialize, Debug)]
 struct EmbeddingResponse {
     // object: String,
@@ -14,7 +16,7 @@ struct DataObject {
     embedding: Vec<f64>,
 }
 
-pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Vec<Vec<f64>> {
+pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f64>>> {
     // let len = inputs.len();
     // vec![vec![0.0; 1536]; len]
     let url = "https://api.openai.com/v1/embeddings";
@@ -31,22 +33,21 @@ pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Vec<Vec<f64>> {
         .send()
         .await
         .expect("failed calling openai");
-    let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings")
-        .await
-        .unwrap();
+    let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
+
     let embeddings = embedding_resp
         .data
         .iter()
         .map(|d| d.embedding.clone())
         .collect();
-    embeddings
+    Ok(embeddings)
 }
 
 // thanks Evan :D
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
     method: &'static str,
-) -> Result<T, Box<dyn std::error::Error>> {
+) -> Result<T> {
     if !resp.status().is_success() {
         let errmsg = format!(
             "Failed to call method '{}', received response with status code:{} and body: {}",
