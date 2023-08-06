@@ -47,13 +47,12 @@ SELECT vectorize.table(
 
 Trigger the job. This will update embeddings for all records which do not have them, or for records whos embeddings are out of date. By default, pg_cron will run this job every minute.
 
-
 ```sql
 SELECT vectorize.job_execute('my_search_job');
 ```
 
 
-Finally, search. 
+Finally, search.
 
 ```sql
 SELECT * FROM vectorize.search(
