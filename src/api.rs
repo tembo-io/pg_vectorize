@@ -126,8 +126,9 @@ fn search(
     let schema = project_meta.schema;
     let table = project_meta.table;
 
-    let embeddings =
-        runtime.block_on(async { get_embeddings(&vec![query.to_string()], api_key).await });
+    let embeddings = runtime
+        .block_on(async { get_embeddings(&vec![query.to_string()], api_key).await })
+        .expect("failed getting embeddings");
     let search_results = cosine_similarity_search(
         job_name,
         &schema,
