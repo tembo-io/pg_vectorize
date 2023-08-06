@@ -2,11 +2,13 @@ use crate::executor::{ColumnJobParams, JobMessage};
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
-use crate::util::Config;
+use crate::util::get_pg_conn;
 use pgrx::bgworkers::*;
 use pgrx::prelude::*;
-use sqlx::{PgPool, Pool, Postgres};
+use sqlx::{Pool, Postgres};
 use std::time::Duration;
+
+use anyhow::Result;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -27,16 +29,12 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         .build()
         .unwrap();
     // specify database
-    let cfg = Config::default();
-    log!("database url: {}", cfg.pg_conn_str);
     let (conn, queue) = runtime.block_on(async {
-        let conn = PgPool::connect(&cfg.pg_conn_str)
-            .await
-            .expect("failed sqlx connection");
-        let queue = pgmq::PGMQueueExt::new(cfg.pg_conn_str, 4)
+        let con = get_pg_conn().await.expect("failed to connect to database");
+        let queue = pgmq::PGMQueueExt::new_with_pool(con.clone())
             .await
             .expect("failed to init db connection");
-        (conn, queue)
+        (con, queue)
     });
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
@@ -71,8 +69,9 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                                 &text_inputs,
                                 &job_params.api_key.expect("missing api key"),
                             )
-                            .await;
-                            // TODO: validate returned embeddings order is same as the input order
+                            .await
+                            .expect("failed to get embeddings"); // TODO: handle this error
+                                                                 // TODO: validate returned embeddings order is same as the input order
                             Ok(merge_input_output(msg.message.inputs, embeddings))
                         }
                         _ => {
@@ -118,10 +117,11 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                 Ok(None) => {
                     log!("pg-vectorize: No messages in queue");
                 }
-                _ => {
-                    log!("pg-vectorize: Error reading message");
+                Err(e) => {
+                    let err = format!("queue {:?}", queue.connection.connect_options());
+                    log!("pg-vectorize: Error reading message: {e}, queue: {err}");
                 }
-            }
+            };
         });
     }
 
