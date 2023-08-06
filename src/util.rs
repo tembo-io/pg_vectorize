@@ -125,7 +125,7 @@ pub fn get_pg_options() -> Result<PgConnectOptions> {
     let cfg = Config::default();
     log!("CONFIG!: {:?}", cfg);
 
-    let opts = match cfg.vectorize_socket_url {
+    match cfg.vectorize_socket_url {
         Some(socket_url) => {
             log!("VECTORIZE_SOCKET_URL={:?}", socket_url);
             let socket_conn = PostgresSocketConnection::from_unix_socket_string(&socket_url)
@@ -137,6 +137,5 @@ pub fn get_pg_options() -> Result<PgConnectOptions> {
             let url = Url::parse(&cfg.pg_conn_str)?;
             get_pgc_tcp_opt(url)
         }
-    };
-    opts
+    }
 }

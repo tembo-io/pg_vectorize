@@ -3,12 +3,11 @@ use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
 use crate::util::get_pg_conn;
+use anyhow::Result;
 use pgrx::bgworkers::*;
 use pgrx::prelude::*;
 use sqlx::{Pool, Postgres};
 use std::time::Duration;
-
-use anyhow::Result;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -118,17 +117,12 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
                     log!("pg-vectorize: No messages in queue");
                 }
                 Err(e) => {
-                    let err = format!("queue {:?}", queue.connection.connect_options());
-                    log!("pg-vectorize: Error reading message: {e}, queue: {err}");
+                    log!("pg-vectorize: Error reading message: {e}");
                 }
             };
         });
     }
-
-    log!(
-        "Goodbye from inside the {} BGWorker! ",
-        BackgroundWorker::get_name()
-    );
+    log!("pg-vectorize: shutting down");
 }
 
 struct PairedEmbeddings {
@@ -155,7 +149,7 @@ async fn upsert_embedding_table(
     schema: &str,
     project: &str,
     embeddings: Vec<PairedEmbeddings>,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let (query, bindings) = build_upsert_query(schema, project, embeddings);
     let mut q = sqlx::query(&query);
     for (record_id, embeddings) in bindings {

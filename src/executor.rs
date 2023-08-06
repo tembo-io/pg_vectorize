@@ -5,7 +5,7 @@ use crate::errors::DatabaseError;
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::query::check_input;
 use crate::types;
-use crate::util::{from_env_default, get_pg_conn, Config};
+use crate::util::{from_env_default, get_pg_conn};
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use chrono::TimeZone;
 use serde::{Deserialize, Serialize};
@@ -42,16 +42,16 @@ pub struct _VectorizeMeta {
     pub last_completion: Option<chrono::DateTime<Utc>>,
 }
 
-impl Into<VectorizeMeta> for _VectorizeMeta {
-    fn into(self) -> VectorizeMeta {
+impl From<_VectorizeMeta> for VectorizeMeta {
+    fn from(val: _VectorizeMeta) -> Self {
         VectorizeMeta {
-            job_id: self.job_id,
-            name: self.name,
-            job_type: types::JobType::from(self.job_type),
-            transformer: types::Transformer::from(self.transformer),
-            search_alg: types::SimilarityAlg::from(self.search_alg),
-            params: self.params,
-            last_completion: self.last_completion,
+            job_id: val.job_id,
+            name: val.name,
+            job_type: types::JobType::from(val.job_type),
+            transformer: types::Transformer::from(val.transformer),
+            search_alg: types::SimilarityAlg::from(val.search_alg),
+            params: val.params,
+            last_completion: val.last_completion,
         }
     }
 }
