@@ -5,7 +5,7 @@ use crate::errors::DatabaseError;
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::query::check_input;
 use crate::types;
-use crate::util::{from_env_default, Config};
+use crate::util::{from_env_default, get_pg_conn, Config};
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use chrono::TimeZone;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,34 @@ pub struct VectorizeMeta {
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,
+}
+
+// temporary struct for deserializing from db
+// not needed when sqlx 0.7.x
+#[derive(Clone, Debug, Deserialize, FromRow, Serialize, PostgresType)]
+pub struct _VectorizeMeta {
+    pub job_id: i64,
+    pub name: String,
+    pub job_type: String,
+    pub transformer: String,
+    pub search_alg: String,
+    pub params: serde_json::Value,
+    #[serde(deserialize_with = "from_tsopt")]
+    pub last_completion: Option<chrono::DateTime<Utc>>,
+}
+
+impl Into<VectorizeMeta> for _VectorizeMeta {
+    fn into(self) -> VectorizeMeta {
+        VectorizeMeta {
+            job_id: self.job_id,
+            name: self.name,
+            job_type: types::JobType::from(self.job_type),
+            transformer: types::Transformer::from(self.transformer),
+            search_alg: types::SimilarityAlg::from(self.search_alg),
+            params: self.params,
+            last_completion: self.last_completion,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, Serialize)]
@@ -60,14 +88,9 @@ fn job_execute(job_name: String) {
         .build()
         .unwrap();
 
-    let cfg = Config::default();
-    let db_url = cfg.pg_conn_str;
-
     runtime.block_on(async {
-        let conn = PgPool::connect(&db_url)
-            .await
-            .expect("failed sqlx connection");
-        let queue = pgmq::PGMQueueExt::new(db_url, 2)
+        let conn = get_pg_conn().await.expect("failed to connect to database");
+        let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
             .await
             .expect("failed to init db connection");
         let meta = get_vectorize_meta(&job_name, &conn)
@@ -108,8 +131,9 @@ pub async fn get_vectorize_meta(
     job_name: &str,
     conn: &Pool<Postgres>,
 ) -> Result<VectorizeMeta, DatabaseError> {
+    log!("fetching job: {}", job_name);
     let row = sqlx::query_as!(
-        VectorizeMeta,
+        _VectorizeMeta,
         "
         SELECT *
         FROM vectorize.vectorize_meta
@@ -119,7 +143,7 @@ pub async fn get_vectorize_meta(
     )
     .fetch_one(conn)
     .await?;
-    Ok(row)
+    Ok(row.into())
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
