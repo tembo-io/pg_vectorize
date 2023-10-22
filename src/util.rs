@@ -59,17 +59,20 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 }
 
 pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
-    // TODO: change to bind param
     let query = "
         SELECT params::jsonb
         FROM vectorize.vectorize_meta
         WHERE name = $1
     ";
-    let r: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(
+    let resultset: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(
         query,
         vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())],
     );
-    r.expect("failed to query vectorize metadata table")
+    if let Ok(r) = resultset {
+        return r;
+    } else {
+        error!("failed to query vectorize metadata table")
+    }
 }
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};

@@ -1,5 +1,4 @@
 use pgrx::prelude::*;
-use pgrx::spi::SpiTupleTable;
 
 use crate::errors::DatabaseError;
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
@@ -86,25 +85,25 @@ fn job_execute(job_name: String) {
         .enable_io()
         .enable_time()
         .build()
-        .unwrap();
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     runtime.block_on(async {
-        let conn = get_pg_conn().await.expect("failed to connect to database");
+        let conn = get_pg_conn().await.unwrap_or_else(|e| error!("pg-vectorize: failed to establsh db connection: {}", e));
         let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
             .await
-            .expect("failed to init db connection");
+            .unwrap_or_else(|e| error!("failed to init db connection: {}", e));
         let meta = get_vectorize_meta(&job_name, &conn)
             .await
-            .expect("failed to get job meta");
+            .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));
         let job_params = serde_json::from_value::<ColumnJobParams>(meta.params.clone())
-            .expect("failed to deserialize job params");
+            .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
         let _last_completion = match meta.last_completion {
             Some(t) => t,
             None => Utc.with_ymd_and_hms(970, 1, 1, 0, 0, 0).unwrap(),
         };
         let new_or_updated_rows = get_new_updates_append(&conn, &job_name, job_params)
             .await
-            .expect("failed to get new updates");
+            .unwrap_or_else(|e| error!("failed to get new updates: {}", e));
         match new_or_updated_rows {
             Some(rows) => {
                 log!("num new records: {}", rows.len());
@@ -116,7 +115,7 @@ fn job_execute(job_name: String) {
                 let msg_id = queue
                     .send(PGMQ_QUEUE_NAME, &msg)
                     .await
-                    .expect("failed to send message");
+                    .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
                 log!("message sent: {}", msg_id);
             }
             None => {
@@ -248,54 +247,6 @@ pub async fn get_new_updates_shared(
         Err(sqlx::error::Error::RowNotFound) => Ok(None),
         Err(e) => Err(e)?,
     }
-}
-
-// gets last processed times
-fn get_inputs_query(
-    job_name: &str,
-    schema: &str,
-    table: &str,
-    columns: Vec<String>,
-    last_updated_col: &str,
-) -> String {
-    let cols = collapse_to_csv(&columns);
-
-    format!(
-        "
-    SELECT {cols} as input_text
-    FROM {schema}.{table}
-    WHERE {last_updated_col} > 
-    (
-        SELECT last_completion
-        FROM vectorize_meta
-        WHERE name = '{job_name}'
-    )::timestamp
-    "
-    )
-}
-
-// retrieves inputs for embedding model
-#[pg_extern]
-fn get_inputs(
-    job_name: &str,
-    schema: &str,
-    table: &str,
-    columns: Vec<String>,
-    updated_at_col: &str,
-) -> Vec<String> {
-    let mut results: Vec<String> = Vec::new();
-    let query = get_inputs_query(job_name, schema, table, columns, updated_at_col);
-    let _: Result<(), pgrx::spi::Error> = Spi::connect(|mut client: spi::SpiClient<'_>| {
-        let tup_table: SpiTupleTable = client.update(&query, None, None)?;
-        for row in tup_table {
-            let input = row["input_text"]
-                .value::<String>()?
-                .expect("input column missing");
-            results.push(input);
-        }
-        Ok(())
-    });
-    results
 }
 
 fn collapse_to_csv(strings: &[String]) -> String {

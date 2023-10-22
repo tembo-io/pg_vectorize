@@ -31,8 +31,7 @@ pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", key))
         .send()
-        .await
-        .expect("failed calling openai");
+        .await?;
     let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
 
     let embeddings = embedding_resp
@@ -55,7 +54,8 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
             resp.status(),
             resp.text().await?
         );
-        error!("{}", errmsg);
+        warning!("pg-vectorize: error handling response: {}", errmsg);
+        return Err(anyhow::anyhow!(errmsg));
     }
     let value = resp.json::<T>().await?;
     Ok(value)

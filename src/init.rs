@@ -2,6 +2,8 @@ use crate::{query::check_input, types};
 use pgrx::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use anyhow::Result;
+
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
@@ -12,15 +14,19 @@ pub enum TableMethod {
     join,
 }
 
-pub fn init_pgmq() -> Result<(), spi::Error> {
-    Spi::connect(|mut c| {
-        let _ = c.update(
-            &format!("SELECT pgmq_create('{PGMQ_QUEUE_NAME}');"),
+pub fn init_pgmq() -> Result<()> {
+    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        let _r = c.update(
+            &format!("SELECT pgmq.create('{PGMQ_QUEUE_NAME}');"),
             None,
             None,
-        );
+        )?;
         Ok(())
-    })
+    });
+    if let Err(e) = ran {
+        error!("error creating embedding table: {}", e);
+    }
+    Ok(())
 }
 
 pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> {
