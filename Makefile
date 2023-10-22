@@ -1,4 +1,5 @@
 SQLX_OFFLINE:=true
+DATABASE_URL:=postgres://${USER}:${USER}@localhost:28815/postgres
 
 sqlx-cache:
 	cargo sqlx prepare
@@ -9,4 +10,4 @@ format:
 
 # ensure the DATABASE_URL is not used, since pgrx will stop postgres during compile
 run:
-	SQLX_OFFLINE=true cargo pgrx run
+	SQLX_OFFLINE=true DATABASE_URL=${DATABASE_URL} cargo pgrx run pg15 postgres
