@@ -113,9 +113,7 @@ jobs:
   #         cargo pgrx test ${pg_version}
 
   publish:
-    # only publish off main branch
-    if: github.ref == 'refs/heads/main'
-    needs: dependencies
+    if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-22.04
     steps:
@@ -130,15 +128,15 @@ jobs:
           workspaces: pg-vectorize
           # Additional directories to cache
           cache-directories: /home/runner/.pgrx
-      - name: Restore cached binaries
-        uses: actions/cache@v2
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+         cargo install pg-trunk
       - name: trunk build
         working-directory: ./
         run: ~/.cargo/bin/trunk build

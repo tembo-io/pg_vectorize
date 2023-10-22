@@ -88,7 +88,9 @@ fn job_execute(job_name: String) {
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     runtime.block_on(async {
-        let conn = get_pg_conn().await.unwrap_or_else(|e| error!("pg-vectorize: failed to establsh db connection: {}", e));
+        let conn = get_pg_conn()
+            .await
+            .unwrap_or_else(|e| error!("pg-vectorize: failed to establsh db connection: {}", e));
         let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
             .await
             .unwrap_or_else(|e| error!("failed to init db connection: {}", e));
