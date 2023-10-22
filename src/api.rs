@@ -4,6 +4,7 @@ use crate::openai::get_embeddings;
 use crate::search::cosine_similarity_search;
 use crate::types;
 use crate::util;
+use anyhow::Result;
 use pgrx::prelude::*;
 
 #[pg_extern]
@@ -19,9 +20,9 @@ fn table(
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(init::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
-) -> String {
+) -> Result<String> {
     // initialize pgmq
-    init::init_pgmq().expect("error initializing pgmq");
+    init::init_pgmq()?;
     let job_type = types::JobType::Columns;
 
     // write job to table
@@ -30,7 +31,12 @@ fn table(
         Some(a) => a,
         None => format!("{}_{}_{}", schema, table, columns.join("_")),
     };
-    let arguments = serde_json::to_value(args).expect("invalid json for argument `args`");
+    let arguments = match serde_json::to_value(args) {
+        Ok(a) => a,
+        Err(e) => {
+            error!("invalid json for argument `args`: {}", e);
+        }
+    };
     let api_key = arguments.get("api_key");
 
     // get prim key type
@@ -50,31 +56,36 @@ fn table(
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension
     // background worker will likely be moved to an external container or service in near future
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _ = c
-            .update(
-                &init_job_q,
-                None,
-                Some(vec![
-                    (PgBuiltInOids::TEXTOID.oid(), job_name.clone().into_datum()),
-                    (
-                        PgBuiltInOids::TEXTOID.oid(),
-                        job_type.to_string().into_datum(),
-                    ),
-                    (
-                        PgBuiltInOids::TEXTOID.oid(),
-                        transformer.to_string().into_datum(),
-                    ),
-                    (
-                        PgBuiltInOids::TEXTOID.oid(),
-                        search_alg.to_string().into_datum(),
-                    ),
-                    (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
-                ]),
-            )
-            .expect("error exec query");
+        match c.update(
+            &init_job_q,
+            None,
+            Some(vec![
+                (PgBuiltInOids::TEXTOID.oid(), job_name.clone().into_datum()),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
+                    job_type.to_string().into_datum(),
+                ),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
+                    transformer.to_string().into_datum(),
+                ),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
+                    search_alg.to_string().into_datum(),
+                ),
+                (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
+            ]),
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                error!("error creating job: {}", e);
+            }
+        }
         Ok(())
     });
-    ran.expect("error creating job");
+    if ran.is_err() {
+        error!("error creating job");
+    }
     let init_embed_q = init::init_embedding_table_query(
         &job_name,
         &schema,
@@ -85,14 +96,18 @@ fn table(
     );
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _ = c.update(&init_embed_q, None, None);
+        let _r = c.update(&init_embed_q, None, None)?;
         Ok(())
     });
-    ran.expect("error creating embedding table");
+    if let Err(e) = ran {
+        error!("error creating embedding table: {}", e);
+    }
     // TODO: first batch update
-    // then cron
+    // initialize cron
     let _ = init::init_cron(&schedule, &job_name); // handle this error
-    format!("{schema}.{table}.{columns:?}.{transformer}.{search_alg}")
+    Ok(format!(
+        "{schema}.{table}.{columns:?}.{transformer}.{search_alg}"
+    ))
 }
 
 #[pg_extern]
@@ -107,28 +122,35 @@ fn search(
     // this requires a query to metadata table to get the projects schema and table, which has a cost
     // this does ensure consistency between the model used to generate the stored embeddings and the query embeddings, which is crucial
 
-    // TODO: simplify api signature as much as possible
     // get project metadata
-    let _project_meta =
-        util::get_vectorize_meta_spi(job_name).expect("metadata for project is missing");
-    let project_meta: ColumnJobParams = serde_json::from_value(
-        serde_json::to_value(_project_meta).expect("failed to deserialize metadata"),
-    )
-    .expect("failed to deserialize metadata");
+    let _project_meta = if let Some(js) = util::get_vectorize_meta_spi(job_name) {
+        js
+    } else {
+        error!("failed to get project metadata");
+    };
+    let project_meta: ColumnJobParams =
+        serde_json::from_value(serde_json::to_value(_project_meta).unwrap_or_else(|e| {
+            error!("failed to serialize metadata: {}", e);
+        }))
+        .unwrap_or_else(|e| error!("failed to serialize metadata: {}", e));
     // assuming default openai API for now
     // get embeddings
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
-        .unwrap();
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     let schema = project_meta.schema;
     let table = project_meta.table;
 
-    let embeddings = runtime
-        .block_on(async { get_embeddings(&vec![query.to_string()], api_key).await })
-        .expect("failed getting embeddings");
+    let embeddings =
+        match runtime.block_on(async { get_embeddings(&vec![query.to_string()], api_key).await }) {
+            Ok(e) => e,
+            Err(e) => {
+                error!("error getting embeddings: {}", e);
+            }
+        };
     let search_results = cosine_similarity_search(
         job_name,
         &schema,

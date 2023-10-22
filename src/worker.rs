@@ -4,6 +4,7 @@ use crate::openai;
 use crate::types;
 use crate::util::get_pg_conn;
 use anyhow::Result;
+use pgmq::Message;
 use pgrx::bgworkers::*;
 use pgrx::prelude::*;
 use sqlx::{Pool, Postgres};
@@ -38,88 +39,50 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
-    // poll at 10s or on a SIGTERM
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
-            // on SIGHUP, you might want to reload some external configuration or something
+            // on SIGHUP, you might want to reload configurations and env vars
         }
-        runtime.block_on(async {
-            match queue.read::<JobMessage>(PGMQ_QUEUE_NAME, 300).await {
-                Ok(Some(msg)) => {
-                    let msg_id = msg.msg_id;
-                    log!(
-                        "pg-vectorize: received message for job: {:?}",
-                        msg.message.job_name
-                    );
-                    let job_meta = msg.message.job_meta;
-                    let job_params: ColumnJobParams =
-                        serde_json::from_value(job_meta.params).expect("invalid job parameters");
-                    let embeddings = match job_meta.transformer {
-                        types::Transformer::openai => {
-                            log!("pg-vectorize: OpenAI transformer");
-                            let text_inputs: Vec<String> = msg
-                                .message
-                                .inputs
-                                .clone()
-                                .into_iter()
-                                .map(|v| v.inputs)
-                                .collect();
-                            let embeddings = openai::get_embeddings(
-                                &text_inputs,
-                                &job_params.api_key.expect("missing api key"),
-                            )
-                            .await
-                            .expect("failed to get embeddings"); // TODO: handle this error
-                                                                 // TODO: validate returned embeddings order is same as the input order
-                            Ok(merge_input_output(msg.message.inputs, embeddings))
-                        }
-                        _ => {
-                            log!("pg-vectorize: No transformer found");
-                            Err(anyhow::anyhow!("Unsupported transformer"))
-                        }
-                    };
-                    // write embeddings to result table
-                    match job_params.table_method {
-                        TableMethod::append => {
-                            log!("Append method");
-                            update_append_table(
-                                &conn,
-                                embeddings.expect("failed to get embeddings"),
-                                &job_params.schema,
-                                &job_params.table,
-                                &job_meta.name,
-                                &job_params.primary_key,
-                                &job_params.pkey_type,
-                            )
-                            .await
-                            .expect("failed to write embeddings");
-                        }
-                        TableMethod::join => {
-                            log!("Join method");
-                            upsert_embedding_table(
-                                &conn,
-                                &job_params.schema,
-                                &job_meta.name,
-                                embeddings.expect("failed to get embeddings"),
-                            )
-                            .await
-                            .expect("failed to write embeddings");
-                        }
-                    };
-                    // delete message from queue
-                    queue
-                        .delete(PGMQ_QUEUE_NAME, msg_id)
-                        .await
-                        .expect("failed to delete message");
-                    // TODO: update job meta updated_timestamp
-                }
-                Ok(None) => {
-                    log!("pg-vectorize: No messages in queue");
-                }
-                Err(e) => {
-                    log!("pg-vectorize: Error reading message: {e}");
-                }
+        let _: Result<()> = runtime.block_on(async {
+            let msg: Message<JobMessage> =
+                match queue.read::<JobMessage>(PGMQ_QUEUE_NAME, 300).await {
+                    Ok(Some(msg)) => msg,
+                    Ok(None) => {
+                        log!("pg-vectorize: No messages in queue");
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        warning!("pg-vectorize: Error reading message: {e}");
+                        return Ok(());
+                    }
+                };
+
+            let msg_id = msg.msg_id;
+            let read_ct = msg.read_ct;
+            log!(
+                "pg-vectorize: received message for job: {:?}",
+                msg.message.job_name
+            );
+            let job_success = execute_job(conn.clone(), msg).await;
+            let delete_it = if job_success.is_ok() {
+                true
+            } else {
+                read_ct > 2
             };
+
+            // delete message from queue
+            if delete_it {
+                match queue.delete(PGMQ_QUEUE_NAME, msg_id).await {
+                    Ok(_) => {
+                        log!("pg-vectorize: deleted message: {}", msg_id);
+                    }
+                    Err(e) => {
+                        warning!("pg-vectorize: Error deleting message: {}", e);
+                    }
+                }
+            }
+            // TODO: update job meta updated_timestamp
+            Ok(())
         });
     }
     log!("pg-vectorize: shutting down");
@@ -228,5 +191,69 @@ async fn update_append_table(
             .execute(pool)
             .await?;
     }
+    Ok(())
+}
+
+async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
+    let job_meta = msg.message.job_meta;
+    let job_params: ColumnJobParams =
+        serde_json::from_value(job_meta.params).expect("invalid job parameters");
+    let embeddings: Result<Vec<PairedEmbeddings>> = match job_meta.transformer {
+        types::Transformer::openai => {
+            log!("pg-vectorize: OpenAI transformer");
+            let text_inputs: Vec<String> = msg
+                .message
+                .inputs
+                .clone()
+                .into_iter()
+                .map(|v| v.inputs)
+                .collect();
+            let apikey = match job_params
+                .api_key
+                .ok_or_else(|| anyhow::anyhow!("missing api key"))
+            {
+                Ok(k) => k,
+                Err(e) => {
+                    warning!("pg-vectorize: Error getting api key: {}", e);
+                    return Err(anyhow::anyhow!("failed to get api key"));
+                }
+            };
+
+            let embeddings = match openai::get_embeddings(&text_inputs, &apikey).await {
+                Ok(e) => e,
+                Err(e) => {
+                    warning!("pg-vectorize: Error getting embeddings: {}", e);
+                    return Err(anyhow::anyhow!("failed to get embeddings"));
+                }
+            };
+            // TODO: validate returned embeddings order is same as the input order
+            let emb: Vec<PairedEmbeddings> = merge_input_output(msg.message.inputs, embeddings);
+            Ok(emb)
+        }
+    };
+    // write embeddings to result table
+    match job_params.table_method {
+        TableMethod::append => {
+            update_append_table(
+                &dbclient,
+                embeddings.expect("failed to get embeddings"),
+                &job_params.schema,
+                &job_params.table,
+                &job_meta.name,
+                &job_params.primary_key,
+                &job_params.pkey_type,
+            )
+            .await?;
+        }
+        TableMethod::join => {
+            upsert_embedding_table(
+                &dbclient,
+                &job_params.schema,
+                &job_meta.name,
+                embeddings.expect("failed to get embeddings"),
+            )
+            .await?
+        }
+    };
     Ok(())
 }

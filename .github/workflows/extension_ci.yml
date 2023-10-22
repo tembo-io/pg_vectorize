@@ -47,7 +47,7 @@ jobs:
           key: ${{ runner.os }}-bins-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-bins-
-   
+
   lint:
     name: Run linters
     runs-on: ubuntu-22.04
