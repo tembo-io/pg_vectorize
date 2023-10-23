@@ -69,7 +69,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
         vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())],
     );
     if let Ok(r) = resultset {
-        return r;
+        r
     } else {
         error!("failed to query vectorize metadata table")
     }

@@ -21,8 +21,6 @@ extension_sql_file!("../sql/example.sql");
 #[cfg(any(test, feature = "pg_test"))]
 #[pg_schema]
 mod tests {
-    use pgrx::prelude::*;
-
     // #[pg_test]
     // fn test_hello_tembo() {
     //     assert_eq!("Hello, tembo", crate::hello_tembo());

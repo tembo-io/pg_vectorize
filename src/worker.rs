@@ -200,13 +200,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
     let embeddings: Result<Vec<PairedEmbeddings>> = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
-            let text_inputs: Vec<String> = msg
-                .message
-                .inputs
-                .clone()
-                .into_iter()
-                .map(|v| v.inputs)
-                .collect();
+
             let apikey = match job_params
                 .api_key
                 .ok_or_else(|| anyhow::anyhow!("missing api key"))
@@ -218,7 +212,9 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
                 }
             };
 
-            let embeddings = match openai::get_embeddings(&text_inputs, &apikey).await {
+            // trims any inputs that exceed openAIs max token length
+            let text_inputs = openai::trim_inputs(&msg.message.inputs);
+            let embeddings = match openai::openai_embeddings(&text_inputs, &apikey).await {
                 Ok(e) => e,
                 Err(e) => {
                     warning!("pg-vectorize: Error getting embeddings: {}", e);
