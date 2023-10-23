@@ -42,7 +42,6 @@ pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f
     Ok(embeddings)
 }
 
-// thanks Evan :D
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
     method: &'static str,

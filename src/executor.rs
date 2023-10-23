@@ -67,6 +67,31 @@ pub struct ColumnJobParams {
     pub table_method: TableMethod,
 }
 
+// creates batches based on total token count
+// batch_size is the max token count per batch
+fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
+    let mut groups: Vec<Vec<Inputs>> = Vec::new();
+    let mut current_group: Vec<Inputs> = Vec::new();
+    let mut current_token_count = 0;
+
+    for input in data {
+        if current_token_count + input.token_estimate > batch_size {
+            // Create a new group
+            groups.push(current_group);
+            current_group = Vec::new();
+            current_token_count = 0;
+        }
+        current_token_count += input.token_estimate;
+        current_group.push(input);
+    }
+
+    // Add any remaining inputs to the groups
+    if !current_group.is_empty() {
+        groups.push(current_group);
+    }
+    groups
+}
+
 // schema for all messages that hit pgmq
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct JobMessage {
@@ -87,10 +112,14 @@ fn job_execute(job_name: String) {
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
+    // TODO: move into a config
+    // 100k tokens per batch
+    let max_batch_size = 100000;
+
     runtime.block_on(async {
         let conn = get_pg_conn()
             .await
-            .unwrap_or_else(|e| error!("pg-vectorize: failed to establsh db connection: {}", e));
+            .unwrap_or_else(|e| error!("pg-vectorize: failed to establish db connection: {}", e));
         let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
             .await
             .unwrap_or_else(|e| error!("failed to init db connection: {}", e));
@@ -106,19 +135,28 @@ fn job_execute(job_name: String) {
         let new_or_updated_rows = get_new_updates_append(&conn, &job_name, job_params)
             .await
             .unwrap_or_else(|e| error!("failed to get new updates: {}", e));
+
         match new_or_updated_rows {
             Some(rows) => {
                 log!("num new records: {}", rows.len());
-                let msg = JobMessage {
-                    job_name: job_name.clone(),
-                    job_meta: meta.clone(),
-                    inputs: rows,
-                };
-                let msg_id = queue
-                    .send(PGMQ_QUEUE_NAME, &msg)
-                    .await
-                    .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
-                log!("message sent: {}", msg_id);
+                let batches = create_batches(rows, max_batch_size);
+                log!(
+                    "total batches: {}, max_batch_size: {}",
+                    batches.len(),
+                    max_batch_size
+                );
+                for b in batches {
+                    let msg = JobMessage {
+                        job_name: job_name.clone(),
+                        job_meta: meta.clone(),
+                        inputs: b,
+                    };
+                    let msg_id = queue
+                        .send(PGMQ_QUEUE_NAME, &msg)
+                        .await
+                        .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
+                    log!("message sent: {}", msg_id);
+                }
             }
             None => {
                 log!("pg-vectorize: job: {}, no new records", job_name);
@@ -149,8 +187,9 @@ pub async fn get_vectorize_meta(
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Inputs {
-    pub record_id: String, // the value to join the record
-    pub inputs: String,    // concatenation of input columns
+    pub record_id: String,   // the value to join the record
+    pub inputs: String,      // concatenation of input columns
+    pub token_estimate: i32, // estimated token count
 }
 
 // queries a table and returns rows that need new embeddings
@@ -188,9 +227,12 @@ pub async fn get_new_updates_append(
             if !rows.is_empty() {
                 let mut new_inputs: Vec<Inputs> = Vec::new();
                 for r in rows {
+                    let ipt: String = r.get("input_text");
+                    let token_estimate = ipt.split_whitespace().count() as i32;
                     new_inputs.push(Inputs {
                         record_id: r.get("record_id"),
-                        inputs: r.get("input_text"),
+                        inputs: ipt,
+                        token_estimate,
                     })
                 }
                 log!("pg-vectorize: num new inputs: {}", new_inputs.len());
@@ -239,9 +281,12 @@ pub async fn get_new_updates_shared(
     match rows {
         Ok(rows) => {
             for r in rows {
+                let ipt: String = r.get("input_text");
+                let token_estimate = ipt.split_whitespace().count() as i32;
                 new_inputs.push(Inputs {
                     record_id: r.get("record_id"),
-                    inputs: r.get("input_text"),
+                    inputs: ipt,
+                    token_estimate,
                 })
             }
             Ok(Some(new_inputs))
@@ -260,4 +305,67 @@ fn collapse_to_csv(strings: &[String]) -> String {
         })
         .collect::<Vec<_>>()
         .join("|| ', ' ||")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_batches_normal() {
+        let data = vec![
+            Inputs {
+                record_id: "1".to_string(),
+                inputs: "Test 1.".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "2".to_string(),
+                inputs: "Test 2.".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "3".to_string(),
+                inputs: "Test 3.".to_string(),
+                token_estimate: 3,
+            },
+        ];
+
+        let batches = create_batches(data, 4);
+        assert_eq!(batches.len(), 2);
+        assert_eq!(batches[0].len(), 2);
+        assert_eq!(batches[1].len(), 1);
+    }
+
+    #[test]
+    fn test_create_batches_empty() {
+        let data: Vec<Inputs> = Vec::new();
+        let batches = create_batches(data, 4);
+        assert_eq!(batches.len(), 0);
+    }
+
+    #[test]
+    fn test_create_batches_large() {
+        let data = vec![
+            Inputs {
+                record_id: "1".to_string(),
+                inputs: "Test 1.".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "2".to_string(),
+                inputs: "Test 2.".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "3".to_string(),
+                inputs: "Test 3.".to_string(),
+                token_estimate: 100,
+            },
+        ];
+        let batches = create_batches(data, 5);
+        assert_eq!(batches.len(), 2);
+        assert_eq!(batches[1].len(), 1);
+        assert_eq!(batches[1][0].token_estimate, 100);
+    }
 }
