@@ -76,44 +76,44 @@ jobs:
       - name: Clippy
         run: cargo clippy
 
-  # test:
-  #   name: Run tests
-  #   needs: dependencies
-  #   runs-on: ubuntu-22.04
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - name: Install Rust stable toolchain
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: stable
-  #     - uses: Swatinem/rust-cache@v2
-  #       with:
-  #         prefix-key: "pg-vectorize-extension-test"
-  #         workspaces: pg-vectorize
-  #         # Additional directories to cache
-  #         cache-directories: /home/runner/.pgrx
-  #     - uses: ./.github/actions/pgx-init
-  #       with:
-  #         working-directory: ./
-  #     - name: Restore cached binaries
-  #       uses: actions/cache@v2
-  #       with:
-  #         path: |
-  #           /usr/local/bin/stoml
-  #           ~/.cargo/bin/trunk
-  #         key: ${{ runner.os }}-bins-${{ github.sha }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-bins-
-  #     - name: test
-  #       run: |
-  #         pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
-  #         ~/.cargo/bin/trunk install pgvector --pg-config ${pgrx15_config}
-  #         ~/.cargo/bin/trunk install pgmq --pg-config ${pgrx15_config}
-  #         ~/.cargo/bin/trunk install pg_cron --pg-config ${pgrx15_config}
-  #         rm -rf ./target/pgrx-test-data-* || true
-  #         pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-  #         cargo pgrx run ${pg_version} --pgcli || true
-  #         cargo pgrx test ${pg_version}
+  test:
+    name: Run tests
+    needs: dependencies
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "pg-vectorize-extension-test"
+          workspaces: pg-vectorize
+          # Additional directories to cache
+          cache-directories: /home/runner/.pgrx
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: Restore cached binaries
+        uses: actions/cache@v2
+        with:
+          path: |
+            /usr/local/bin/stoml
+            ~/.cargo/bin/trunk
+          key: ${{ runner.os }}-bins-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-bins-
+      - name: test
+        run: |
+          pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
+          ~/.cargo/bin/trunk install pgvector --pg-config ${pgrx15_config}
+          ~/.cargo/bin/trunk install pgmq --pg-config ${pgrx15_config}
+          ~/.cargo/bin/trunk install pg_cron --pg-config ${pgrx15_config}
+          rm -rf ./target/pgrx-test-data-* || true
+          pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
+          cargo pgrx run ${pg_version} --pgcli || true
+          cargo pgrx test ${pg_version}
 
   publish:
     if: github.event_name == 'release'

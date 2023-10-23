@@ -44,18 +44,17 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
             // on SIGHUP, you might want to reload configurations and env vars
         }
         let _: Result<()> = runtime.block_on(async {
-            let msg: Message<JobMessage> =
-                match queue.read::<JobMessage>(PGMQ_QUEUE_NAME, 300).await {
-                    Ok(Some(msg)) => msg,
-                    Ok(None) => {
-                        log!("pg-vectorize: No messages in queue");
-                        return Ok(());
-                    }
-                    Err(e) => {
-                        warning!("pg-vectorize: Error reading message: {e}");
-                        return Ok(());
-                    }
-                };
+            let msg: Message<JobMessage> = match queue.pop::<JobMessage>(PGMQ_QUEUE_NAME).await {
+                Ok(Some(msg)) => msg,
+                Ok(None) => {
+                    log!("pg-vectorize: No messages in queue");
+                    return Ok(());
+                }
+                Err(e) => {
+                    warning!("pg-vectorize: Error reading message: {e}");
+                    return Ok(());
+                }
+            };
 
             let msg_id = msg.msg_id;
             let read_ct = msg.read_ct;
