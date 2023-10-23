@@ -6,6 +6,7 @@ use anyhow::Result;
 
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
 
+#[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
 pub enum TableMethod {
     // append a new column to the existing table

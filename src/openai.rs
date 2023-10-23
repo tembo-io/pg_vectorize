@@ -3,6 +3,14 @@ use serde_json::json;
 
 use anyhow::Result;
 
+use crate::executor::Inputs;
+
+// max token length is 8192
+// however, depending on content of text, token count can be higher than
+// token count returned by split_whitespace()
+pub const MAX_TOKEN_LEN: usize = 7500;
+pub const OPENAI_EMBEDDING_RL: &str = "https://api.openai.com/v1/embeddings";
+
 #[derive(serde::Deserialize, Debug)]
 struct EmbeddingResponse {
     // object: String,
@@ -16,14 +24,31 @@ struct DataObject {
     embedding: Vec<f64>,
 }
 
-pub async fn get_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f64>>> {
-    // let len = inputs.len();
-    // vec![vec![0.0; 1536]; len]
-    let url = "https://api.openai.com/v1/embeddings";
+// OpenAI embedding model has a limit of 8192 tokens per input
+// there can be a number of ways condense the inputs
+pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
+    inputs
+        .iter()
+        .map(|input| {
+            if input.token_estimate as usize > MAX_TOKEN_LEN {
+                let tokens: Vec<&str> = input.inputs.split_whitespace().collect();
+                tokens
+                    .into_iter()
+                    .take(MAX_TOKEN_LEN)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            } else {
+                input.inputs.clone()
+            }
+        })
+        .collect()
+}
+
+pub async fn openai_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f64>>> {
     log!("pg-vectorize: openai request size: {}", inputs.len());
     let client = reqwest::Client::new();
     let resp = client
-        .post(url)
+        .post(OPENAI_EMBEDDING_RL)
         .json(&json!({
             "input": inputs,
             "model": "text-embedding-ada-002"
@@ -58,4 +83,76 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     }
     let value = resp.json::<T>().await?;
     Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trim_inputs_no_trimming_required() {
+        let data = vec![
+            Inputs {
+                record_id: "1".to_string(),
+                inputs: "token1 token2".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "2".to_string(),
+                inputs: "token3 token4".to_string(),
+                token_estimate: 2,
+            },
+        ];
+
+        let trimmed = trim_inputs(&data);
+        assert_eq!(trimmed, vec!["token1 token2", "token3 token4"]);
+    }
+
+    #[test]
+    fn test_trim_inputs_trimming_required() {
+        let token_len = 1000000;
+        let long_input = (0..token_len)
+            .map(|i| format!("token{}", i))
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        let num_tokens = long_input.split_whitespace().count();
+        assert_eq!(num_tokens, token_len);
+
+        let data = vec![Inputs {
+            record_id: "1".to_string(),
+            inputs: long_input.clone(),
+            token_estimate: token_len as i32,
+        }];
+
+        let trimmed = trim_inputs(&data);
+        let trimmed_input = trimmed[0].clone();
+        let trimmed_length = trimmed_input.split_whitespace().count();
+        assert_eq!(trimmed_length, MAX_TOKEN_LEN);
+    }
+
+    #[test]
+    fn test_trim_inputs_mixed_cases() {
+        let num_tokens_in = 1000000;
+        let long_input = (0..num_tokens_in)
+            .map(|i| format!("token{}", i))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let data = vec![
+            Inputs {
+                record_id: "1".to_string(),
+                inputs: "token1 token2".to_string(),
+                token_estimate: 2,
+            },
+            Inputs {
+                record_id: "2".to_string(),
+                inputs: long_input.clone(),
+                token_estimate: num_tokens_in,
+            },
+        ];
+
+        let trimmed = trim_inputs(&data);
+        assert_eq!(trimmed[0].split_whitespace().count(), 2);
+        assert_eq!(trimmed[1].split_whitespace().count(), MAX_TOKEN_LEN);
+    }
 }

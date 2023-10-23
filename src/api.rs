@@ -1,12 +1,13 @@
 use crate::executor::ColumnJobParams;
 use crate::init;
-use crate::openai::get_embeddings;
+use crate::openai::openai_embeddings;
 use crate::search::cosine_similarity_search;
 use crate::types;
 use crate::util;
 use anyhow::Result;
 use pgrx::prelude::*;
 
+#[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table(
     table: &str,
@@ -144,13 +145,14 @@ fn search(
     let schema = project_meta.schema;
     let table = project_meta.table;
 
-    let embeddings =
-        match runtime.block_on(async { get_embeddings(&vec![query.to_string()], api_key).await }) {
-            Ok(e) => e,
-            Err(e) => {
-                error!("error getting embeddings: {}", e);
-            }
-        };
+    let embeddings = match runtime
+        .block_on(async { openai_embeddings(&vec![query.to_string()], api_key).await })
+    {
+        Ok(e) => e,
+        Err(e) => {
+            error!("error getting embeddings: {}", e);
+        }
+    };
     let search_results = cosine_similarity_search(
         job_name,
         &schema,
