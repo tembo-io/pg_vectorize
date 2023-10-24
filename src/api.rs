@@ -97,7 +97,9 @@ fn table(
     );
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(&init_embed_q, None, None)?;
+        for q in init_embed_q {
+            let _r = c.update(&q, None, None)?;
+        }
         Ok(())
     });
     if let Err(e) = ran {

@@ -15,6 +15,7 @@ pub fn cosine_similarity_search(
         1 - ({project}_embeddings <=> '{emb}'::vector) AS cosine_similarity,
         *
     FROM {schema}.{table}
+    WHERE {project}_updated_at is NOT NULL
     ORDER BY cosine_similarity DESC
     LIMIT {num_results};
     "

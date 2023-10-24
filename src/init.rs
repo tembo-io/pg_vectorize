@@ -65,7 +65,7 @@ pub fn init_embedding_table_query(
     transformer: &types::Transformer,
     search_alg: &types::SimilarityAlg,
     transform_method: &TableMethod,
-) -> String {
+) -> Vec<String> {
     // TODO: when adding support for other models, add the output dimension to the transformer attributes
     // so that they can be read here, not hard-coded here below
     // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
@@ -80,8 +80,15 @@ pub fn init_embedding_table_query(
         (types::Transformer::openai, types::SimilarityAlg::pgv_cosine_similarity) => "vector(1536)",
     };
     match transform_method {
-        TableMethod::append => append_embedding_column(job_name, schema, table, col_type),
-        TableMethod::join => create_embedding_table(job_name, col_type),
+        TableMethod::append => {
+            vec![
+                append_embedding_column(job_name, schema, table, col_type),
+                create_hnsw_cosine_index(job_name, schema, table),
+            ]
+        }
+        TableMethod::join => {
+            vec![create_embedding_table(job_name, col_type)]
+        }
     }
 }
 
@@ -94,6 +101,13 @@ fn create_embedding_table(job_name: &str, col_type: &str) -> String {
         );
         ",
         schema = types::VECTORIZE_SCHEMA
+    )
+}
+
+fn create_hnsw_cosine_index(job_name: &str, schema: &str, table: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_idx ON {schema}.{table} USING hnsw ({job_name}_embeddings vector_cosine_ops);
+        ",
     )
 }
 
