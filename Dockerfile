@@ -6,7 +6,8 @@ RUN apt-get update && \
     curl \
     gcc \
     pkg-config \
-    libssl-dev
+    libssl-dev \
+    libtorch3-dev
 
 RUN git clone https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2
 RUN git clone https://github.com/guillaume-be/rust-bert.git
