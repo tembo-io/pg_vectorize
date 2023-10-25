@@ -17,9 +17,9 @@ ENV PATH="/root/.cargo/bin:$PATH"
 
 COPY . . 
 
-ENV LIBTORCH=/opt/conda/pkgs/pytorch-2.1.0-py3.10_cuda12.1_cudnn8.9.2_0/lib/python3.10/site-packages/torch
+ENV LIBTORCH=/usr/lib/libtorch.so
 ENV LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
 
 ENV RUSTBERT_CACHE=./
 
-RUN cargo run --bin download-model
+# RUN cargo run --bin download-model
