@@ -116,9 +116,9 @@ fn table(
 #[pg_extern]
 fn search(
     job_name: &str,
-    return_col: &str,
     query: &str,
     api_key: &str,
+    return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
     // note: this is not the most performant implementation
@@ -159,7 +159,7 @@ fn search(
         job_name,
         &schema,
         &table,
-        return_col,
+        &return_columns,
         num_results,
         &embeddings[0],
     )?;

@@ -57,17 +57,17 @@ Finally, search.
 ```sql
 SELECT * FROM vectorize.search(
     job_name => 'product_search',
-    return_col => 'product_name',
     query => 'accessories for mobile devices',
-    api_key => 'my-openai-key"',
+    api_key => 'my-openai-key',
+    return_columns => ARRAY['product_id', 'product_name'],
     num_results => 3
 );
 ```
 
 ```text
-                                          search_results                                          
---------------------------------------------------------------------------------------------------
- {"value": "Phone Charger", "column": "product_name", "similarity_score": 0.8530797672121025}
- {"value": "Tablet Holder", "column": "product_name", "similarity_score": 0.8284493388477342}
- {"value": "Bluetooth Speaker", "column": "product_name", "similarity_score": 0.8255034841826178}
+                                         search_results                                         
+------------------------------------------------------------------------------------------------
+ {"product_id": 13, "product_name": "Phone Charger", "similarity_score": 0.8564774308489237}
+ {"product_id": 24, "product_name": "Tablet Holder", "similarity_score": 0.8295404213393001}
+ {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8248579643539758}
 ```
