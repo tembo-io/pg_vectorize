@@ -22,4 +22,4 @@ ENV LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
 
 ENV RUSTBERT_CACHE=./
 
-# RUN cargo run --bin download-model
+RUN cargo run --bin download-model
