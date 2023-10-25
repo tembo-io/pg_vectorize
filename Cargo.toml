@@ -1,0 +1,24 @@
+[package]
+name = "vector-serve"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "download-model"
+path = "src/init.rs"
+
+
+[dependencies]
+actix-cors = "0.6.4"
+actix-web = "4.4.0"
+anyhow = "1.0.75"
+# candle = "0.0.0"
+# candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.3.0" }
+# candle-nn = "0.3.0"
+# candle-transformers = "0.3.0"
+clap = "4.4.7"
+# hf-hub = "0.3.2"
+rust-bert = "0.21.0"
+serde_json = "1.0.107"
+# tokenizers = "0.14.1"
+# tracing-subscriber = "0.3.17"
