@@ -17,9 +17,12 @@ ENV PATH="/root/.cargo/bin:$PATH"
 
 COPY . . 
 
-ENV LIBTORCH=/usr/lib/libtorch.so
+RUN git clone -b v2.1.0 --recurse-submodule https://github.com/pytorch/pytorch.git pytorch-static --depth 1
+RUN cd pytorch-static && USE_CUDA=OFF BUILD_SHARED_LIBS=OFF python setup.py build
+
+ENV LIBTORCH=/opt/conda/lib/python3.10/site-packages/torch
 ENV LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
 
 ENV RUSTBERT_CACHE=./
 
-# RUN cargo run --bin download-model
+RUN cargo run --bin download-model
