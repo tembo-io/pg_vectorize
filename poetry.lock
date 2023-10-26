@@ -23,6 +23,7 @@ files = [
 ]
 
 [package.dependencies]
+exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
 idna = ">=2.8"
 sniffio = ">=1.1"
 
@@ -165,6 +166,20 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
+
+[[package]]
+name = "exceptiongroup"
+version = "1.1.3"
+description = "Backport of PEP 654 (exception groups)"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "exceptiongroup-1.1.3-py3-none-any.whl", hash = "sha256:343280667a4585d195ca1cf9cef84a4e178c4b6cf2274caef9859782b567d5e3"},
+    {file = "exceptiongroup-1.1.3.tar.gz", hash = "sha256:097acd85d473d75af5bb98e41b61ff7fe35efe6675e4f9370ec6ec5126d160e9"},
+]
+
+[package.extras]
+test = ["pytest (>=6)"]
 
 [[package]]
 name = "fastapi"
@@ -1618,6 +1633,7 @@ h11 = ">=0.8"
 httptools = {version = ">=0.5.0", optional = true, markers = "extra == \"standard\""}
 python-dotenv = {version = ">=0.13", optional = true, markers = "extra == \"standard\""}
 pyyaml = {version = ">=5.1", optional = true, markers = "extra == \"standard\""}
+typing-extensions = {version = ">=4.0", markers = "python_version < \"3.11\""}
 uvloop = {version = ">=0.14.0,<0.15.0 || >0.15.0,<0.15.1 || >0.15.1", optional = true, markers = "(sys_platform != \"win32\" and sys_platform != \"cygwin\") and platform_python_implementation != \"PyPy\" and extra == \"standard\""}
 watchfiles = {version = ">=0.13", optional = true, markers = "extra == \"standard\""}
 websockets = {version = ">=10.4", optional = true, markers = "extra == \"standard\""}
@@ -1839,5 +1855,5 @@ files = [
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "e23d670dc81170e4d92abfaf23e5edc97609b7e00dc772fed545337ef0c0ae2b"
+python-versions = "^3.10"
+content-hash = "9772649338ddfad90fd68ba8b349db68a651124150a14c8cb015fd0183ed4716"
