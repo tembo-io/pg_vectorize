@@ -1,4 +1,5 @@
-FROM python:3.11.1
+FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+# FROM python:3.11.1
 
 WORKDIR /usr/src/app
 
