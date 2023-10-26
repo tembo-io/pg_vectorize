@@ -1,28 +1,18 @@
-FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-runtime
+FROM python:3.11.6
+
+WORKDIR /usr/src/app
 
 RUN apt-get update && \
-    apt-get install -y \
-    git \
-    curl \
-    gcc \
-    pkg-config \
-    libssl-dev \
-    libtorch3-dev
+    apt-get install -y curl
 
-RUN git clone https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2
-RUN git clone https://github.com/guillaume-be/rust-bert.git
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/ POETRY_VERSION=1.6.1 python3 -
+RUN poetry config virtualenvs.create false
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:$PATH"
+COPY . .
 
-COPY . . 
+RUN poetry install
 
-RUN git clone -b v2.1.0 --recurse-submodule https://github.com/pytorch/pytorch.git pytorch-static --depth 1
-RUN cd pytorch-static && USE_CUDA=OFF BUILD_SHARED_LIBS=OFF python setup.py build
+# Download models
+RUN poetry run python app/init_models.py
 
-ENV LIBTORCH=/opt/conda/lib/python3.10/site-packages/torch
-ENV LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
-
-ENV RUSTBERT_CACHE=./
-
-RUN cargo run --bin download-model
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
