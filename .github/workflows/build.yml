@@ -30,7 +30,7 @@ jobs:
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Build and upload image
         run: |
-          docker build -t .
+          docker build -t vector-serve .
           docker tag vector-serve quay.io/tembo/vector-serve:${{ steps.versions.outputs.short_sha }}
           docker tag vector-serve quay.io/tembo/vector-serve:latest
       - name: Login to Quay
