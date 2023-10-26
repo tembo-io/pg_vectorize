@@ -33,7 +33,7 @@ def batch_transform(payload: Batch) -> np.array:
     for i, batch in enumerate(batches):
         logging.info(f"Batch {i} / {num_batches}")
         responses.extend(model.encode(batch).tolist())
-    print(responses)
+    logging.info("Completed %s batches", num_batches)
     return responses
 
 
