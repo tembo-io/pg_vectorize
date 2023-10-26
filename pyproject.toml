@@ -10,6 +10,7 @@ python = "^3.11"
 fastapi = "^0.104.0"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 sentence-transformers = "^2.2.2"
+gunicorn = "^21.2.0"
 
 
 [build-system]

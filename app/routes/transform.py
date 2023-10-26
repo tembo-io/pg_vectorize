@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING, Any, List
 
 from fastapi import APIRouter
 from pydantic import BaseModel, conlist
+import numpy as np
 
-router = APIRouter(tags=["predict"])
+router = APIRouter(tags=["transform"])
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 from sentence_transformers import SentenceTransformer
 
@@ -16,24 +17,23 @@ model = SentenceTransformer("./models")
 if TYPE_CHECKING:
     Vector = List[str]
 else:
-    Vector = conlist(str, min_items=1)
-
+    Vector = conlist(str, min_length=1)
 
 class Batch(BaseModel):
     prompts: Vector
 
-
 BATCH_SIZE = os.getenv("BATCH_SIZE", 1000)
 
-@router.post("/transform")
-def batch_transform(payload: Batch) -> list[float]:
+@router.post("/transform", response_model=None)
+def batch_transform(payload: Batch) -> np.array:
     logging.info({"batch-predict-len": len(payload.prompts)})
     batches = chunk_list(payload.prompts, BATCH_SIZE)
     num_batches = len(batches)
     responses: list[float] = []
     for i, batch in enumerate(batches):
         logging.info(f"Batch {i} / {num_batches}")
-        responses.extend(model.encode(batch))
+        responses.extend(model.encode(batch).tolist())
+    print(responses)
     return responses
 
 

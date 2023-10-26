@@ -1,4 +1,4 @@
-FROM python:3.11.6
+FROM python:3.11.1
 
 WORKDIR /usr/src/app
 
@@ -8,11 +8,14 @@ RUN apt-get update && \
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/ POETRY_VERSION=1.6.1 python3 -
 RUN poetry config virtualenvs.create false
 
-COPY . .
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry install
+RUN poetry install --no-root
 
 # Download models
-RUN poetry run python app/init_models.py
+COPY app/init_models.py .
+RUN poetry run python init_models.py
 
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY . .
+
+CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "80"]
