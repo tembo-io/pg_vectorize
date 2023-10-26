@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 permissions:
   id-token: write
@@ -25,18 +28,18 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      - name: Check out the coredb repo to reuse some actions
-        uses: actions/checkout@v3
-        with:
-          repository: tembo-io/tembo
-          path: ./tembo
-          ref: a0034703ad57d5179c0217beb39b88ca23417f43
       - name: Build and upload image
-        uses: ./tembo/.github/actions/build-and-push-to-quay
+        run: |
+          docker build -t vector-serve .
+          docker tag vector-serve quay.io/tembo/vector-serve:${{ steps.versions.outputs.short_sha }}
+          docker tag vector-serve quay.io/tembo/vector-serve:latest
+      - name: Login to Quay
+        uses: docker/login-action@v2
         with:
-          image_name: vector-serve
-          publish_latest: true
-          publish_calver: true
-          docker_directory: .
-          quay_user: ${{ secrets.QUAY_USER }}
-          quay_password: ${{ secrets.QUAY_PASSWORD }}
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+      - name: Push image
+        run: |
+          docker push quay.io/tembo/vector-serve:${{ steps.versions.outputs.short_sha }}
+          docker push quay.io/tembo/vector-serve:latest

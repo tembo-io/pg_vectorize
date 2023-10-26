@@ -6,7 +6,7 @@ authors = ["Tembo <engineering@tembo.io>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 fastapi = "^0.104.0"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 sentence-transformers = "^2.2.2"
