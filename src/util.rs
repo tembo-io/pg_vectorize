@@ -1,10 +1,10 @@
-use pgrx::prelude::*;
+use pgrx::*;
 use sqlx::{Pool, Postgres};
 use std::env;
 
 use anyhow::Result;
 
-// use log::info as log;
+pub static VECTORIZE_HOST: GucSetting<Option<&'static str>> = GucSetting::new(None);
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -79,7 +79,16 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use url::{ParseError, Url};
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
-    let opts = get_pg_options()?;
+    let mut cfg = Config::default();
+
+    if let Some(host) = VECTORIZE_HOST.get() {
+        log!("Using socket url from GUC: {:?}", host);
+        cfg.vectorize_socket_url = Some(host);
+    };
+
+    log!("pg-vectorize: config {:?}", cfg);
+
+    let opts = get_pg_options(cfg)?;
     let pgp = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(4))
         .max_connections(4)
@@ -124,10 +133,7 @@ fn get_pgc_tcp_opt(url: Url) -> Result<PgConnectOptions> {
     Ok(options)
 }
 
-pub fn get_pg_options() -> Result<PgConnectOptions> {
-    let cfg = Config::default();
-    log!("CONFIG!: {:?}", cfg);
-
+pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
     match cfg.vectorize_socket_url {
         Some(socket_url) => {
             log!("VECTORIZE_SOCKET_URL={:?}", socket_url);
