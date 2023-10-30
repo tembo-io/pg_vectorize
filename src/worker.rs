@@ -2,16 +2,27 @@ use crate::executor::{ColumnJobParams, JobMessage};
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
-use crate::util::get_pg_conn;
+use crate::util::{get_pg_conn, VECTORIZE_HOST};
 use anyhow::Result;
 use pgmq::Message;
 use pgrx::bgworkers::*;
-use pgrx::prelude::*;
+use pgrx::*;
 use sqlx::{Pool, Postgres};
 use std::time::Duration;
 
+// initialize GUCs
+fn init_guc() {
+    GucRegistry::define_string_guc(
+        "vectorize.host",
+        "unix socket url for Postgres",
+        "unix socket path to the Postgres instance. Optional. Can also be set in environment variable.",
+        &VECTORIZE_HOST,
+        GucContext::Suset, GucFlags::default());
+}
+
 #[pg_guard]
 pub extern "C" fn _PG_init() {
+    init_guc();
     BackgroundWorkerBuilder::new("PG Vectorize Background Worker")
         .set_function("background_worker_main")
         .set_library("vectorize")
@@ -28,6 +39,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         .enable_time()
         .build()
         .unwrap();
+
     // specify database
     let (conn, queue) = runtime.block_on(async {
         let con = get_pg_conn().await.expect("failed to connect to database");
