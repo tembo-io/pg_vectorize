@@ -3,10 +3,16 @@
 The simplest way to do vector search in Postgres.
 
 Dependencies:
+
+Rust:
 - [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
-- [pg_cron](https://github.com/citusdata/pg_cron)
-- [pgmq](https://github.com/tembo-io/pgmq)
-- [pgvector](https://github.com/pgvector/pgvector)
+
+Postgres Extensions:
+- [pg_cron](https://github.com/citusdata/pg_cron) == 1.5
+- [pgmq](https://github.com/tembo-io/pgmq) >= 0.30.0
+- [pgvector](https://github.com/pgvector/pgvector) >= 1.5.0
+
+API:
 - [openai API key](https://platform.openai.com/docs/guides/embeddings)
 
 ## Example
