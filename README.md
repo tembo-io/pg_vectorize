@@ -57,7 +57,6 @@ Trigger the job. This will update embeddings for all records which do not have t
 SELECT vectorize.job_execute('product_search');
 ```
 
-
 Finally, search.
 
 ```sql
