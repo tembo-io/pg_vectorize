@@ -2,7 +2,7 @@ use crate::executor::{ColumnJobParams, JobMessage};
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
-use crate::util::{get_pg_conn, VECTORIZE_HOST};
+use crate::util::{get_pg_conn, OPENAI_KEY, VECTORIZE_HOST};
 use anyhow::Result;
 use pgmq::Message;
 use pgrx::bgworkers::*;
@@ -18,6 +18,15 @@ fn init_guc() {
         "unix socket path to the Postgres instance. Optional. Can also be set in environment variable.",
         &VECTORIZE_HOST,
         GucContext::Suset, GucFlags::default());
+
+    GucRegistry::define_string_guc(
+        "vectorize.openai_key",
+        "API key from OpenAI",
+        "API key from OpenAI. Optional. Overridden by any values provided in function calls.",
+        &OPENAI_KEY,
+        GucContext::Suset,
+        GucFlags::SUPERUSER_ONLY,
+    );
 }
 
 #[pg_guard]
@@ -99,24 +108,12 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     log!("pg-vectorize: shutting down");
 }
 
-struct PairedEmbeddings {
-    primary_key: String,
-    embeddings: Vec<f64>,
+pub struct PairedEmbeddings {
+    pub primary_key: String,
+    pub embeddings: Vec<f64>,
 }
 
 use crate::executor::Inputs;
-
-// merges the vec of inputs with the embedding responses
-fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedEmbeddings> {
-    inputs
-        .into_iter()
-        .zip(values.into_iter())
-        .map(|(input, value)| PairedEmbeddings {
-            primary_key: input.record_id,
-            embeddings: value,
-        })
-        .collect()
-}
 
 async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
@@ -207,34 +204,16 @@ async fn update_append_table(
 
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
-    let job_params: ColumnJobParams =
-        serde_json::from_value(job_meta.params).expect("invalid job parameters");
+    let job_params: ColumnJobParams = serde_json::from_value(job_meta.params)?;
     let embeddings: Result<Vec<PairedEmbeddings>> = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
 
-            let apikey = match job_params
-                .api_key
-                .ok_or_else(|| anyhow::anyhow!("missing api key"))
-            {
-                Ok(k) => k,
-                Err(e) => {
-                    warning!("pg-vectorize: Error getting api key: {}", e);
-                    return Err(anyhow::anyhow!("failed to get api key"));
-                }
-            };
-
-            // trims any inputs that exceed openAIs max token length
-            let text_inputs = openai::trim_inputs(&msg.message.inputs);
-            let embeddings = match openai::openai_embeddings(&text_inputs, &apikey).await {
-                Ok(e) => e,
-                Err(e) => {
-                    warning!("pg-vectorize: Error getting embeddings: {}", e);
-                    return Err(anyhow::anyhow!("failed to get embeddings"));
-                }
-            };
+            let embeddings =
+                openai::openai_transform(job_params.clone(), &msg.message.inputs).await?;
             // TODO: validate returned embeddings order is same as the input order
-            let emb: Vec<PairedEmbeddings> = merge_input_output(msg.message.inputs, embeddings);
+            let emb: Vec<PairedEmbeddings> =
+                openai::merge_input_output(msg.message.inputs, embeddings);
             Ok(emb)
         }
     };

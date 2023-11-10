@@ -1,6 +1,6 @@
 use crate::executor::ColumnJobParams;
 use crate::init;
-use crate::openai::openai_embeddings;
+use crate::openai;
 use crate::search::cosine_similarity_search;
 use crate::types;
 use crate::util;
@@ -42,6 +42,24 @@ fn table(
 
     // get prim key type
     let pkey_type = init::get_column_datatype(&schema, table, &primary_key);
+
+    // certain embedding services require an API key, e.g. openAI
+    // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
+    match transformer {
+        types::Transformer::openai => {
+            let openai_key = match api_key {
+                Some(k) => k.to_string(),
+                None => match util::get_guc(util::VectorieGuc::OpenAIKey) {
+                    Some(k) => k,
+                    None => {
+                        error!("failed to get API key from GUC");
+                    }
+                },
+            };
+            openai::validate_api_key(&openai_key)?;
+        }
+    }
+
     // TODO: implement a struct for these params
     let params = pgrx::JsonB(serde_json::json!({
         "schema": schema,
@@ -54,7 +72,7 @@ fn table(
         "api_key": api_key
     }));
 
-    // using SPI here because it is unlikely that this code will be run anywhere but inside the extension
+    // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         match c.update(
@@ -117,7 +135,7 @@ fn table(
 fn search(
     job_name: &str,
     query: &str,
-    api_key: &str,
+    api_key: default!(Option<String>, "NULL"),
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
@@ -147,8 +165,21 @@ fn search(
     let schema = project_meta.schema;
     let table = project_meta.table;
 
+    let openai_key = match api_key {
+        Some(k) => k,
+        None => {
+            let key = match util::get_guc(util::VectorieGuc::OpenAIKey) {
+                Some(k) => k,
+                None => {
+                    error!("failed to get API key from GUC");
+                }
+            };
+            key
+        }
+    };
+
     let embeddings = match runtime
-        .block_on(async { openai_embeddings(&vec![query.to_string()], api_key).await })
+        .block_on(async { openai::openai_embeddings(&vec![query.to_string()], &openai_key).await })
     {
         Ok(e) => e,
         Err(e) => {
