@@ -1,8 +1,6 @@
 # pg_vectorize
 
-*under development*
-
-The simplest implementation of LLM-backed vector search on Postgres.
+The simplest way to do vector search in Postgres.
 
 Dependencies:
 - [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
@@ -11,7 +9,7 @@ Dependencies:
 - [pgvector](https://github.com/pgvector/pgvector)
 - [openai API key](https://platform.openai.com/docs/guides/embeddings)
 
-# Example
+## Example
 
 Setup a products table. Copy from example data from the extension.
 
@@ -33,7 +31,10 @@ SELECT * FROM products limit 2;
 
 Create a job to vectorize the products table. We'll specify the tables primary key (product_id) and the columns that we want to search (product_name and description).
 
-Provide the OpenAI API key for the job.
+```sql
+ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
+```
+
 
 ```sql
 SELECT vectorize.table(
@@ -41,11 +42,10 @@ SELECT vectorize.table(
     "table" => 'products',
     primary_key => 'product_id',
     columns => ARRAY['product_name', 'description'],
-    args => '{"api_key": "my-openai-key"}'
 );
 ```
 
-Trigger the job. This will update embeddings for all records which do not have them, or for records whos embeddings are out of date. By default, pg_cron will run this job every minute.
+Trigger the job. This will update embeddings for all records which do not have them, or for records where embeddings are out of date. By default, pg_cron will run this job every minute.
 
 ```sql
 SELECT vectorize.job_execute('product_search');
@@ -58,7 +58,6 @@ Finally, search.
 SELECT * FROM vectorize.search(
     job_name => 'product_search',
     query => 'accessories for mobile devices',
-    api_key => 'my-openai-key',
     return_columns => ARRAY['product_id', 'product_name'],
     num_results => 3
 );
