@@ -45,7 +45,7 @@ fn table(
         types::Transformer::openai => {
             let openai_key = match api_key {
                 Some(k) => serde_json::from_value::<String>(k.clone())?,
-                None => match util::get_guc(util::VectorieGuc::OpenAIKey) {
+                None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
                         error!("failed to get API key from GUC");
@@ -163,7 +163,7 @@ fn search(
 
     let openai_key = match api_key {
         Some(k) => k,
-        None => match util::get_guc(util::VectorieGuc::OpenAIKey) {
+        None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
             Some(k) => k,
             None => {
                 error!("failed to get API key from GUC");

@@ -11,7 +11,7 @@ pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 #[derive(Debug)]
-pub enum VectorieGuc {
+pub enum VectorizeGuc {
     Host,
     OpenAIKey,
 }
@@ -69,10 +69,10 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 }
 
 /// a convenience function to get this project's GUCs
-pub fn get_guc(guc: VectorieGuc) -> Option<String> {
+pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
     let val = match guc {
-        VectorieGuc::Host => VECTORIZE_HOST.get(),
-        VectorieGuc::OpenAIKey => OPENAI_KEY.get(),
+        VectorizeGuc::Host => VECTORIZE_HOST.get(),
+        VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
     };
 
     if let Some(cstr) = val {
@@ -115,9 +115,9 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
     let mut cfg = Config::default();
 
-    if let Some(host) = VECTORIZE_HOST.get() {
+    if let Some(host) = get_guc(VectorizeGuc::Host) {
         log!("Using socket url from GUC: {:?}", host);
-        cfg.vectorize_socket_url = Some(host.to_str().unwrap().to_owned());
+        cfg.vectorize_socket_url = Some(host);
     };
 
     log!("pg-vectorize: config {:?}", cfg);
