@@ -113,8 +113,6 @@ pub struct PairedEmbeddings {
     pub embeddings: Vec<f64>,
 }
 
-use crate::executor::Inputs;
-
 async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
     schema: &str,

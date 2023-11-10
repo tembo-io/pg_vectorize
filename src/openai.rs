@@ -1,7 +1,7 @@
 use pgrx::prelude::*;
 use serde_json::json;
 
-use crate::util::{get_pg_conn, OPENAI_KEY, VECTORIZE_HOST};
+use crate::util::OPENAI_KEY;
 use anyhow::Result;
 
 use crate::{
@@ -12,6 +12,7 @@ use crate::{
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
 // token count returned by split_whitespace()
+// TODO: wrap openai toktoken's tokenizer to estimate token count?
 pub const MAX_TOKEN_LEN: usize = 7500;
 pub const OPENAI_EMBEDDING_RL: &str = "https://api.openai.com/v1/embeddings";
 
@@ -95,7 +96,7 @@ pub async fn openai_transform(
     };
 
     // trims any inputs that exceed openAIs max token length
-    let text_inputs = trim_inputs(&inputs);
+    let text_inputs = trim_inputs(inputs);
     let embeddings = match openai_embeddings(&text_inputs, &apikey).await {
         Ok(e) => e,
         Err(e) => {
@@ -110,7 +111,7 @@ pub async fn openai_transform(
 pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedEmbeddings> {
     inputs
         .into_iter()
-        .zip(values.into_iter())
+        .zip(values)
         .map(|(input, value)| PairedEmbeddings {
             primary_key: input.record_id,
             embeddings: value,
@@ -161,6 +162,12 @@ pub fn validate_api_key(key: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_validate_api_key() {
+        let result = validate_api_key("test");
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_trim_inputs_no_trimming_required() {

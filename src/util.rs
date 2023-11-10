@@ -77,7 +77,7 @@ pub fn get_guc(guc: VectorieGuc) -> Option<String> {
 
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
-            return Some(s);
+            Some(s)
         } else {
             error!("failed to convert CStr to str");
         }
@@ -89,7 +89,7 @@ pub fn get_guc(guc: VectorieGuc) -> Option<String> {
 
 fn handle_cstr(cstr: &CStr) -> Result<String> {
     if let Ok(s) = cstr.to_str() {
-        return Ok(s.to_owned());
+        Ok(s.to_owned())
     } else {
         Err(anyhow::anyhow!("failed to convert CStr to str"))
     }
@@ -151,7 +151,6 @@ pub fn get_pgc_socket_opt(socket_conn: PostgresSocketConnection) -> Result<PgCon
     }
     if socket_conn.password.is_some() {
         opts = opts.password(&socket_conn.password.expect("missing socket password"));
-    } else {
     }
     Ok(opts)
 }

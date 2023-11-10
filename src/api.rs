@@ -12,9 +12,9 @@ use pgrx::prelude::*;
 fn table(
     table: &str,
     columns: Vec<String>,
-    job_name: Option<String>,
-    args: pgrx::Json,
+    job_name: String,
     primary_key: String,
+    args: default!(pgrx::Json, "'{}'"),
     schema: default!(String, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
     transformer: default!(types::Transformer, "'openai'"),
@@ -28,10 +28,6 @@ fn table(
 
     // write job to table
     let init_job_q = init::init_job_query();
-    let job_name = match job_name {
-        Some(a) => a,
-        None => format!("{}_{}_{}", schema, table, columns.join("_")),
-    };
     let arguments = match serde_json::to_value(args) {
         Ok(a) => a,
         Err(e) => {
@@ -48,7 +44,7 @@ fn table(
     match transformer {
         types::Transformer::openai => {
             let openai_key = match api_key {
-                Some(k) => k.to_string(),
+                Some(k) => serde_json::from_value::<String>(k.clone())?,
                 None => match util::get_guc(util::VectorieGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
@@ -167,15 +163,12 @@ fn search(
 
     let openai_key = match api_key {
         Some(k) => k,
-        None => {
-            let key = match util::get_guc(util::VectorieGuc::OpenAIKey) {
-                Some(k) => k,
-                None => {
-                    error!("failed to get API key from GUC");
-                }
-            };
-            key
-        }
+        None => match util::get_guc(util::VectorieGuc::OpenAIKey) {
+            Some(k) => k,
+            None => {
+                error!("failed to get API key from GUC");
+            }
+        },
     };
 
     let embeddings = match runtime
@@ -194,5 +187,5 @@ fn search(
         num_results,
         &embeddings[0],
     )?;
-    Ok(TableIterator::new(search_results.into_iter()))
+    Ok(TableIterator::new(search_results))
 }
