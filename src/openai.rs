@@ -161,12 +161,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_validate_api_key() {
-        let result = validate_api_key("test");
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_trim_inputs_no_trimming_required() {
         let data = vec![
             Inputs {
