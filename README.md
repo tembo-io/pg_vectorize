@@ -2,6 +2,16 @@
 
 The simplest way to do vector search in Postgres.
 
+[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
+
+## Installation
+
+The fastest way to get started is by running the Tembo docker image, where Vectorize and all its dependencies come pre-installed.
+
+```bash
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/vectorize-pg:latest
+```
+
 Dependencies:
 
 Rust:
