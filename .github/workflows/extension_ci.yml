@@ -148,3 +148,44 @@ jobs:
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: ~/.cargo/bin/trunk publish
+  build_and_push:
+    name: Build and push images
+    needs:
+      - publish
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
+    outputs:
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Install stoml and pg-trunk
+        shell: bash
+        run: |
+         set -xe
+         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+         mv stoml_linux_amd64 stoml
+         chmod +x stoml
+         sudo mv stoml /usr/local/bin/
+      - name: Set version strings
+        id: versions
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+      - name: Build and upload image
+        run: |
+          docker build --build-arg="VECTORIZE_VER=${{ steps.versions.outputs.TAG_VER }}" -t vectorize-pg images/vectorize-pg
+          docker tag vectorize-pg quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}
+          docker tag vectorize-pg quay.io/tembo/vectorize-pg:latest
+      - name: Login to Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+      - name: Push image
+        run: |
+          docker push quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}
+          docker push quay.io/tembo/vectorize-pg:latest
