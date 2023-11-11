@@ -1,10 +1,20 @@
 use pgrx::*;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
 use std::env;
+use url::{ParseError, Url};
 
 use anyhow::Result;
+use core::ffi::CStr;
 
 pub static VECTORIZE_HOST: GucSetting<Option<&'static str>> = GucSetting::new(None);
+pub static OPENAI_KEY: GucSetting<Option<&'static str>> = GucSetting::new(None);
+
+#[derive(Debug)]
+pub enum VectorizeGuc {
+    Host,
+    OpenAIKey,
+}
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -58,6 +68,23 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
+/// a convenience function to get this project's GUCs
+pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
+    match guc {
+        VectorizeGuc::Host => VECTORIZE_HOST.get(),
+        VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
+    }
+}
+
+#[allow(dead_code)]
+fn handle_cstr(cstr: &CStr) -> Result<String> {
+    if let Ok(s) = cstr.to_str() {
+        Ok(s.to_owned())
+    } else {
+        Err(anyhow::anyhow!("failed to convert CStr to str"))
+    }
+}
+
 pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
     let query = "
         SELECT params::jsonb
@@ -75,13 +102,10 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
     }
 }
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use url::{ParseError, Url};
-
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
     let mut cfg = Config::default();
 
-    if let Some(host) = VECTORIZE_HOST.get() {
+    if let Some(host) = get_guc(VectorizeGuc::Host) {
         log!("Using socket url from GUC: {:?}", host);
         cfg.vectorize_socket_url = Some(host);
     };
@@ -117,7 +141,6 @@ pub fn get_pgc_socket_opt(socket_conn: PostgresSocketConnection) -> Result<PgCon
     }
     if socket_conn.password.is_some() {
         opts = opts.password(&socket_conn.password.expect("missing socket password"));
-    } else {
     }
     Ok(opts)
 }

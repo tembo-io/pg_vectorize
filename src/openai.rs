@@ -1,13 +1,18 @@
 use pgrx::prelude::*;
 use serde_json::json;
 
+use crate::util::OPENAI_KEY;
 use anyhow::Result;
 
-use crate::executor::Inputs;
+use crate::{
+    executor::{ColumnJobParams, Inputs},
+    worker::PairedEmbeddings,
+};
 
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
 // token count returned by split_whitespace()
+// TODO: wrap openai toktoken's tokenizer to estimate token count?
 pub const MAX_TOKEN_LEN: usize = 7500;
 pub const OPENAI_EMBEDDING_RL: &str = "https://api.openai.com/v1/embeddings";
 
@@ -67,6 +72,50 @@ pub async fn openai_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Ve
     Ok(embeddings)
 }
 
+pub async fn openai_transform(
+    job_params: ColumnJobParams,
+    inputs: &[Inputs],
+) -> Result<Vec<Vec<f64>>> {
+    log!("pg-vectorize: OpenAI transformer");
+
+    // handle retrieval of API key. order of precedence:
+    // 1. job parameters
+    // 2. GUC
+    let apikey = match job_params.api_key {
+        Some(k) => k,
+        None => match OPENAI_KEY.get() {
+            Some(k) => k,
+            None => {
+                warning!("pg-vectorize: Error getting API key from GUC");
+                return Err(anyhow::anyhow!("failed to get API key"));
+            }
+        },
+    };
+
+    // trims any inputs that exceed openAIs max token length
+    let text_inputs = trim_inputs(inputs);
+    let embeddings = match openai_embeddings(&text_inputs, &apikey).await {
+        Ok(e) => e,
+        Err(e) => {
+            warning!("pg-vectorize: Error getting embeddings: {}", e);
+            return Err(anyhow::anyhow!("failed to get embeddings"));
+        }
+    };
+    Ok(embeddings)
+}
+
+// merges the vec of inputs with the embedding responses
+pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedEmbeddings> {
+    inputs
+        .into_iter()
+        .zip(values)
+        .map(|(input, value)| PairedEmbeddings {
+            primary_key: input.record_id,
+            embeddings: value,
+        })
+        .collect()
+}
+
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
     method: &'static str,
@@ -83,6 +132,28 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     }
     let value = resp.json::<T>().await?;
     Ok(value)
+}
+
+pub fn validate_api_key(key: &str) -> Result<()> {
+    let client = reqwest::Client::new();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+    runtime.block_on(async {
+        let resp = client
+            .get("https://api.openai.com/v1/models")
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", key))
+            .send()
+            .await
+            .unwrap_or_else(|e| error!("failed to make Open AI key validation call: {}", e));
+        let _ = handle_response::<serde_json::Value>(resp, "models")
+            .await
+            .unwrap_or_else(|e| error!("failed validate API key: {}", e));
+    });
+    Ok(())
 }
 
 #[cfg(test)]
