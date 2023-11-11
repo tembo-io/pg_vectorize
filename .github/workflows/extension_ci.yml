@@ -150,8 +150,8 @@ jobs:
         run: ~/.cargo/bin/trunk publish
   build_and_push:
     name: Build and push images
-    needs:
-      - publish
+    # needs:
+    #   - publish
     runs-on:
       - self-hosted
       - dind
