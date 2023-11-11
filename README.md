@@ -12,6 +12,18 @@ The fastest way to get started is by running the Tembo docker image, where Vecto
 docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/vectorize-pg:latest
 ```
 
+Connect to Postgres
+
+```text
+psql postgres://postgres:postgres@0.0.0.0:5432/postgres
+```
+
+Enable the extension and its dependencies
+
+```sql
+CREATE EXTENSION vectorize CASCADE;
+```
+
 Dependencies:
 
 Rust:
