@@ -1,6 +1,5 @@
 FROM postgres:15.4-bookworm
 
-ARG TARGETPLATFORM=linux/amd64
 ARG PGMQ_VER=0.33.1
 ARG VECTOR_VER=0.5.1
 ARG VECTORIZE_VER=0.5.0
@@ -17,7 +16,6 @@ RUN apt-get update \
 	make \
 	pkg-config \
 	postgresql-server-dev-15
-
 
 WORKDIR /vectorize
 
