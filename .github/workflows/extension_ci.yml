@@ -208,7 +208,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}
-            quay.io/tembo/vectorize-pg:latest
-            ghcr.io/tembo-io/vectorize-pg:latest
+            ghcr.io/tembo-io/vectorize-pgv${{ steps.versions.outputs.TAG_VER }}
             ghcr.io/tembo-io/vectorize-pg:latest
