@@ -41,7 +41,7 @@ RUN $HOME/.cargo/bin/rustup default stable
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.10.2 --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
 
-RUN RUN git clone https://github.com/tembo-io/pgmq.git && \
+RUN git clone https://github.com/tembo-io/pgmq.git && \
     cd pgmq && $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config) && \
     cd .. && rm -rf pgmq
 
