@@ -205,7 +205,7 @@ jobs:
         with:
           file: ./images/vectorize-pg/Dockerfile
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ghcr.io/tembo-io/vectorize-pgv${{ steps.versions.outputs.TAG_VER }}
