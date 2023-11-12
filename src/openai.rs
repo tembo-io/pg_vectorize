@@ -83,13 +83,16 @@ pub async fn openai_transform(
     // 2. GUC
     let apikey = match job_params.api_key {
         Some(k) => k,
-        None => match OPENAI_KEY.get() {
-            Some(k) => k,
-            None => {
-                warning!("pg-vectorize: Error getting API key from GUC");
-                return Err(anyhow::anyhow!("failed to get API key"));
-            }
-        },
+        None => {
+            let key = match OPENAI_KEY.get() {
+                Some(k) => k.to_str()?.to_owned(),
+                None => {
+                    warning!("pg-vectorize: Error getting API key from GUC");
+                    return Err(anyhow::anyhow!("failed to get API key"));
+                }
+            };
+            key
+        }
     };
 
     // trims any inputs that exceed openAIs max token length

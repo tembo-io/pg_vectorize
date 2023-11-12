@@ -7,8 +7,8 @@ use url::{ParseError, Url};
 use anyhow::Result;
 use core::ffi::CStr;
 
-pub static VECTORIZE_HOST: GucSetting<Option<&'static str>> = GucSetting::new(None);
-pub static OPENAI_KEY: GucSetting<Option<&'static str>> = GucSetting::new(None);
+pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 #[derive(Debug)]
 pub enum VectorizeGuc {
@@ -70,9 +70,19 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 
 /// a convenience function to get this project's GUCs
 pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
-    match guc {
+    let val = match guc {
         VectorizeGuc::Host => VECTORIZE_HOST.get(),
         VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
+    };
+    if let Some(cstr) = val {
+        if let Ok(s) = handle_cstr(cstr) {
+            Some(s)
+        } else {
+            error!("failed to convert CStr to str");
+        }
+    } else {
+        warning!("no value set for GU: {:?}", guc);
+        None
     }
 }
 
