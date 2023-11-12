@@ -1,27 +1,25 @@
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
-# FROM python:3.11.1
+FROM rust:latest
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y curl
+RUN apt-get update &&  \
+    apt-get install -y wget unzip && \
+    apt-get install git-lfs
 
-RUN pip install \
-    fastapi==0.104.0 \
-    uvicorn[standard]==0.23.2 \
-    sentence-transformers==2.2.2
-# RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/ POETRY_VERSION=1.6.1 python3 -
-# RUN poetry config virtualenvs.create false
 
-# COPY pyproject.toml poetry.lock ./
+RUN wget https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcu118.zip
+RUN unzip libtorch-cxx11-abi-shared-with-deps-2.0.0+cu118.zip -d /opt
 
-# RUN poetry install --no-root
+ENV LIBTORCH=/opt/libtorch
 
-# Download models
-COPY app/init_models.py .
-# RUN poetry run python init_models.py
-RUN python init_models.py
+RUN git lfs install
+RUN mkdir resources
+RUN git -C resources clone https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2
+
+ENV LD_LIBRARY_PATH=${LIBTORCH}/lib:$LD_LIBRARY_PATH
 
 COPY . .
 
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000"]
+RUN cargo build --release
+EXPOSE 8080
+CMD ["./target/release/vector-serve"]
