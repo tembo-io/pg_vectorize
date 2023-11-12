@@ -1,10 +1,32 @@
 # pg_vectorize
 
-The simplest way to do vector search in Postgres.
+The simplest way to do vector search in Postgres. Vectorize is a Postgres extension that automates that the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
+
+One function call to initialize your data. Another function call to search.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
 
-Dependencies:
+## Installation
+
+The fastest way to get started is by running the Tembo docker image, where Vectorize and all its dependencies come pre-installed.
+
+```bash
+docker run -d --name postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 quay.io/tembo/vectorize-pg:latest
+```
+
+Connect to Postgres
+
+```text
+psql postgres://postgres:postgres@0.0.0.0:5432/postgres
+```
+
+Enable the extension and its dependencies
+
+```sql
+CREATE EXTENSION vectorize CASCADE;
+```
+
+If you're installing in an existing Postgres instance, you will need the following depdencies:
 
 Rust:
 - [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
@@ -14,7 +36,8 @@ Postgres Extensions:
 - [pgmq](https://github.com/tembo-io/pgmq) >= 0.30.0
 - [pgvector](https://github.com/pgvector/pgvector) >= 1.5.0
 
-API:
+And you'll need an OpenAI key:
+
 - [openai API key](https://platform.openai.com/docs/guides/embeddings)
 
 ## Example
