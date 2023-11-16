@@ -1,33 +1,15 @@
 use crate::executor::{ColumnJobParams, JobMessage};
+use crate::guc::init_guc;
 use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
 use crate::openai;
 use crate::types;
-use crate::util::{get_pg_conn, OPENAI_KEY, VECTORIZE_HOST};
+use crate::util::get_pg_conn;
 use anyhow::Result;
 use pgmq::Message;
 use pgrx::bgworkers::*;
 use pgrx::*;
 use sqlx::{Pool, Postgres};
 use std::time::Duration;
-
-// initialize GUCs
-fn init_guc() {
-    GucRegistry::define_string_guc(
-        "vectorize.host",
-        "unix socket url for Postgres",
-        "unix socket path to the Postgres instance. Optional. Can also be set in environment variable.",
-        &VECTORIZE_HOST,
-        GucContext::Suset, GucFlags::default());
-
-    GucRegistry::define_string_guc(
-        "vectorize.openai_key",
-        "API key from OpenAI",
-        "API key from OpenAI. Optional. Overridden by any values provided in function calls.",
-        &OPENAI_KEY,
-        GucContext::Suset,
-        GucFlags::SUPERUSER_ONLY,
-    );
-}
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -108,16 +90,11 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     log!("pg-vectorize: shutting down");
 }
 
-pub struct PairedEmbeddings {
-    pub primary_key: String,
-    pub embeddings: Vec<f64>,
-}
-
 async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
     schema: &str,
     project: &str,
-    embeddings: Vec<PairedEmbeddings>,
+    embeddings: Vec<types::PairedEmbeddings>,
 ) -> Result<()> {
     let (query, bindings) = build_upsert_query(schema, project, embeddings);
     let mut q = sqlx::query(&query);
@@ -138,7 +115,7 @@ async fn upsert_embedding_table(
 fn build_upsert_query(
     schema: &str,
     project: &str,
-    embeddings: Vec<PairedEmbeddings>,
+    embeddings: Vec<types::PairedEmbeddings>,
 ) -> (String, Vec<(String, String)>) {
     let mut query = format!(
         "
@@ -169,7 +146,7 @@ use serde_json::to_string;
 
 async fn update_append_table(
     pool: &Pool<Postgres>,
-    embeddings: Vec<PairedEmbeddings>,
+    embeddings: Vec<types::PairedEmbeddings>,
     schema: &str,
     table: &str,
     project: &str,
@@ -203,16 +180,20 @@ async fn update_append_table(
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
     let job_params: ColumnJobParams = serde_json::from_value(job_meta.params)?;
-    let embeddings: Result<Vec<PairedEmbeddings>> = match job_meta.transformer {
+    let embeddings: Result<Vec<types::PairedEmbeddings>> = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
 
             let embeddings =
                 openai::openai_transform(job_params.clone(), &msg.message.inputs).await?;
             // TODO: validate returned embeddings order is same as the input order
-            let emb: Vec<PairedEmbeddings> =
+            let emb: Vec<types::PairedEmbeddings> =
                 openai::merge_input_output(msg.message.inputs, embeddings);
             Ok(emb)
+        }
+        types::Transformer::allMiniLML12v2 => {
+            log!("pg-vectorize: allMiniLML12v2 transformer");
+            todo!()
         }
     };
     // write embeddings to result table
