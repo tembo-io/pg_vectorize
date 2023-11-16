@@ -115,3 +115,24 @@ pub struct PairedEmbeddings {
     pub primary_key: String,
     pub embeddings: Vec<f64>,
 }
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+pub enum TableMethod {
+    // append a new column to the existing table
+    append,
+    // join existing table to a new table with embeddings
+    join,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct JobParams {
+    pub schema: String,
+    pub table: String,
+    pub columns: Vec<String>,
+    pub update_time_col: String,
+    pub table_method: TableMethod,
+    pub primary_key: String,
+    pub pkey_type: String,
+    pub api_key: Option<String>,
+}

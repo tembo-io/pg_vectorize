@@ -1,19 +1,9 @@
-use crate::{query::check_input, types};
+use crate::{query::check_input, types, types::TableMethod};
 use pgrx::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use anyhow::Result;
 
 pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
-
-#[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
-pub enum TableMethod {
-    // append a new column to the existing table
-    append,
-    // join existing table to a new table with embeddings
-    join,
-}
 
 pub fn init_pgmq() -> Result<()> {
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {

@@ -1,6 +1,6 @@
 use crate::executor::{ColumnJobParams, JobMessage};
 use crate::guc::init_guc;
-use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
+use crate::init::PGMQ_QUEUE_NAME;
 use crate::openai;
 use crate::types;
 use crate::util::get_pg_conn;
@@ -198,7 +198,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
     };
     // write embeddings to result table
     match job_params.table_method {
-        TableMethod::append => {
+        types::TableMethod::append => {
             update_append_table(
                 &dbclient,
                 embeddings.expect("failed to get embeddings"),
@@ -210,7 +210,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
             )
             .await?;
         }
-        TableMethod::join => {
+        types::TableMethod::join => {
             upsert_embedding_table(
                 &dbclient,
                 &job_params.schema,

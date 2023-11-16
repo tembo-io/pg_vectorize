@@ -1,7 +1,7 @@
 use pgrx::prelude::*;
 
 use crate::errors::DatabaseError;
-use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
+use crate::init::PGMQ_QUEUE_NAME;
 use crate::query::check_input;
 use crate::types;
 use crate::util::{from_env_default, get_pg_conn};
@@ -27,34 +27,6 @@ pub struct VectorizeMeta {
     pub last_completion: Option<chrono::DateTime<Utc>>,
 }
 
-// temporary struct for deserializing from db
-// not needed when sqlx 0.7.x
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize, PostgresType)]
-pub struct _VectorizeMeta {
-    pub job_id: i64,
-    pub name: String,
-    pub job_type: String,
-    pub transformer: String,
-    pub search_alg: String,
-    pub params: serde_json::Value,
-    #[serde(deserialize_with = "from_tsopt")]
-    pub last_completion: Option<chrono::DateTime<Utc>>,
-}
-
-impl From<_VectorizeMeta> for VectorizeMeta {
-    fn from(val: _VectorizeMeta) -> Self {
-        VectorizeMeta {
-            job_id: val.job_id,
-            name: val.name,
-            job_type: types::JobType::from(val.job_type),
-            transformer: types::Transformer::from(val.transformer),
-            search_alg: types::SimilarityAlg::from(val.search_alg),
-            params: val.params,
-            last_completion: val.last_completion,
-        }
-    }
-}
-
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct ColumnJobParams {
     pub schema: String,
@@ -64,7 +36,7 @@ pub struct ColumnJobParams {
     pub pkey_type: String,
     pub update_time_col: String,
     pub api_key: Option<String>,
-    pub table_method: TableMethod,
+    pub table_method: types::TableMethod,
 }
 
 // creates batches based on total token count
@@ -172,7 +144,7 @@ pub async fn get_vectorize_meta(
 ) -> Result<VectorizeMeta, DatabaseError> {
     log!("fetching job: {}", job_name);
     let row = sqlx::query_as!(
-        _VectorizeMeta,
+        VectorizeMeta,
         "
         SELECT *
         FROM vectorize.vectorize_meta

@@ -19,7 +19,7 @@ fn table(
     update_col: default!(String, "'last_updated_at'"),
     transformer: default!(types::Transformer, "'openai'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
-    table_method: default!(init::TableMethod, "'append'"),
+    table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
 ) -> Result<String> {
     // initialize pgmq
@@ -58,17 +58,18 @@ fn table(
         types::Transformer::allMiniLML12v2 => (),
     }
 
-    // TODO: implement a struct for these params
-    let params = pgrx::JsonB(serde_json::json!({
-        "schema": schema,
-        "table": table,
-        "columns": columns,
-        "update_time_col": update_col,
-        "table_method": table_method,
-        "primary_key": primary_key,
-        "pkey_type": pkey_type,
-        "api_key": api_key
-    }));
+    let params_valid = types::JobParams {
+        schema: schema.clone(),
+        table: table.to_string(),
+        columns: columns.clone(),
+        update_time_col: update_col,
+        table_method: table_method.clone(),
+        primary_key,
+        pkey_type,
+        api_key: api_key
+            .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
+    };
+    let params = pgrx::JsonB(serde_json::to_value(params_valid).expect("error serializing params"));
 
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
