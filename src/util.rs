@@ -97,7 +97,7 @@ fn handle_cstr(cstr: &CStr) -> Result<String> {
 pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
     let query = "
         SELECT params::jsonb
-        FROM vectorize.vectorize_meta
+        FROM vectorize.job
         WHERE name = $1
     ";
     let resultset: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(

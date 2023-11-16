@@ -36,7 +36,7 @@ pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> 
 pub fn init_job_query() -> String {
     format!(
         "
-        INSERT INTO {schema}.vectorize_meta (name, job_type, transformer, search_alg, params)
+        INSERT INTO {schema}.job (name, job_type, transformer, search_alg, params)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,

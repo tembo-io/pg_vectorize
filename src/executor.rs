@@ -147,7 +147,7 @@ pub async fn get_vectorize_meta(
         VectorizeMeta,
         "
         SELECT *
-        FROM vectorize.vectorize_meta
+        FROM vectorize.job
         WHERE name = $1
         ",
         job_name.to_string(),
