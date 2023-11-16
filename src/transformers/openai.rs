@@ -11,9 +11,7 @@ use crate::{
 
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
-// token count returned by split_whitespace()
-// TODO: wrap openai toktoken's tokenizer to estimate token count?
-pub const MAX_TOKEN_LEN: usize = 7500;
+pub const MAX_TOKEN_LEN: usize = 8192;
 pub const OPENAI_EMBEDDING_RL: &str = "https://api.openai.com/v1/embeddings";
 
 #[derive(serde::Deserialize, Debug)]
@@ -36,6 +34,7 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
         .iter()
         .map(|input| {
             if input.token_estimate as usize > MAX_TOKEN_LEN {
+                // not example taking tokens, but naive way to trim input
                 let tokens: Vec<&str> = input.inputs.split_whitespace().collect();
                 tokens
                     .into_iter()

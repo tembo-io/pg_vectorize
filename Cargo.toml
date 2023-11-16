@@ -2,7 +2,7 @@
 name = "vectorize"
 version = "0.5.0"
 edition = "2021"
-publish = true
+publish = false
 
 [lib]
 crate-type = ["cdylib"]
@@ -15,6 +15,7 @@ pg_test = []
 [dependencies]
 anyhow = "1.0.72"
 chrono = {version = "0.4.26", features = ["serde"] }
+lazy_static = "1.4.0"
 log = "0.4.19"
 pgmq = "0.24.0"
 pgrx = "0.11.0"

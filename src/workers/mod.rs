@@ -1,16 +1,15 @@
 pub mod pg_bgw;
 
 use crate::executor::JobMessage;
-use crate::init::PGMQ_QUEUE_NAME;
-use crate::openai;
+use crate::transformers::openai;
 use crate::types;
 use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
 use pgrx::*;
 use sqlx::{Pool, Postgres};
 
-pub async fn run_worker(queue: PGMQueueExt, conn: Pool<Postgres>) -> Result<()> {
-    let msg: Message<JobMessage> = match queue.pop::<JobMessage>(PGMQ_QUEUE_NAME).await {
+pub async fn run_worker(queue: PGMQueueExt, conn: Pool<Postgres>, queue_name: &str) -> Result<()> {
+    let msg: Message<JobMessage> = match queue.pop::<JobMessage>(queue_name).await {
         Ok(Some(msg)) => msg,
         Ok(None) => {
             log!("pg-vectorize: No messages in queue");
@@ -37,7 +36,7 @@ pub async fn run_worker(queue: PGMQueueExt, conn: Pool<Postgres>) -> Result<()> 
 
     // delete message from queue
     if delete_it {
-        match queue.delete(PGMQ_QUEUE_NAME, msg_id).await {
+        match queue.delete(queue_name, msg_id).await {
             Ok(_) => {
                 log!("pg-vectorize: deleted message: {}", msg_id);
             }

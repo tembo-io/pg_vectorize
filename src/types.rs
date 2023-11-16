@@ -6,7 +6,7 @@ use std::str::FromStr;
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq, PostgresEnum)]
 pub enum Transformer {
     openai,
     allMiniLML12v2,
@@ -27,7 +27,7 @@ impl From<String> for Transformer {
     fn from(s: String) -> Self {
         match s.as_str() {
             "openai" => Transformer::openai,
-            "all-MiniLM-L12-v2" => Transformer::allMiniLML12v2,
+            "all_MiniLM_L12_v2" => Transformer::allMiniLML12v2,
             _ => panic!("Invalid value for Transformer: {}", s), // or handle this case differently
         }
     }
@@ -37,7 +37,7 @@ impl Display for Transformer {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Transformer::openai => write!(f, "openai"),
-            Transformer::allMiniLML12v2 => write!(f, "all-MiniLM-L12-v2"),
+            Transformer::allMiniLML12v2 => write!(f, "all_MiniLM_L12_v2"),
         }
     }
 }

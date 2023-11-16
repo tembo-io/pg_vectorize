@@ -1,4 +1,6 @@
 use crate::guc::init_guc;
+use crate::init::QUEUE_MAPPING;
+use crate::types::Transformer;
 use crate::util::get_pg_conn;
 use anyhow::Result;
 use pgrx::bgworkers::*;
@@ -38,12 +40,16 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
+    // bgw only supports the OpenAI transformer case
+    let queue_name = QUEUE_MAPPING
+        .get(&Transformer::openai)
+        .expect("invalid transformer");
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
         let _: Result<()> =
-            runtime.block_on(async { run_worker(queue.clone(), conn.clone()).await });
+            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), queue_name).await });
     }
     log!("pg-vectorize: shutting down");
 }

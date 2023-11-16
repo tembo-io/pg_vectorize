@@ -1,21 +1,29 @@
-use crate::{query::check_input, types, types::TableMethod};
+use crate::{query::check_input, types, types::TableMethod, types::Transformer};
 use pgrx::prelude::*;
+use std::collections::HashMap;
 
 use anyhow::Result;
+use lazy_static::lazy_static;
 
-pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
+lazy_static! {
+    // each model has its own job queue
+    // maintain the mapping of transformer to queue name here
+    pub static ref QUEUE_MAPPING: HashMap<Transformer, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert(Transformer::openai, "v_openai");
+        m.insert(Transformer::allMiniLML12v2, "v_all_MiniLM_L12_v2");
+        m
+    };
+}
 
-pub fn init_pgmq() -> Result<()> {
+pub fn init_pgmq(transformer: &Transformer) -> Result<()> {
+    let qname = QUEUE_MAPPING.get(transformer).expect("invalid transformer");
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(
-            &format!("SELECT pgmq.create('{PGMQ_QUEUE_NAME}');"),
-            None,
-            None,
-        )?;
+        let _r = c.update(&format!("SELECT pgmq.create('{qname}');"), None, None)?;
         Ok(())
     });
     if let Err(e) = ran {
-        error!("error creating embedding table: {}", e);
+        error!("error creating job queue: {}", e);
     }
     Ok(())
 }

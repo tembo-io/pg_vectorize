@@ -1,7 +1,7 @@
 use pgrx::prelude::*;
 
 use crate::errors::DatabaseError;
-use crate::init::PGMQ_QUEUE_NAME;
+use crate::init::QUEUE_MAPPING;
 use crate::query::check_input;
 use crate::types;
 use crate::util::{from_env_default, get_pg_conn};
@@ -12,6 +12,7 @@ use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
+use tiktoken_rs::cl100k_base;
 
 // schema for every job
 // also schema for the vectorize.vectorize_meta table
@@ -111,8 +112,11 @@ fn job_execute(job_name: String) {
                         job_meta: meta.clone(),
                         inputs: b,
                     };
+                    let queue_name = QUEUE_MAPPING
+                        .get(&meta.transformer)
+                        .expect("invalid transformer");
                     let msg_id = queue
-                        .send(PGMQ_QUEUE_NAME, &msg)
+                        .send(queue_name, &msg)
                         .await
                         .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
                     log!("message sent: {}", msg_id);
@@ -185,10 +189,11 @@ pub async fn get_new_updates_append(
     match rows {
         Ok(rows) => {
             if !rows.is_empty() {
+                let bpe = cl100k_base().unwrap();
                 let mut new_inputs: Vec<Inputs> = Vec::new();
                 for r in rows {
                     let ipt: String = r.get("input_text");
-                    let token_estimate = ipt.split_whitespace().count() as i32;
+                    let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
                     new_inputs.push(Inputs {
                         record_id: r.get("record_id"),
                         inputs: ipt,
@@ -240,9 +245,10 @@ pub async fn get_new_updates_shared(
     let rows: Result<Vec<PgRow>, Error> = sqlx::query(&new_rows_query).fetch_all(&pool).await;
     match rows {
         Ok(rows) => {
+            let bpe = cl100k_base().unwrap();
             for r in rows {
                 let ipt: String = r.get("input_text");
-                let token_estimate = ipt.split_whitespace().count() as i32;
+                let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
                 new_inputs.push(Inputs {
                     record_id: r.get("record_id"),
                     inputs: ipt,

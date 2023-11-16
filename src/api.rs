@@ -1,7 +1,7 @@
 use crate::guc;
 use crate::init;
-use crate::openai;
 use crate::search::cosine_similarity_search;
+use crate::transformers::openai;
 use crate::types;
 use crate::types::JobParams;
 use crate::util;
@@ -23,8 +23,6 @@ fn table(
     table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
 ) -> Result<String> {
-    // initialize pgmq
-    init::init_pgmq()?;
     let job_type = types::JobType::Columns;
 
     // write job to table
@@ -42,6 +40,7 @@ fn table(
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
+    init::init_pgmq(&transformer)?;
     match transformer {
         types::Transformer::openai => {
             let openai_key = match api_key {
