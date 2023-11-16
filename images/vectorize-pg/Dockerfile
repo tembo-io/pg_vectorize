@@ -1,4 +1,4 @@
-FROM postgres:15.4-bookworm
+FROM postgres:15.4-bookworm as builder
 
 ARG PGMQ_VER=0.33.1
 ARG VECTOR_VER=0.5.1
@@ -50,7 +50,13 @@ COPY . .
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
 RUN $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
-RUN rm -rf /vectorize
+FROM postgres:15.4-bookworm
+
+COPY --from=builder /usr/share/postgresql/15/extension /usr/share/postgresql/15/extension
+COPY --from=builder /usr/lib/postgresql/15/lib /usr/lib/postgresql/15/lib
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates
 
 COPY images/vectorize-pg/postgresql.conf /usr/share/postgresql/15/postgresql.conf.sample
 
