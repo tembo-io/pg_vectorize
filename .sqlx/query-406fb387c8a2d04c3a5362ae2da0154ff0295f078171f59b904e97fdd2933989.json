@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT *\n        FROM vectorize.vectorize_meta\n        WHERE name = $1\n        ",
+  "query": "\n        SELECT *\n        FROM vectorize.job\n        WHERE name = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -54,5 +54,5 @@
       true
     ]
   },
-  "hash": "2570c83389d229bee10f84a4c566feafb8464aebced1ee62dc5e2b0042f0ab9c"
+  "hash": "406fb387c8a2d04c3a5362ae2da0154ff0295f078171f59b904e97fdd2933989"
 }

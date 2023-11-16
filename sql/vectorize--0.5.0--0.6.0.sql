@@ -17,3 +17,5 @@ CREATE  FUNCTION vectorize."table"(
 STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'table_wrapper';
+
+ALTER TABLE vectorize.vectorize_meta RENAME TO vectorize.job;
