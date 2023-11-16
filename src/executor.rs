@@ -1,6 +1,7 @@
 use pgrx::prelude::*;
 
 use crate::errors::DatabaseError;
+use crate::guc::BATCH_SIZE;
 use crate::init::QUEUE_MAPPING;
 use crate::query::check_input;
 use crate::types;
@@ -73,9 +74,7 @@ fn job_execute(job_name: String) {
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    // TODO: move into a config
-    // 100k tokens per batch
-    let max_batch_size = 100000;
+    let max_batch_size = BATCH_SIZE.get();
 
     runtime.block_on(async {
         let conn = get_pg_conn()
