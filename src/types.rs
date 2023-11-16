@@ -9,7 +9,7 @@ pub const VECTORIZE_SCHEMA: &str = "vectorize";
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
 pub enum Transformer {
     openai,
-    // bert,
+    allMiniLML12v2,
 }
 
 impl FromStr for Transformer {
@@ -27,6 +27,7 @@ impl From<String> for Transformer {
     fn from(s: String) -> Self {
         match s.as_str() {
             "openai" => Transformer::openai,
+            "all-MiniLM-L12-v2" => Transformer::allMiniLML12v2,
             _ => panic!("Invalid value for Transformer: {}", s), // or handle this case differently
         }
     }
@@ -36,6 +37,7 @@ impl Display for Transformer {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Transformer::openai => write!(f, "openai"),
+            Transformer::allMiniLML12v2 => write!(f, "all-MiniLM-L12-v2"),
         }
     }
 }
@@ -107,4 +109,9 @@ impl Display for JobType {
             JobType::Columns => write!(f, "Columns"),
         }
     }
+}
+
+pub struct PairedEmbeddings {
+    pub primary_key: String,
+    pub embeddings: Vec<f64>,
 }

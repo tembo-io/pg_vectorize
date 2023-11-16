@@ -1,12 +1,12 @@
 use pgrx::prelude::*;
 use serde_json::json;
 
-use crate::util::OPENAI_KEY;
 use anyhow::Result;
 
 use crate::{
     executor::{ColumnJobParams, Inputs},
-    worker::PairedEmbeddings,
+    guc::OPENAI_KEY,
+    types::PairedEmbeddings,
 };
 
 // max token length is 8192

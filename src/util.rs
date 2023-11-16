@@ -7,8 +7,7 @@ use url::{ParseError, Url};
 use anyhow::Result;
 use core::ffi::CStr;
 
-pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
-pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+use crate::guc::{OPENAI_KEY, VECTORIZE_HOST};
 
 #[derive(Debug)]
 pub enum VectorizeGuc {

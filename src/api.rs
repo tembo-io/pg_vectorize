@@ -54,6 +54,8 @@ fn table(
             };
             openai::validate_api_key(&openai_key)?;
         }
+        // no-op
+        types::Transformer::allMiniLML12v2 => (),
     }
 
     // TODO: implement a struct for these params

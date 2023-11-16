@@ -78,6 +78,9 @@ pub fn init_embedding_table_query(
         // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
         (types::Transformer::openai, types::SimilarityAlg::pgv_cosine_similarity) => "vector(1536)",
+        (types::Transformer::allMiniLML12v2, types::SimilarityAlg::pgv_cosine_similarity) => {
+            "vector(384)"
+        }
     };
     match transform_method {
         TableMethod::append => {

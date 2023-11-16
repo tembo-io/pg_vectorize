@@ -2,7 +2,7 @@
 name = "vectorize"
 version = "0.5.0"
 edition = "2021"
-publish = false
+publish = true
 
 [lib]
 crate-type = ["cdylib"]
