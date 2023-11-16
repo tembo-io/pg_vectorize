@@ -27,18 +27,6 @@ pub struct VectorizeMeta {
     pub last_completion: Option<chrono::DateTime<Utc>>,
 }
 
-#[derive(Clone, Deserialize, Debug, Serialize)]
-pub struct ColumnJobParams {
-    pub schema: String,
-    pub table: String,
-    pub columns: Vec<String>,
-    pub primary_key: String,
-    pub pkey_type: String,
-    pub update_time_col: String,
-    pub api_key: Option<String>,
-    pub table_method: types::TableMethod,
-}
-
 // creates batches based on total token count
 // batch_size is the max token count per batch
 fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
@@ -98,7 +86,7 @@ fn job_execute(job_name: String) {
         let meta = get_vectorize_meta(&job_name, &conn)
             .await
             .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));
-        let job_params = serde_json::from_value::<ColumnJobParams>(meta.params.clone())
+        let job_params = serde_json::from_value::<types::JobParams>(meta.params.clone())
             .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
         let _last_completion = match meta.last_completion {
             Some(t) => t,
@@ -154,7 +142,7 @@ pub async fn get_vectorize_meta(
     )
     .fetch_one(conn)
     .await?;
-    Ok(row.into())
+    Ok(row)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -169,7 +157,7 @@ pub struct Inputs {
 pub async fn get_new_updates_append(
     pool: &Pool<Postgres>,
     job_name: &str,
-    job_params: ColumnJobParams,
+    job_params: types::JobParams,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
     let cols = collapse_to_csv(&job_params.columns);
 
@@ -221,7 +209,7 @@ pub async fn get_new_updates_append(
 // queries a table and returns rows that need new embeddings
 #[allow(dead_code)]
 pub async fn get_new_updates_shared(
-    job_params: ColumnJobParams,
+    job_params: types::JobParams,
     last_completion: chrono::DateTime<Utc>,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
     let pool = PgPool::connect(&from_env_default(

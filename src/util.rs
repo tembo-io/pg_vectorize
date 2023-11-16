@@ -5,15 +5,8 @@ use std::env;
 use url::{ParseError, Url};
 
 use anyhow::Result;
-use core::ffi::CStr;
 
-use crate::guc::{OPENAI_KEY, VECTORIZE_HOST};
-
-#[derive(Debug)]
-pub enum VectorizeGuc {
-    Host,
-    OpenAIKey,
-}
+use crate::guc;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -67,33 +60,6 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
-/// a convenience function to get this project's GUCs
-pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
-    let val = match guc {
-        VectorizeGuc::Host => VECTORIZE_HOST.get(),
-        VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
-    };
-    if let Some(cstr) = val {
-        if let Ok(s) = handle_cstr(cstr) {
-            Some(s)
-        } else {
-            error!("failed to convert CStr to str");
-        }
-    } else {
-        info!("no value set for GUC: {:?}", guc);
-        None
-    }
-}
-
-#[allow(dead_code)]
-fn handle_cstr(cstr: &CStr) -> Result<String> {
-    if let Ok(s) = cstr.to_str() {
-        Ok(s.to_owned())
-    } else {
-        Err(anyhow::anyhow!("failed to convert CStr to str"))
-    }
-}
-
 pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
     let query = "
         SELECT params::jsonb
@@ -114,7 +80,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
     let mut cfg = Config::default();
 
-    if let Some(host) = get_guc(VectorizeGuc::Host) {
+    if let Some(host) = guc::get_guc(guc::VectorizeGuc::Host) {
         log!("Using socket url from GUC: {:?}", host);
         cfg.vectorize_socket_url = Some(host);
     };

@@ -4,9 +4,9 @@ use serde_json::json;
 use anyhow::Result;
 
 use crate::{
-    executor::{ColumnJobParams, Inputs},
+    executor::Inputs,
     guc::OPENAI_KEY,
-    types::PairedEmbeddings,
+    types::{JobParams, PairedEmbeddings},
 };
 
 // max token length is 8192
@@ -72,10 +72,7 @@ pub async fn openai_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Ve
     Ok(embeddings)
 }
 
-pub async fn openai_transform(
-    job_params: ColumnJobParams,
-    inputs: &[Inputs],
-) -> Result<Vec<Vec<f64>>> {
+pub async fn openai_transform(job_params: JobParams, inputs: &[Inputs]) -> Result<Vec<Vec<f64>>> {
     log!("pg-vectorize: OpenAI transformer");
 
     // handle retrieval of API key. order of precedence:

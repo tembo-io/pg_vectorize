@@ -1,8 +1,9 @@
-use crate::executor::ColumnJobParams;
+use crate::guc;
 use crate::init;
 use crate::openai;
 use crate::search::cosine_similarity_search;
 use crate::types;
+use crate::types::JobParams;
 use crate::util;
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -45,7 +46,7 @@ fn table(
         types::Transformer::openai => {
             let openai_key = match api_key {
                 Some(k) => serde_json::from_value::<String>(k.clone())?,
-                None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
+                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
                         error!("failed to get API key from GUC");
@@ -58,7 +59,7 @@ fn table(
         types::Transformer::allMiniLML12v2 => (),
     }
 
-    let params_valid = types::JobParams {
+    let valid_params = types::JobParams {
         schema: schema.clone(),
         table: table.to_string(),
         columns: columns.clone(),
@@ -69,7 +70,7 @@ fn table(
         api_key: api_key
             .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
     };
-    let params = pgrx::JsonB(serde_json::to_value(params_valid).expect("error serializing params"));
+    let params = pgrx::JsonB(serde_json::to_value(valid_params).expect("error serializing params"));
 
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
@@ -148,7 +149,7 @@ fn search(
     } else {
         error!("failed to get project metadata");
     };
-    let project_meta: ColumnJobParams =
+    let project_meta: JobParams =
         serde_json::from_value(serde_json::to_value(_project_meta).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
         }))
@@ -166,7 +167,7 @@ fn search(
 
     let openai_key = match api_key {
         Some(k) => k,
-        None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
+        None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
             Some(k) => k,
             None => {
                 error!("failed to get API key from GUC");
