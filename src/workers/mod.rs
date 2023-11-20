@@ -1,14 +1,29 @@
 pub mod pg_bgw;
 
 use crate::executor::JobMessage;
-use crate::transformers::openai;
+use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
 use crate::types;
 use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
 use pgrx::*;
 use sqlx::{Pool, Postgres};
 
-pub async fn run_worker(queue: PGMQueueExt, conn: Pool<Postgres>, queue_name: &str) -> Result<()> {
+pub async fn run_workers(
+    queue: PGMQueueExt,
+    conn: &Pool<Postgres>,
+    queues: &[String],
+) -> Result<()> {
+    for queue_name in queues {
+        if let Ok(()) = run_worker(queue.clone(), conn, queue_name).await {
+            log!("pg-vectorize: worker finished");
+        } else {
+            warning!("pg-vectorize: worker failed");
+        }
+    }
+    Ok(())
+}
+
+pub async fn run_worker(queue: PGMQueueExt, conn: &Pool<Postgres>, queue_name: &str) -> Result<()> {
     let msg: Message<JobMessage> = match queue.pop::<JobMessage>(queue_name).await {
         Ok(Some(msg)) => msg,
         Ok(None) => {
@@ -21,8 +36,8 @@ pub async fn run_worker(queue: PGMQueueExt, conn: Pool<Postgres>, queue_name: &s
         }
     };
 
-    let msg_id = msg.msg_id;
-    let read_ct = msg.read_ct;
+    let msg_id: i64 = msg.msg_id;
+    let read_ct: i32 = msg.read_ct;
     log!(
         "pg-vectorize: received message for job: {:?}",
         msg.message.job_name
@@ -52,7 +67,7 @@ async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
     schema: &str,
     project: &str,
-    embeddings: Vec<types::PairedEmbeddings>,
+    embeddings: Vec<PairedEmbeddings>,
 ) -> Result<()> {
     let (query, bindings) = build_upsert_query(schema, project, embeddings);
     let mut q = sqlx::query(&query);
@@ -73,7 +88,7 @@ async fn upsert_embedding_table(
 fn build_upsert_query(
     schema: &str,
     project: &str,
-    embeddings: Vec<types::PairedEmbeddings>,
+    embeddings: Vec<PairedEmbeddings>,
 ) -> (String, Vec<(String, String)>) {
     let mut query = format!(
         "
@@ -104,7 +119,7 @@ use serde_json::to_string;
 
 async fn update_append_table(
     pool: &Pool<Postgres>,
-    embeddings: Vec<types::PairedEmbeddings>,
+    embeddings: Vec<PairedEmbeddings>,
     schema: &str,
     table: &str,
     project: &str,
@@ -137,32 +152,32 @@ async fn update_append_table(
 
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
-    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
-    let embeddings: Result<Vec<types::PairedEmbeddings>> = match job_meta.transformer {
+    let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
+
+    let embedding_request = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
+            openai::prepare_openai_request(job_params.clone(), &msg.message.inputs)
+        }
+        types::Transformer::all_MiniLM_L12_v2 => {
+            generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs)
+        }
+    }?;
 
-            let embeddings =
-                openai::openai_transform(job_params.clone(), &msg.message.inputs).await?;
-            // TODO: validate returned embeddings order is same as the input order
-            let emb: Vec<types::PairedEmbeddings> =
-                openai::merge_input_output(msg.message.inputs, embeddings);
-            Ok(emb)
-        }
-        types::Transformer::allMiniLML12v2 => {
-            log!("pg-vectorize: allMiniLML12v2 transformer");
-            todo!()
-        }
-    };
+    let embeddings = http_handler::openai_embedding_request(embedding_request).await?;
+    // TODO: validate returned embeddings order is same as the input order
+    let paired_embeddings: Vec<PairedEmbeddings> =
+        http_handler::merge_input_output(msg.message.inputs, embeddings);
+
     // write embeddings to result table
-    match job_params.table_method {
+    match job_params.clone().table_method {
         types::TableMethod::append => {
             update_append_table(
                 &dbclient,
-                embeddings.expect("failed to get embeddings"),
+                paired_embeddings,
                 &job_params.schema,
                 &job_params.table,
-                &job_meta.name,
+                &job_meta.clone().name,
                 &job_params.primary_key,
                 &job_params.pkey_type,
             )
@@ -173,7 +188,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
                 &dbclient,
                 &job_params.schema,
                 &job_meta.name,
-                embeddings.expect("failed to get embeddings"),
+                paired_embeddings,
             )
             .await?
         }

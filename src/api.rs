@@ -1,7 +1,12 @@
+use crate::executor::VectorizeMeta;
 use crate::guc;
+use crate::guc::get_guc;
 use crate::init;
 use crate::search::cosine_similarity_search;
-use crate::transformers::openai;
+use crate::transformers::{
+    http_handler::openai_embedding_request, openai, openai::OPENAI_EMBEDDING_MODEL,
+    openai::OPENAI_EMBEDDING_URL, types::EmbeddingPayload, types::EmbeddingRequest,
+};
 use crate::types;
 use crate::types::JobParams;
 use crate::util;
@@ -55,7 +60,7 @@ fn table(
             openai::validate_api_key(&openai_key)?;
         }
         // no-op
-        types::Transformer::allMiniLML12v2 => (),
+        types::Transformer::all_MiniLM_L12_v2 => (),
     }
 
     let valid_params = types::JobParams {
@@ -138,22 +143,18 @@ fn search(
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
-    // note: this is not the most performant implementation
-    // this requires a query to metadata table to get the projects schema and table, which has a cost
-    // this does ensure consistency between the model used to generate the stored embeddings and the query embeddings, which is crucial
-
-    // get project metadata
-    let _project_meta = if let Some(js) = util::get_vectorize_meta_spi(job_name) {
+    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
         js
     } else {
         error!("failed to get project metadata");
     };
-    let project_meta: JobParams =
-        serde_json::from_value(serde_json::to_value(_project_meta).unwrap_or_else(|e| {
+    let proj_params: JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
-        }))
-        .unwrap_or_else(|e| error!("failed to serialize metadata: {}", e));
-    // assuming default openai API for now
+        }),
+    )
+    .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
+
     // get embeddings
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -161,34 +162,64 @@ fn search(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let schema = project_meta.schema;
-    let table = project_meta.table;
+    let schema = proj_params.schema;
+    let table = proj_params.table;
 
-    let openai_key = match api_key {
-        Some(k) => k,
-        None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
-            Some(k) => k,
-            None => {
-                error!("failed to get API key from GUC");
+    let embedding_request = match project_meta.transformer {
+        types::Transformer::openai => {
+            let openai_key = match api_key {
+                Some(k) => k,
+                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
+                    Some(k) => k,
+                    None => {
+                        error!("failed to get API key from GUC");
+                    }
+                },
+            };
+
+            let embedding_request = EmbeddingPayload {
+                input: vec![query.to_string()],
+                model: OPENAI_EMBEDDING_MODEL.to_string(),
+            };
+            EmbeddingRequest {
+                url: OPENAI_EMBEDDING_URL.to_owned(),
+                payload: embedding_request,
+                api_key: Some(openai_key),
             }
-        },
-    };
-
-    let embeddings = match runtime
-        .block_on(async { openai::openai_embeddings(&vec![query.to_string()], &openai_key).await })
-    {
-        Ok(e) => e,
-        Err(e) => {
-            error!("error getting embeddings: {}", e);
+        }
+        types::Transformer::all_MiniLM_L12_v2 => {
+            let url: String = get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
+                .expect("failed to get embedding service url from GUC");
+            let embedding_request = EmbeddingPayload {
+                input: vec![query.to_string()],
+                model: project_meta.transformer.to_string(),
+            };
+            EmbeddingRequest {
+                url,
+                payload: embedding_request,
+                api_key: None,
+            }
         }
     };
-    let search_results = cosine_similarity_search(
-        job_name,
-        &schema,
-        &table,
-        &return_columns,
-        num_results,
-        &embeddings[0],
-    )?;
+
+    let embeddings =
+        match runtime.block_on(async { openai_embedding_request(embedding_request).await }) {
+            Ok(e) => e,
+            Err(e) => {
+                error!("error getting embeddings: {}", e);
+            }
+        };
+
+    let search_results = match project_meta.search_alg {
+        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+            job_name,
+            &schema,
+            &table,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+        )?,
+    };
+
     Ok(TableIterator::new(search_results))
 }

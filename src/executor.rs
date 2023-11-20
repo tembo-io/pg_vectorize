@@ -4,6 +4,7 @@ use crate::errors::DatabaseError;
 use crate::guc::BATCH_SIZE;
 use crate::init::QUEUE_MAPPING;
 use crate::query::check_input;
+use crate::transformers::types::Inputs;
 use crate::types;
 use crate::util::{from_env_default, get_pg_conn};
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
@@ -17,7 +18,7 @@ use tiktoken_rs::cl100k_base;
 
 // schema for every job
 // also schema for the vectorize.vectorize_meta table
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize, PostgresType)]
+#[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
 pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
@@ -146,13 +147,6 @@ pub async fn get_vectorize_meta(
     .fetch_one(conn)
     .await?;
     Ok(row)
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Inputs {
-    pub record_id: String,   // the value to join the record
-    pub inputs: String,      // concatenation of input columns
-    pub token_estimate: i32, // estimated token count
 }
 
 // queries a table and returns rows that need new embeddings

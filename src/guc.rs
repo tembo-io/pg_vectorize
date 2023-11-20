@@ -6,6 +6,8 @@ use anyhow::Result;
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
+pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
+    GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -35,6 +37,13 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.embedding_service_url",
+        "Url for an OpenAI compatible embedding service",
+        "Url to a service with request and response schema consistent with OpenAI's embeddings API.",
+        &EMBEDDING_SERVICE_HOST,
+        GucContext::Suset, GucFlags::default());
 }
 
 // for handling of GUCs that can be error prone
@@ -42,6 +51,7 @@ pub fn init_guc() {
 pub enum VectorizeGuc {
     Host,
     OpenAIKey,
+    EmbeddingServiceUrl,
 }
 
 /// a convenience function to get this project's GUCs
@@ -49,6 +59,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
     let val = match guc {
         VectorizeGuc::Host => VECTORIZE_HOST.get(),
         VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
+        VectorizeGuc::EmbeddingServiceUrl => EMBEDDING_SERVICE_HOST.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {

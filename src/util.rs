@@ -1,3 +1,5 @@
+use crate::executor::VectorizeMeta;
+use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
@@ -60,21 +62,44 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
-pub fn get_vectorize_meta_spi(job_name: &str) -> Option<pgrx::JsonB> {
-    let query = "
-        SELECT params::jsonb
+pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
+    let query: &str = "
+        SELECT 
+            job_id,
+            name,
+            job_type,
+            transformer,
+            search_alg,
+            params
         FROM vectorize.job
         WHERE name = $1
     ";
-    let resultset: Result<Option<pgrx::JsonB>, spi::Error> = Spi::get_one_with_args(
-        query,
-        vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())],
-    );
-    if let Ok(r) = resultset {
-        r
-    } else {
-        error!("failed to query vectorize metadata table")
-    }
+    let result: Result<Option<VectorizeMeta>> = Spi::connect(|client| {
+        let tup_table: SpiTupleTable = client.select(
+            query,
+            Some(1),
+            Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
+        )?;
+
+        let result_row = tup_table.first();
+        let job_id: i64 = result_row.get_by_name("job_id").unwrap().unwrap();
+        let name: String = result_row.get_by_name("name").unwrap().unwrap();
+        let job_type: String = result_row.get_by_name("job_type").unwrap().unwrap();
+        let transformer: String = result_row.get_by_name("transformer").unwrap().unwrap();
+        let search_alg: String = result_row.get_by_name("search_alg").unwrap().unwrap();
+        let params: pgrx::JsonB = result_row.get_by_name("params").unwrap().unwrap();
+
+        Ok(Some(VectorizeMeta {
+            job_id,
+            name,
+            job_type: job_type.into(),
+            transformer: transformer.into(),
+            search_alg: search_alg.into(),
+            params: serde_json::to_value(params).unwrap(),
+            last_completion: None,
+        }))
+    });
+    result
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
