@@ -55,7 +55,7 @@ fn table(
             openai::validate_api_key(&openai_key)?;
         }
         // no-op
-        types::Transformer::allMiniLML12v2 => (),
+        types::Transformer::all_MiniLM_L12_v2 => (),
     }
 
     let valid_params = types::JobParams {

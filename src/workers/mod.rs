@@ -149,8 +149,8 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
                 openai::merge_input_output(msg.message.inputs, embeddings);
             Ok(emb)
         }
-        types::Transformer::allMiniLML12v2 => {
-            log!("pg-vectorize: allMiniLML12v2 transformer");
+        types::Transformer::all_MiniLM_L12_v2 => {
+            log!("pg-vectorize: all_MiniLM_L12_v2 transformer");
             todo!()
         }
     };

@@ -11,7 +11,7 @@ lazy_static! {
     pub static ref QUEUE_MAPPING: HashMap<Transformer, &'static str> = {
         let mut m = HashMap::new();
         m.insert(Transformer::openai, "v_openai");
-        m.insert(Transformer::allMiniLML12v2, "v_all_MiniLM_L12_v2");
+        m.insert(Transformer::all_MiniLM_L12_v2, "v_all_MiniLM_L12_v2");
         m
     };
 }
@@ -76,7 +76,7 @@ pub fn init_embedding_table_query(
         // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
         (types::Transformer::openai, types::SimilarityAlg::pgv_cosine_similarity) => "vector(1536)",
-        (types::Transformer::allMiniLML12v2, types::SimilarityAlg::pgv_cosine_similarity) => {
+        (types::Transformer::all_MiniLM_L12_v2, types::SimilarityAlg::pgv_cosine_similarity) => {
             "vector(384)"
         }
     };
