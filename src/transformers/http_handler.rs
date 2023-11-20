@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::transformers::types::{EmbeddingRequest, EmbeddingResponse};
+use crate::transformers::types::{EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings};
 use pgrx::prelude::*;
 
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
@@ -48,4 +48,16 @@ pub async fn openai_embedding_request(
         .map(|d| d.embedding.clone())
         .collect();
     Ok(embeddings)
+}
+
+// merges the vec of inputs with the embedding responses
+pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedEmbeddings> {
+    inputs
+        .into_iter()
+        .zip(values)
+        .map(|(input, value)| PairedEmbeddings {
+            primary_key: input.record_id,
+            embeddings: value,
+        })
+        .collect()
 }

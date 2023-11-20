@@ -112,11 +112,6 @@ impl Display for JobType {
     }
 }
 
-pub struct PairedEmbeddings {
-    pub primary_key: String,
-    pub embeddings: Vec<f64>,
-}
-
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
 pub enum TableMethod {

@@ -7,7 +7,7 @@ use pgrx::bgworkers::*;
 use pgrx::*;
 use std::time::Duration;
 
-use crate::workers::run_worker;
+use crate::workers::run_workers;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -47,14 +47,13 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     let aux_q = QUEUE_MAPPING
         .get(&Transformer::all_MiniLM_L12_v2)
         .expect("invalid transformer");
+    let queues = vec![oai_q.to_string(), aux_q.to_string()];
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
         let _: Result<()> =
-            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), oai_q).await });
-        let _: Result<()> =
-            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), aux_q).await });
+            runtime.block_on(async { run_workers(queue.clone(), &conn, &queues).await });
     }
     log!("pg-vectorize: shutting down");
 }

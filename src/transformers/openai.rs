@@ -3,13 +3,13 @@ use pgrx::prelude::*;
 use anyhow::Result;
 
 use crate::{
-    executor::Inputs,
     guc::OPENAI_KEY,
     transformers::{
-        http_handler::handle_response, http_handler::openai_embedding_request,
-        types::EmbeddingRequest,
+        http_handler::handle_response,
+        http_handler::openai_embedding_request,
+        types::{EmbeddingRequest, Inputs},
     },
-    types::{JobParams, PairedEmbeddings},
+    types::JobParams,
 };
 
 // max token length is 8192
@@ -75,18 +75,6 @@ pub async fn openai_transform(job_params: JobParams, inputs: &[Inputs]) -> Resul
             }
         };
     Ok(embeddings)
-}
-
-// merges the vec of inputs with the embedding responses
-pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<PairedEmbeddings> {
-    inputs
-        .into_iter()
-        .zip(values)
-        .map(|(input, value)| PairedEmbeddings {
-            primary_key: input.record_id,
-            embeddings: value,
-        })
-        .collect()
 }
 
 pub fn validate_api_key(key: &str) -> Result<()> {
