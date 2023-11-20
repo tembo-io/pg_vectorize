@@ -2,13 +2,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct EmbeddingResponse {
-    pub data: Vec<DataObject>,
+    pub data: Vec<EmbeddingObject>,
+    pub model: String,
 }
 
 #[derive(serde::Deserialize, Debug)]
-pub struct DataObject {
+pub struct EmbeddingObject {
     // object: String,
-    // index: usize,
+    pub index: usize,
     pub embedding: Vec<f64>,
 }
 
