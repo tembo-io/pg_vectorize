@@ -14,6 +14,13 @@ pub struct DataObject {
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EmbeddingRequest {
+    pub url: String,
+    pub payload: EmbeddingPayload,
+    pub api_key: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Serialize)]
+pub struct EmbeddingPayload {
     pub input: Vec<String>,
     pub model: String,
 }

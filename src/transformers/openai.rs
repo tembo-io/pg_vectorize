@@ -6,8 +6,7 @@ use crate::{
     guc::OPENAI_KEY,
     transformers::{
         http_handler::handle_response,
-        http_handler::openai_embedding_request,
-        types::{EmbeddingRequest, Inputs},
+        types::{EmbeddingPayload, EmbeddingRequest, Inputs},
     },
     types::JobParams,
 };
@@ -17,6 +16,35 @@ use crate::{
 pub const MAX_TOKEN_LEN: usize = 8192;
 pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
+
+pub fn prepare_openai_request(
+    job_params: JobParams,
+    inputs: &[Inputs],
+) -> Result<EmbeddingRequest> {
+    let text_inputs = trim_inputs(inputs);
+    let payload = EmbeddingPayload {
+        input: text_inputs,
+        model: OPENAI_EMBEDDING_MODEL.to_owned(),
+    };
+    let apikey = match job_params.api_key {
+        Some(k) => k,
+        None => {
+            let key = match OPENAI_KEY.get() {
+                Some(k) => k.to_str()?.to_owned(),
+                None => {
+                    warning!("pg-vectorize: Error getting API key from GUC");
+                    return Err(anyhow::anyhow!("failed to get API key"));
+                }
+            };
+            key
+        }
+    };
+    Ok(EmbeddingRequest {
+        url: OPENAI_EMBEDDING_URL.to_owned(),
+        payload,
+        api_key: Some(apikey),
+    })
+}
 
 // OpenAI embedding model has a limit of 8192 tokens per input
 // there can be a number of ways condense the inputs
@@ -37,44 +65,6 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
             }
         })
         .collect()
-}
-
-// handles pairing of inputs with embedding responses
-pub async fn openai_transform(job_params: JobParams, inputs: &[Inputs]) -> Result<Vec<Vec<f64>>> {
-    log!("pg-vectorize: OpenAI transformer");
-
-    // handle retrieval of API key. order of precedence:
-    // 1. job parameters
-    // 2. GUC
-    let apikey = match job_params.api_key {
-        Some(k) => k,
-        None => {
-            let key = match OPENAI_KEY.get() {
-                Some(k) => k.to_str()?.to_owned(),
-                None => {
-                    warning!("pg-vectorize: Error getting API key from GUC");
-                    return Err(anyhow::anyhow!("failed to get API key"));
-                }
-            };
-            key
-        }
-    };
-
-    // trims any inputs that exceed openAIs max token length
-    let text_inputs = trim_inputs(inputs);
-    let request = EmbeddingRequest {
-        input: text_inputs.clone(),
-        model: OPENAI_EMBEDDING_MODEL.to_string(),
-    };
-    let embeddings: Vec<Vec<f64>> =
-        match openai_embedding_request(OPENAI_EMBEDDING_URL, request, Some(apikey)).await {
-            Ok(e) => e,
-            Err(e) => {
-                warning!("pg-vectorize: Error getting embeddings: {}", e);
-                return Err(anyhow::anyhow!("failed to get embeddings"));
-            }
-        };
-    Ok(embeddings)
 }
 
 pub fn validate_api_key(key: &str) -> Result<()> {

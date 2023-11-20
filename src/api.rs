@@ -1,10 +1,11 @@
 use crate::executor::VectorizeMeta;
 use crate::guc;
+use crate::guc::get_guc;
 use crate::init;
 use crate::search::cosine_similarity_search;
 use crate::transformers::{
     http_handler::openai_embedding_request, openai, openai::OPENAI_EMBEDDING_MODEL,
-    openai::OPENAI_EMBEDDING_URL, types::EmbeddingRequest,
+    openai::OPENAI_EMBEDDING_URL, types::EmbeddingPayload, types::EmbeddingRequest,
 };
 use crate::types;
 use crate::types::JobParams;
@@ -164,7 +165,7 @@ fn search(
     let schema = proj_params.schema;
     let table = proj_params.table;
 
-    let (url, embedding_request, api_key) = match project_meta.transformer {
+    let embedding_request = match project_meta.transformer {
         types::Transformer::openai => {
             let openai_key = match api_key {
                 Some(k) => k,
@@ -176,25 +177,38 @@ fn search(
                 },
             };
 
-            let embedding_request = EmbeddingRequest {
+            let embedding_request = EmbeddingPayload {
                 input: vec![query.to_string()],
                 model: OPENAI_EMBEDDING_MODEL.to_string(),
             };
-            (OPENAI_EMBEDDING_URL, embedding_request, Some(openai_key))
+            EmbeddingRequest {
+                url: OPENAI_EMBEDDING_URL.to_owned(),
+                payload: embedding_request,
+                api_key: Some(openai_key),
+            }
         }
         types::Transformer::all_MiniLM_L12_v2 => {
-            todo!()
+            let url: String = get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
+                .expect("failed to get embedding service url from GUC");
+            let embedding_request = EmbeddingPayload {
+                input: vec![query.to_string()],
+                model: project_meta.transformer.to_string(),
+            };
+            EmbeddingRequest {
+                url,
+                payload: embedding_request,
+                api_key: None,
+            }
         }
     };
 
-    let embeddings = match runtime
-        .block_on(async { openai_embedding_request(url, embedding_request, api_key).await })
-    {
-        Ok(e) => e,
-        Err(e) => {
-            error!("error getting embeddings: {}", e);
-        }
-    };
+    let embeddings =
+        match runtime.block_on(async { openai_embedding_request(embedding_request).await }) {
+            Ok(e) => e,
+            Err(e) => {
+                error!("error getting embeddings: {}", e);
+            }
+        };
 
     let search_results = match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(

@@ -1,7 +1,7 @@
 pub mod pg_bgw;
 
 use crate::executor::JobMessage;
-use crate::transformers::{http_handler, openai, types::PairedEmbeddings};
+use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
 use crate::types;
 use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
@@ -152,41 +152,45 @@ async fn update_append_table(
 
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
-    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
-    let embeddings: Vec<PairedEmbeddings> = match job_meta.transformer {
+    let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
+
+    let embedding_request = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
-
-            let embeddings: Vec<Vec<f64>> =
-                openai::openai_transform(job_params.clone(), &msg.message.inputs).await?;
-            // TODO: validate returned embeddings order is same as the input order
-            let emb: Vec<PairedEmbeddings> =
-                http_handler::merge_input_output(msg.message.inputs, embeddings);
-            Ok(emb)
+            openai::prepare_openai_request(job_params.clone(), &msg.message.inputs)
         }
         types::Transformer::all_MiniLM_L12_v2 => {
-            log!("pg-vectorize: all_MiniLM_L12_v2 transformer");
-            warning!("pg-vectorize: all_MiniLM_L12_v2 transformer not yet implemented");
-            Err(anyhow::anyhow!("not yet implemented"))
+            generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs)
         }
     }?;
+
+    let embeddings = http_handler::openai_embedding_request(embedding_request).await?;
+    // TODO: validate returned embeddings order is same as the input order
+    let paired_embeddings: Vec<PairedEmbeddings> =
+        http_handler::merge_input_output(msg.message.inputs, embeddings);
+
     // write embeddings to result table
-    match job_params.table_method {
+    match job_params.clone().table_method {
         types::TableMethod::append => {
             update_append_table(
                 &dbclient,
-                embeddings,
+                paired_embeddings,
                 &job_params.schema,
                 &job_params.table,
-                &job_meta.name,
+                &job_meta.clone().name,
                 &job_params.primary_key,
                 &job_params.pkey_type,
             )
             .await?;
         }
         types::TableMethod::join => {
-            upsert_embedding_table(&dbclient, &job_params.schema, &job_meta.name, embeddings)
-                .await?
+            upsert_embedding_table(
+                &dbclient,
+                &job_params.schema,
+                &job_meta.name,
+                paired_embeddings,
+            )
+            .await?
         }
     };
     Ok(())

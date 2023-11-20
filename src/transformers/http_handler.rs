@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use crate::transformers::types::{EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings};
+use crate::transformers::types::{
+    EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
+};
 use pgrx::prelude::*;
 
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
@@ -22,21 +24,17 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
 }
 
 // handle an OpenAI compatible embedding transform request
-pub async fn openai_embedding_request(
-    url: &str,
-    embed_request: EmbeddingRequest,
-    key: Option<String>,
-) -> Result<Vec<Vec<f64>>> {
+pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<Vec<f64>>> {
     log!(
         "pg-vectorize: openai request size: {}",
-        embed_request.input.len()
+        request.payload.input.len()
     );
     let client = reqwest::Client::new();
     let mut req = client
-        .post(url)
-        .json::<EmbeddingRequest>(&embed_request)
+        .post(request.url)
+        .json::<EmbeddingPayload>(&request.payload)
         .header("Content-Type", "application/json");
-    if let Some(key) = key {
+    if let Some(key) = request.api_key {
         req = req.header("Authorization", format!("Bearer {}", key));
     }
     let resp = req.send().await?;
