@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import TYPE_CHECKING, Any, List
+from typing import NamedTuple
 
 from fastapi import APIRouter
 from pydantic import BaseModel, conlist
@@ -25,12 +26,15 @@ class Batch(BaseModel):
     input: Vector
     model: str = model_name
 
-BATCH_SIZE = os.getenv("BATCH_SIZE", 1000)
-
+class Embedding(BaseModel):
+    embedding: list[float]
+    index: int
 
 class ResponseModel(BaseModel):
-    data: list[list[float]]
+    data: list[Embedding]
     model: str = model_name
+
+BATCH_SIZE = os.getenv("BATCH_SIZE", 1000)
 
 
 @router.post("/v1/embeddings", response_model=ResponseModel)
@@ -39,12 +43,16 @@ def batch_transform(payload: Batch) -> ResponseModel:
     batches = chunk_list(payload.input, BATCH_SIZE)
     num_batches = len(batches)
     responses: list[list[float]] = []
-    for i, batch in enumerate(batches):
-        logging.info(f"Batch {i} / {num_batches}")
+    for idx, batch in enumerate(batches):
+        logging.info(f"Batch {idx} / {num_batches}")
         responses.extend(model.encode(batch).tolist())
     logging.info("Completed %s batches", num_batches)
+    embeds = [
+        Embedding(embedding=embedding, index=i)
+        for i, embedding in enumerate(responses)
+    ]
     return ResponseModel(
-        data=responses,
+        data=embeds,
         model=model_name,
     )
 
