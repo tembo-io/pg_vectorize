@@ -41,15 +41,20 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
     // bgw only supports the OpenAI transformer case
-    let queue_name = QUEUE_MAPPING
+    let oai_q = QUEUE_MAPPING
         .get(&Transformer::openai)
+        .expect("invalid transformer");
+    let aux_q = QUEUE_MAPPING
+        .get(&Transformer::all_MiniLM_L12_v2)
         .expect("invalid transformer");
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
         let _: Result<()> =
-            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), queue_name).await });
+            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), oai_q).await });
+        let _: Result<()> =
+            runtime.block_on(async { run_worker(queue.clone(), conn.clone(), aux_q).await });
     }
     log!("pg-vectorize: shutting down");
 }

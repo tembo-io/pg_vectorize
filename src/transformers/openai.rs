@@ -1,31 +1,22 @@
 use pgrx::prelude::*;
-use serde_json::json;
 
 use anyhow::Result;
 
 use crate::{
     executor::Inputs,
     guc::OPENAI_KEY,
+    transformers::{
+        http_handler::handle_response, http_handler::openai_embedding_request,
+        types::EmbeddingRequest,
+    },
     types::{JobParams, PairedEmbeddings},
 };
 
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
 pub const MAX_TOKEN_LEN: usize = 8192;
-pub const OPENAI_EMBEDDING_RL: &str = "https://api.openai.com/v1/embeddings";
-
-#[derive(serde::Deserialize, Debug)]
-struct EmbeddingResponse {
-    // object: String,
-    data: Vec<DataObject>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-struct DataObject {
-    // object: String,
-    // index: usize,
-    embedding: Vec<f64>,
-}
+pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
+pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
 
 // OpenAI embedding model has a limit of 8192 tokens per input
 // there can be a number of ways condense the inputs
@@ -48,29 +39,7 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
         .collect()
 }
 
-pub async fn openai_embeddings(inputs: &Vec<String>, key: &str) -> Result<Vec<Vec<f64>>> {
-    log!("pg-vectorize: openai request size: {}", inputs.len());
-    let client = reqwest::Client::new();
-    let resp = client
-        .post(OPENAI_EMBEDDING_RL)
-        .json(&json!({
-            "input": inputs,
-            "model": "text-embedding-ada-002"
-        }))
-        .header("Content-Type", "application/json")
-        .header("Authorization", format!("Bearer {}", key))
-        .send()
-        .await?;
-    let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
-
-    let embeddings = embedding_resp
-        .data
-        .iter()
-        .map(|d| d.embedding.clone())
-        .collect();
-    Ok(embeddings)
-}
-
+// handles pairing of inputs with embedding responses
 pub async fn openai_transform(job_params: JobParams, inputs: &[Inputs]) -> Result<Vec<Vec<f64>>> {
     log!("pg-vectorize: OpenAI transformer");
 
@@ -93,13 +62,18 @@ pub async fn openai_transform(job_params: JobParams, inputs: &[Inputs]) -> Resul
 
     // trims any inputs that exceed openAIs max token length
     let text_inputs = trim_inputs(inputs);
-    let embeddings = match openai_embeddings(&text_inputs, &apikey).await {
-        Ok(e) => e,
-        Err(e) => {
-            warning!("pg-vectorize: Error getting embeddings: {}", e);
-            return Err(anyhow::anyhow!("failed to get embeddings"));
-        }
+    let request = EmbeddingRequest {
+        input: text_inputs.clone(),
+        model: OPENAI_EMBEDDING_MODEL.to_string(),
     };
+    let embeddings: Vec<Vec<f64>> =
+        match openai_embedding_request(OPENAI_EMBEDDING_URL, request, Some(apikey)).await {
+            Ok(e) => e,
+            Err(e) => {
+                warning!("pg-vectorize: Error getting embeddings: {}", e);
+                return Err(anyhow::anyhow!("failed to get embeddings"));
+            }
+        };
     Ok(embeddings)
 }
 
@@ -113,24 +87,6 @@ pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<Pai
             embeddings: value,
         })
         .collect()
-}
-
-pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
-    resp: reqwest::Response,
-    method: &'static str,
-) -> Result<T> {
-    if !resp.status().is_success() {
-        let errmsg = format!(
-            "Failed to call method '{}', received response with status code:{} and body: {}",
-            method,
-            resp.status(),
-            resp.text().await?
-        );
-        warning!("pg-vectorize: error handling response: {}", errmsg);
-        return Err(anyhow::anyhow!(errmsg));
-    }
-    let value = resp.json::<T>().await?;
-    Ok(value)
 }
 
 pub fn validate_api_key(key: &str) -> Result<()> {

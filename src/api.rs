@@ -1,7 +1,11 @@
+use crate::executor::VectorizeMeta;
 use crate::guc;
 use crate::init;
 use crate::search::cosine_similarity_search;
-use crate::transformers::openai;
+use crate::transformers::{
+    http_handler::openai_embedding_request, openai, openai::OPENAI_EMBEDDING_MODEL,
+    openai::OPENAI_EMBEDDING_URL, types::EmbeddingRequest,
+};
 use crate::types;
 use crate::types::JobParams;
 use crate::util;
@@ -138,22 +142,20 @@ fn search(
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
-    // note: this is not the most performant implementation
-    // this requires a query to metadata table to get the projects schema and table, which has a cost
-    // this does ensure consistency between the model used to generate the stored embeddings and the query embeddings, which is crucial
-
     // get project metadata
-    let _project_meta = if let Some(js) = util::get_vectorize_meta_spi(job_name) {
+
+    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
         js
     } else {
         error!("failed to get project metadata");
     };
-    let project_meta: JobParams =
-        serde_json::from_value(serde_json::to_value(_project_meta).unwrap_or_else(|e| {
+    let proj_params: JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
-        }))
-        .unwrap_or_else(|e| error!("failed to serialize metadata: {}", e));
-    // assuming default openai API for now
+        }),
+    )
+    .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
+
     // get embeddings
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -161,21 +163,34 @@ fn search(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let schema = project_meta.schema;
-    let table = project_meta.table;
+    let schema = proj_params.schema;
+    let table = proj_params.table;
 
-    let openai_key = match api_key {
-        Some(k) => k,
-        None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
-            Some(k) => k,
-            None => {
-                error!("failed to get API key from GUC");
-            }
-        },
+    let (url, embedding_request, api_key) = match project_meta.transformer {
+        types::Transformer::openai => {
+            let openai_key = match api_key {
+                Some(k) => k,
+                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
+                    Some(k) => k,
+                    None => {
+                        error!("failed to get API key from GUC");
+                    }
+                },
+            };
+
+            let embedding_request = EmbeddingRequest {
+                input: vec![query.to_string()],
+                model: OPENAI_EMBEDDING_MODEL.to_string(),
+            };
+            (OPENAI_EMBEDDING_URL, embedding_request, Some(openai_key))
+        }
+        types::Transformer::all_MiniLM_L12_v2 => {
+            todo!()
+        }
     };
 
     let embeddings = match runtime
-        .block_on(async { openai::openai_embeddings(&vec![query.to_string()], &openai_key).await })
+        .block_on(async { openai_embedding_request(url, embedding_request, api_key).await })
     {
         Ok(e) => e,
         Err(e) => {

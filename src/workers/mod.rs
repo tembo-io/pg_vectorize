@@ -142,7 +142,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
 
-            let embeddings =
+            let embeddings: Vec<Vec<f64>> =
                 openai::openai_transform(job_params.clone(), &msg.message.inputs).await?;
             // TODO: validate returned embeddings order is same as the input order
             let emb: Vec<types::PairedEmbeddings> =
