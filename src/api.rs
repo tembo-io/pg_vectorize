@@ -142,8 +142,6 @@ fn search(
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
-    // get project metadata
-
     let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
         js
     } else {
@@ -197,13 +195,17 @@ fn search(
             error!("error getting embeddings: {}", e);
         }
     };
-    let search_results = cosine_similarity_search(
-        job_name,
-        &schema,
-        &table,
-        &return_columns,
-        num_results,
-        &embeddings[0],
-    )?;
+
+    let search_results = match project_meta.search_alg {
+        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+            job_name,
+            &schema,
+            &table,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+        )?,
+    };
+
     Ok(TableIterator::new(search_results))
 }

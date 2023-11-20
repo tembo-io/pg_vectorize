@@ -138,7 +138,7 @@ async fn update_append_table(
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
     let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
-    let embeddings: Result<Vec<types::PairedEmbeddings>> = match job_meta.transformer {
+    let embeddings: Vec<types::PairedEmbeddings> = match job_meta.transformer {
         types::Transformer::openai => {
             log!("pg-vectorize: OpenAI transformer");
 
@@ -151,15 +151,16 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
         }
         types::Transformer::all_MiniLM_L12_v2 => {
             log!("pg-vectorize: all_MiniLM_L12_v2 transformer");
-            todo!()
+            warning!("pg-vectorize: all_MiniLM_L12_v2 transformer not yet implemented");
+            Err(anyhow::anyhow!("not yet implemented"))
         }
-    };
+    }?;
     // write embeddings to result table
     match job_params.table_method {
         types::TableMethod::append => {
             update_append_table(
                 &dbclient,
-                embeddings.expect("failed to get embeddings"),
+                embeddings,
                 &job_params.schema,
                 &job_params.table,
                 &job_meta.name,
@@ -169,13 +170,8 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
             .await?;
         }
         types::TableMethod::join => {
-            upsert_embedding_table(
-                &dbclient,
-                &job_params.schema,
-                &job_meta.name,
-                embeddings.expect("failed to get embeddings"),
-            )
-            .await?
+            upsert_embedding_table(&dbclient, &job_params.schema, &job_meta.name, embeddings)
+                .await?
         }
     };
     Ok(())

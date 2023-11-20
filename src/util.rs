@@ -64,7 +64,13 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 
 pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
     let query: &str = "
-        SELECT *
+        SELECT 
+            job_id,
+            name,
+            job_type,
+            transformer,
+            search_alg,
+            params
         FROM vectorize.job
         WHERE name = $1
     ";
