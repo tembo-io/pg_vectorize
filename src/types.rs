@@ -6,10 +6,10 @@ use std::str::FromStr;
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq, PostgresEnum)]
 pub enum Transformer {
     openai,
-    // bert,
+    allMiniLML12v2,
 }
 
 impl FromStr for Transformer {
@@ -27,6 +27,7 @@ impl From<String> for Transformer {
     fn from(s: String) -> Self {
         match s.as_str() {
             "openai" => Transformer::openai,
+            "all_MiniLM_L12_v2" => Transformer::allMiniLML12v2,
             _ => panic!("Invalid value for Transformer: {}", s), // or handle this case differently
         }
     }
@@ -36,6 +37,7 @@ impl Display for Transformer {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Transformer::openai => write!(f, "openai"),
+            Transformer::allMiniLML12v2 => write!(f, "all_MiniLM_L12_v2"),
         }
     }
 }
@@ -107,4 +109,30 @@ impl Display for JobType {
             JobType::Columns => write!(f, "Columns"),
         }
     }
+}
+
+pub struct PairedEmbeddings {
+    pub primary_key: String,
+    pub embeddings: Vec<f64>,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+pub enum TableMethod {
+    // append a new column to the existing table
+    append,
+    // join existing table to a new table with embeddings
+    join,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct JobParams {
+    pub schema: String,
+    pub table: String,
+    pub columns: Vec<String>,
+    pub update_time_col: String,
+    pub table_method: TableMethod,
+    pub primary_key: String,
+    pub pkey_type: String,
+    pub api_key: Option<String>,
 }

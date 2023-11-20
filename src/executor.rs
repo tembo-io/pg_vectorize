@@ -1,7 +1,8 @@
 use pgrx::prelude::*;
 
 use crate::errors::DatabaseError;
-use crate::init::{TableMethod, PGMQ_QUEUE_NAME};
+use crate::guc::BATCH_SIZE;
+use crate::init::QUEUE_MAPPING;
 use crate::query::check_input;
 use crate::types;
 use crate::util::{from_env_default, get_pg_conn};
@@ -12,6 +13,7 @@ use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
+use tiktoken_rs::cl100k_base;
 
 // schema for every job
 // also schema for the vectorize.vectorize_meta table
@@ -25,46 +27,6 @@ pub struct VectorizeMeta {
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,
-}
-
-// temporary struct for deserializing from db
-// not needed when sqlx 0.7.x
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize, PostgresType)]
-pub struct _VectorizeMeta {
-    pub job_id: i64,
-    pub name: String,
-    pub job_type: String,
-    pub transformer: String,
-    pub search_alg: String,
-    pub params: serde_json::Value,
-    #[serde(deserialize_with = "from_tsopt")]
-    pub last_completion: Option<chrono::DateTime<Utc>>,
-}
-
-impl From<_VectorizeMeta> for VectorizeMeta {
-    fn from(val: _VectorizeMeta) -> Self {
-        VectorizeMeta {
-            job_id: val.job_id,
-            name: val.name,
-            job_type: types::JobType::from(val.job_type),
-            transformer: types::Transformer::from(val.transformer),
-            search_alg: types::SimilarityAlg::from(val.search_alg),
-            params: val.params,
-            last_completion: val.last_completion,
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, Debug, Serialize)]
-pub struct ColumnJobParams {
-    pub schema: String,
-    pub table: String,
-    pub columns: Vec<String>,
-    pub primary_key: String,
-    pub pkey_type: String,
-    pub update_time_col: String,
-    pub api_key: Option<String>,
-    pub table_method: TableMethod,
 }
 
 // creates batches based on total token count
@@ -112,9 +74,7 @@ fn job_execute(job_name: String) {
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    // TODO: move into a config
-    // 100k tokens per batch
-    let max_batch_size = 100000;
+    let max_batch_size = BATCH_SIZE.get();
 
     runtime.block_on(async {
         let conn = get_pg_conn()
@@ -126,7 +86,7 @@ fn job_execute(job_name: String) {
         let meta = get_vectorize_meta(&job_name, &conn)
             .await
             .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));
-        let job_params = serde_json::from_value::<ColumnJobParams>(meta.params.clone())
+        let job_params = serde_json::from_value::<types::JobParams>(meta.params.clone())
             .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
         let _last_completion = match meta.last_completion {
             Some(t) => t,
@@ -151,8 +111,11 @@ fn job_execute(job_name: String) {
                         job_meta: meta.clone(),
                         inputs: b,
                     };
+                    let queue_name = QUEUE_MAPPING
+                        .get(&meta.transformer)
+                        .expect("invalid transformer");
                     let msg_id = queue
-                        .send(PGMQ_QUEUE_NAME, &msg)
+                        .send(queue_name, &msg)
                         .await
                         .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
                     log!("message sent: {}", msg_id);
@@ -172,17 +135,17 @@ pub async fn get_vectorize_meta(
 ) -> Result<VectorizeMeta, DatabaseError> {
     log!("fetching job: {}", job_name);
     let row = sqlx::query_as!(
-        _VectorizeMeta,
+        VectorizeMeta,
         "
         SELECT *
-        FROM vectorize.vectorize_meta
+        FROM vectorize.job
         WHERE name = $1
         ",
         job_name.to_string(),
     )
     .fetch_one(conn)
     .await?;
-    Ok(row.into())
+    Ok(row)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -197,7 +160,7 @@ pub struct Inputs {
 pub async fn get_new_updates_append(
     pool: &Pool<Postgres>,
     job_name: &str,
-    job_params: ColumnJobParams,
+    job_params: types::JobParams,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
     let cols = collapse_to_csv(&job_params.columns);
 
@@ -225,10 +188,11 @@ pub async fn get_new_updates_append(
     match rows {
         Ok(rows) => {
             if !rows.is_empty() {
+                let bpe = cl100k_base().unwrap();
                 let mut new_inputs: Vec<Inputs> = Vec::new();
                 for r in rows {
                     let ipt: String = r.get("input_text");
-                    let token_estimate = ipt.split_whitespace().count() as i32;
+                    let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
                     new_inputs.push(Inputs {
                         record_id: r.get("record_id"),
                         inputs: ipt,
@@ -249,7 +213,7 @@ pub async fn get_new_updates_append(
 // queries a table and returns rows that need new embeddings
 #[allow(dead_code)]
 pub async fn get_new_updates_shared(
-    job_params: ColumnJobParams,
+    job_params: types::JobParams,
     last_completion: chrono::DateTime<Utc>,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
     let pool = PgPool::connect(&from_env_default(
@@ -280,9 +244,10 @@ pub async fn get_new_updates_shared(
     let rows: Result<Vec<PgRow>, Error> = sqlx::query(&new_rows_query).fetch_all(&pool).await;
     match rows {
         Ok(rows) => {
+            let bpe = cl100k_base().unwrap();
             for r in rows {
                 let ipt: String = r.get("input_text");
-                let token_estimate = ipt.split_whitespace().count() as i32;
+                let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
                 new_inputs.push(Inputs {
                     record_id: r.get("record_id"),
                     inputs: ipt,

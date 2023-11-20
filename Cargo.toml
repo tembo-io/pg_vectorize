@@ -1,6 +1,6 @@
 [package]
 name = "vectorize"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 publish = false
 
@@ -15,6 +15,7 @@ pg_test = []
 [dependencies]
 anyhow = "1.0.72"
 chrono = {version = "0.4.26", features = ["serde"] }
+lazy_static = "1.4.0"
 log = "0.4.19"
 pgmq = "0.24.0"
 pgrx = "0.11.0"
@@ -29,6 +30,7 @@ sqlx = { version = "0.7.2", features = [
     "chrono",
 ] }
 thiserror = "1.0.44"
+tiktoken-rs = "0.5.7"
 tokio = {version = "1.29.1", features = ["rt-multi-thread"] }
 url = "2.4.0"
 

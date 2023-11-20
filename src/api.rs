@@ -1,8 +1,9 @@
-use crate::executor::ColumnJobParams;
+use crate::guc;
 use crate::init;
-use crate::openai;
 use crate::search::cosine_similarity_search;
+use crate::transformers::openai;
 use crate::types;
+use crate::types::JobParams;
 use crate::util;
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -19,11 +20,9 @@ fn table(
     update_col: default!(String, "'last_updated_at'"),
     transformer: default!(types::Transformer, "'openai'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
-    table_method: default!(init::TableMethod, "'append'"),
+    table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
 ) -> Result<String> {
-    // initialize pgmq
-    init::init_pgmq()?;
     let job_type = types::JobType::Columns;
 
     // write job to table
@@ -41,11 +40,12 @@ fn table(
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
+    init::init_pgmq(&transformer)?;
     match transformer {
         types::Transformer::openai => {
             let openai_key = match api_key {
                 Some(k) => serde_json::from_value::<String>(k.clone())?,
-                None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
+                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
                         error!("failed to get API key from GUC");
@@ -54,19 +54,22 @@ fn table(
             };
             openai::validate_api_key(&openai_key)?;
         }
+        // no-op
+        types::Transformer::allMiniLML12v2 => (),
     }
 
-    // TODO: implement a struct for these params
-    let params = pgrx::JsonB(serde_json::json!({
-        "schema": schema,
-        "table": table,
-        "columns": columns,
-        "update_time_col": update_col,
-        "table_method": table_method,
-        "primary_key": primary_key,
-        "pkey_type": pkey_type,
-        "api_key": api_key
-    }));
+    let valid_params = types::JobParams {
+        schema: schema.clone(),
+        table: table.to_string(),
+        columns: columns.clone(),
+        update_time_col: update_col,
+        table_method: table_method.clone(),
+        primary_key,
+        pkey_type,
+        api_key: api_key
+            .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
+    };
+    let params = pgrx::JsonB(serde_json::to_value(valid_params).expect("error serializing params"));
 
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
@@ -145,7 +148,7 @@ fn search(
     } else {
         error!("failed to get project metadata");
     };
-    let project_meta: ColumnJobParams =
+    let project_meta: JobParams =
         serde_json::from_value(serde_json::to_value(_project_meta).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
         }))
@@ -163,7 +166,7 @@ fn search(
 
     let openai_key = match api_key {
         Some(k) => k,
-        None => match util::get_guc(util::VectorizeGuc::OpenAIKey) {
+        None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
             Some(k) => k,
             None => {
                 error!("failed to get API key from GUC");

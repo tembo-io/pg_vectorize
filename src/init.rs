@@ -1,31 +1,29 @@
-use crate::{query::check_input, types};
+use crate::{query::check_input, types, types::TableMethod, types::Transformer};
 use pgrx::prelude::*;
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use anyhow::Result;
+use lazy_static::lazy_static;
 
-pub const PGMQ_QUEUE_NAME: &str = "vectorize_queue";
-
-#[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
-pub enum TableMethod {
-    // append a new column to the existing table
-    append,
-    // join existing table to a new table with embeddings
-    join,
+lazy_static! {
+    // each model has its own job queue
+    // maintain the mapping of transformer to queue name here
+    pub static ref QUEUE_MAPPING: HashMap<Transformer, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert(Transformer::openai, "v_openai");
+        m.insert(Transformer::allMiniLML12v2, "v_all_MiniLM_L12_v2");
+        m
+    };
 }
 
-pub fn init_pgmq() -> Result<()> {
+pub fn init_pgmq(transformer: &Transformer) -> Result<()> {
+    let qname = QUEUE_MAPPING.get(transformer).expect("invalid transformer");
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(
-            &format!("SELECT pgmq.create('{PGMQ_QUEUE_NAME}');"),
-            None,
-            None,
-        )?;
+        let _r = c.update(&format!("SELECT pgmq.create('{qname}');"), None, None)?;
         Ok(())
     });
     if let Err(e) = ran {
-        error!("error creating embedding table: {}", e);
+        error!("error creating job queue: {}", e);
     }
     Ok(())
 }
@@ -46,7 +44,7 @@ pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> 
 pub fn init_job_query() -> String {
     format!(
         "
-        INSERT INTO {schema}.vectorize_meta (name, job_type, transformer, search_alg, params)
+        INSERT INTO {schema}.job (name, job_type, transformer, search_alg, params)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,
@@ -78,6 +76,9 @@ pub fn init_embedding_table_query(
         // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
         (types::Transformer::openai, types::SimilarityAlg::pgv_cosine_similarity) => "vector(1536)",
+        (types::Transformer::allMiniLML12v2, types::SimilarityAlg::pgv_cosine_similarity) => {
+            "vector(384)"
+        }
     };
     match transform_method {
         TableMethod::append => {

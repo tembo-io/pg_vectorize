@@ -3,13 +3,14 @@ use pgrx::prelude::*;
 mod api;
 mod errors;
 mod executor;
+mod guc;
 mod init;
-mod openai;
 mod query;
 mod search;
+mod transformers;
 mod types;
 mod util;
-mod worker;
+mod workers;
 
 pgrx::pg_module_magic!();
 
