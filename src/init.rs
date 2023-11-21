@@ -2,7 +2,7 @@ use crate::{query::check_input, types, types::TableMethod, types::Transformer};
 use pgrx::prelude::*;
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -18,12 +18,21 @@ lazy_static! {
 
 pub fn init_pgmq(transformer: &Transformer) -> Result<()> {
     let qname = QUEUE_MAPPING.get(transformer).expect("invalid transformer");
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(&format!("SELECT pgmq.create('{qname}');"), None, None)?;
-        Ok(())
-    });
-    if let Err(e) = ran {
-        error!("error creating job queue: {}", e);
+    // check if queue already created:
+    let queue_exists: bool = Spi::get_one(&format!(
+        "SELECT EXISTS (SELECT 1 FROM pgmq.meta WHERE queue_name = '{qname}');",
+    ))?
+    .context("error checking if queue exists")?;
+    if queue_exists {
+        return Ok(());
+    } else {
+        let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+            let _r = c.update(&format!("SELECT pgmq.create('{qname}');"), None, None)?;
+            Ok(())
+        });
+        if let Err(e) = ran {
+            error!("error creating job queue: {}", e);
+        }
     }
     Ok(())
 }
