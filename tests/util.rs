@@ -2,7 +2,7 @@ pub mod common {
     use log::LevelFilter;
     use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
     use sqlx::ConnectOptions;
-    use sqlx::{FromRow, Pool, Postgres, Row};
+    use sqlx::{Pool, Postgres, Row};
     use url::{ParseError, Url};
 
     pub async fn connect(url: &str) -> Pool<Postgres> {
