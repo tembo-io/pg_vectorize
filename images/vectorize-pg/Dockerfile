@@ -37,17 +37,18 @@ RUN git clone https://github.com/citusdata/pg_cron.git && \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
+# install pgrx
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
+
 # install pgmq
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.10.2 --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
 
 RUN git clone https://github.com/tembo-io/pgmq.git && \
     cd pgmq && $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config) && \
     cd .. && rm -rf pgmq
 
+# install pg-vectorize
 COPY . .
-
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
 RUN $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
 FROM postgres:15.4-bookworm
