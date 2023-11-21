@@ -130,9 +130,7 @@ fn table(
     // TODO: first batch update
     // initialize cron
     let _ = init::init_cron(&schedule, &job_name); // handle this error
-    Ok(format!(
-        "{schema}.{table}.{columns:?}.{transformer}.{search_alg}"
-    ))
+    Ok(format!("Successfully created job: {job_name}"))
 }
 
 #[pg_extern]
