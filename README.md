@@ -72,7 +72,7 @@ SELECT vectorize.table(
     job_name => 'product_search',
     "table" => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
+    columns => ARRAY['product_name', 'description']
 );
 ```
 
