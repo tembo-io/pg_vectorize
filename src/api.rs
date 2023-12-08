@@ -1,12 +1,8 @@
 use crate::executor::VectorizeMeta;
 use crate::guc;
-use crate::guc::get_guc;
 use crate::init;
 use crate::search::cosine_similarity_search;
-use crate::transformers::{
-    http_handler::openai_embedding_request, openai, openai::OPENAI_EMBEDDING_MODEL,
-    openai::OPENAI_EMBEDDING_URL, types::EmbeddingPayload, types::EmbeddingRequest,
-};
+use crate::transformers::{openai, transform};
 use crate::types;
 use crate::types::JobParams;
 use crate::util;
@@ -23,7 +19,7 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(String, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
-    transformer: default!(types::Transformer, "'openai'"),
+    transformer: default!(types::Transformer, "'text_embedding_ada_002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
@@ -47,7 +43,7 @@ fn table(
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
     init::init_pgmq(&transformer)?;
     match transformer {
-        types::Transformer::openai => {
+        types::Transformer::text_embedding_ada_002 => {
             let openai_key = match api_key {
                 Some(k) => serde_json::from_value::<String>(k.clone())?,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
@@ -153,60 +149,10 @@ fn search(
     )
     .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
 
-    // get embeddings
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-
     let schema = proj_params.schema;
     let table = proj_params.table;
 
-    let embedding_request = match project_meta.transformer {
-        types::Transformer::openai => {
-            let openai_key = match api_key {
-                Some(k) => k,
-                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
-                    Some(k) => k,
-                    None => {
-                        error!("failed to get API key from GUC");
-                    }
-                },
-            };
-
-            let embedding_request = EmbeddingPayload {
-                input: vec![query.to_string()],
-                model: OPENAI_EMBEDDING_MODEL.to_string(),
-            };
-            EmbeddingRequest {
-                url: OPENAI_EMBEDDING_URL.to_owned(),
-                payload: embedding_request,
-                api_key: Some(openai_key),
-            }
-        }
-        types::Transformer::all_MiniLM_L12_v2 => {
-            let url: String = get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
-                .expect("failed to get embedding service url from GUC");
-            let embedding_request = EmbeddingPayload {
-                input: vec![query.to_string()],
-                model: project_meta.transformer.to_string(),
-            };
-            EmbeddingRequest {
-                url,
-                payload: embedding_request,
-                api_key: None,
-            }
-        }
-    };
-
-    let embeddings =
-        match runtime.block_on(async { openai_embedding_request(embedding_request).await }) {
-            Ok(e) => e,
-            Err(e) => {
-                error!("error getting embeddings: {}", e);
-            }
-        };
+    let embeddings = transform(query, project_meta.transformer, api_key);
 
     let search_results = match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
@@ -220,4 +166,13 @@ fn search(
     };
 
     Ok(TableIterator::new(search_results))
+}
+
+#[pg_extern]
+fn transform_embeddings(
+    input: &str,
+    model_name: default!(types::Transformer, "'text_embedding_ada_002'"),
+    api_key: default!(Option<String>, "NULL"),
+) -> Result<Vec<f64>, spi::Error> {
+    Ok(transform(input, model_name, api_key).remove(0))
 }
