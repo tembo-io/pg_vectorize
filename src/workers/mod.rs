@@ -155,9 +155,9 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
     let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
     let embedding_request = match job_meta.transformer {
-        types::Transformer::openai => {
+        types::Transformer::text_embedding_ada_002 => {
             log!("pg-vectorize: OpenAI transformer");
-            openai::prepare_openai_request(job_params.clone(), &msg.message.inputs)
+            openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs)
         }
         types::Transformer::all_MiniLM_L12_v2 => {
             generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs)

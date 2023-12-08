@@ -40,9 +40,8 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
-    // bgw only supports the OpenAI transformer case
     let oai_q = QUEUE_MAPPING
-        .get(&Transformer::openai)
+        .get(&Transformer::text_embedding_ada_002)
         .expect("invalid transformer");
     let aux_q = QUEUE_MAPPING
         .get(&Transformer::all_MiniLM_L12_v2)

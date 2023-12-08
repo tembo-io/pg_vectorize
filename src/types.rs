@@ -8,7 +8,7 @@ pub const VECTORIZE_SCHEMA: &str = "vectorize";
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq, PostgresEnum)]
 pub enum Transformer {
-    openai,
+    text_embedding_ada_002,
     all_MiniLM_L12_v2,
 }
 
@@ -17,7 +17,7 @@ impl FromStr for Transformer {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "openai" => Ok(Transformer::openai),
+            "text_embedding_ada_002" => Ok(Transformer::text_embedding_ada_002),
             "all_MiniLM_L12_v2" => Ok(Transformer::all_MiniLM_L12_v2),
             _ => Err(format!("Invalid value: {}", s)),
         }
@@ -27,7 +27,7 @@ impl FromStr for Transformer {
 impl From<String> for Transformer {
     fn from(s: String) -> Self {
         match s.as_str() {
-            "openai" => Transformer::openai,
+            "text_embedding_ada_002" => Transformer::text_embedding_ada_002,
             "all_MiniLM_L12_v2" => Transformer::all_MiniLM_L12_v2,
             _ => panic!("Invalid value for Transformer: {}", s), // or handle this case differently
         }
@@ -37,7 +37,7 @@ impl From<String> for Transformer {
 impl Display for Transformer {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Transformer::openai => write!(f, "openai"),
+            Transformer::text_embedding_ada_002 => write!(f, "text_embedding_ada_002"),
             Transformer::all_MiniLM_L12_v2 => write!(f, "all_MiniLM_L12_v2"),
         }
     }

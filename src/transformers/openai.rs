@@ -3,6 +3,7 @@ use pgrx::prelude::*;
 use anyhow::Result;
 
 use crate::{
+    executor::VectorizeMeta,
     guc::OPENAI_KEY,
     transformers::{
         http_handler::handle_response,
@@ -18,14 +19,16 @@ pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
 
 pub fn prepare_openai_request(
-    job_params: JobParams,
+    vect_meta: VectorizeMeta,
     inputs: &[Inputs],
 ) -> Result<EmbeddingRequest> {
     let text_inputs = trim_inputs(inputs);
+    let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
     let payload = EmbeddingPayload {
         input: text_inputs,
         model: OPENAI_EMBEDDING_MODEL.to_owned(),
     };
+
     let apikey = match job_params.api_key {
         Some(k) => k,
         None => {
