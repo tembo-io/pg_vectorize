@@ -6,6 +6,7 @@ pub mod types;
 
 use crate::guc;
 use crate::types::Transformer;
+use generic::get_generic_svc_url;
 use http_handler::openai_embedding_request;
 use openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
 use pgrx::prelude::*;
@@ -41,8 +42,7 @@ pub fn transform(input: &str, transformer: Transformer, api_key: Option<String>)
             }
         }
         Transformer::all_MiniLM_L12_v2 => {
-            let url: String = guc::get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
-                .expect("failed to get embedding service url from GUC");
+            let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],
                 model: transformer.to_string(),
