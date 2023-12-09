@@ -29,9 +29,11 @@ CREATE EXTENSION vectorize CASCADE;
 If you're installing in an existing Postgres instance, you will need the following depdencies:
 
 Rust:
+
 - [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
 
 Postgres Extensions:
+
 - [pg_cron](https://github.com/citusdata/pg_cron) == 1.5
 - [pgmq](https://github.com/tembo-io/pgmq) >= 0.30.0
 - [pgvector](https://github.com/pgvector/pgvector) >= 1.5.0
@@ -65,7 +67,6 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 ```sql
 ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
 ```
-
 
 ```sql
 SELECT vectorize.table(
