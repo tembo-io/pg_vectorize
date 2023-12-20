@@ -66,6 +66,8 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 
 ```sql
 ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
+
+SELECT pg_reload_conf();
 ```
 
 ```sql
