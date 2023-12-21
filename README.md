@@ -103,3 +103,5 @@ SELECT * FROM vectorize.search(
  {"product_id": 24, "product_name": "Tablet Holder", "similarity_score": 0.8295404213393001}
  {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8248579643539758}
 ```
+
+Try it for yourself! Install with a single click on a Vector DB Stack (or any other instance) in [Tembo Cloud](https://cloud.tembo.io/) today.
