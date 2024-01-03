@@ -16,4 +16,4 @@ RUN python init_models.py
 
 COPY . .
 
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "4"]
