@@ -34,7 +34,7 @@ class ResponseModel(BaseModel):
     data: list[Embedding]
     model: str = model_name
 
-BATCH_SIZE = os.getenv("BATCH_SIZE", 1000)
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
 
 @router.post("/v1/embeddings", response_model=ResponseModel)
