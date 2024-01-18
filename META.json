@@ -1,0 +1,49 @@
+{
+   "name": "vectorize",
+   "abstract": "The simplest way to do vector search on Postgres",
+   "description": "Vectorize automates that the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.",
+   "version": "@CARGO_VERSION@",
+   "maintainer": [
+      "Tembo <admin+pgxn@tembo.io>"
+   ],
+   "license": "postgresql",
+   "provides": {
+      "vectorize": {
+         "abstract": "The simplest way to do vector search on Postgres",
+         "file": "src/lib.rs",
+         "docfile": "README.md",
+         "version": "@CARGO_VERSION@"
+      }
+   },
+   "prereqs": {
+      "runtime": {
+         "requires": {
+            "PostgreSQL": "11.0.0",
+            "pg_cron": "1.5.0",
+            "pgmq": "0.30.0",
+            "pgvector": "1.5.0"
+         }
+      }
+   },
+   "resources": {
+      "bugtracker": {
+         "web": "https://github.com/tembo-io/pg_vectorize/issues/"
+      },
+      "repository": {
+         "url": "git://github.com/tembo-io/pg_vectorize.git",
+         "web": "https://github.com/tembo-io/pg_vectorize/",
+         "type": "git"
+      }
+   },
+   "generated_by": "David E. Wheeler",
+   "meta-spec": {
+      "version": "1.0.0",
+      "url": "https://pgxn.org/meta/spec.txt"
+   },
+   "tags": [
+      "vector",
+      "search",
+      "embeddings",
+      "semantic search"
+   ]
+}

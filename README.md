@@ -5,6 +5,7 @@ The simplest way to do vector search in Postgres. Vectorize is a Postgres extens
 One function call to initialize your data. Another function call to search.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
+[![PGXN version](https://badge.fury.io/pg/pg_vectorize.svg)](https://pgxn.org/dist/pg_vectorize/)
 
 ## Installation
 
@@ -26,7 +27,7 @@ Enable the extension and its dependencies
 CREATE EXTENSION vectorize CASCADE;
 ```
 
-If you're installing in an existing Postgres instance, you will need the following depdencies:
+If you're installing in an existing Postgres instance, you will need the following dependencies:
 
 Rust:
 
