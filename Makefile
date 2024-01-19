@@ -14,11 +14,15 @@ format:
 run:
 	SQLX_OFFLINE=true DATABASE_URL=${DATABASE_URL} cargo pgrx run pg15 postgres
 
-META.json.bak: Trunk.toml META.json
-	@sed -i.bak "s/@CARGO_VERSION@/$(DISTVERSION)/g" META.json
+META.json: META.json.in Trunk.toml
+	@sed "s/@CARGO_VERSION@/$(DISTVERSION)/g" META.json.in > META.json
 
 # `git archive` only archives committed stuff, so use `git stash create` to
 # create a temporary commit to archive.
-pgxn-zip: META.json.bak	
-	git archive --format zip --prefix=$(DISTNAME)-$(DISTVERSION)/ -o $(DISTNAME)-$(DISTVERSION).zip $$(git stash create)
-	@mv META.json.bak META.json
+$(DISTNAME)-$(DISTVERSION).zip: META.json
+	git archive --format zip --prefix $(DISTNAME)-$(DISTVERSION)/ --add-file META.json -o $(DISTNAME)-$(DISTVERSION).zip HEAD
+
+pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
+
+clean:
+	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
