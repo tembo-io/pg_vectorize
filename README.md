@@ -16,6 +16,8 @@ poetry run uvicorn app.app:app --host "0.0.0.0" --port 3000 --workers 2
 
 ## Sentence to embedding transform
 
+The image comes pre-loaded with `all-MiniLM-L12-v2`.
+
 ```bash
 curl -X POST http://localhost:3000/v1/embeddings \
   -H 'Content-Type: application/json' \
@@ -41,11 +43,13 @@ curl -X POST http://localhost:3000/v1/embeddings \
 }
 ```
 
+Other sentence-transformers will be downloaded on-the-fly on the first request, and cached for future requests.
+
 ```bash
 curl -X POST http://localhost:3000/v1/embeddings \
   -H 'Content-Type: application/json' \
   -d '{"input": ["solar powered mobile electronics accessories without screens"],
-   "model": "jinaai/jina-embeddings-v2-base-en"}'
+   "model": "sentence-transformers/sentence-t5-base"}'
 ```
 
 ```console
@@ -63,6 +67,6 @@ curl -X POST http://localhost:3000/v1/embeddings \
       "index": 0
     }
   ],
-  "model": "all-MiniLM-L12-v2"
+  "model": "sentence-transformers/sentence-t5-base"
 }
 ```
