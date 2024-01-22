@@ -7,11 +7,10 @@ jobs:
   release:
     name: Release on PGXN
     runs-on: ubuntu-latest
-    container: pgxn/pgxn-tools:1.4
+    container: pgxn/pgxn-tools
     steps:
     - name: Check out the repo
       uses: actions/checkout@v4
-    - run: git config --global --add safe.directory "$PWD"
     - name: Bundle the Release
       env: { GIT_BUNDLE_OPTS: --add-file META.json }
       run: make META.json && pgxn-bundle
