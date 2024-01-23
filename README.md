@@ -2,16 +2,16 @@
 
 ## Get started with docker
 
-## Start the server
+## Start the server in docker
 
 ```bash
-docker run -p 3000:3000 quay.io/tembo/vector-serve:latest
+make run.docker
 ```
 
-## Run directly
+## or, run directly
 
 ```bash
-poetry run uvicorn app.app:app --host "0.0.0.0" --port 3000 --workers 2
+make run
 ```
 
 ## Sentence to embedding transform

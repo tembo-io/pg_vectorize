@@ -1,8 +1,16 @@
+from typing import Callable
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
 from app.routes.transform import router as transform_router
+from app.models import load_model_cache
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI(title="Tembo-Embedding-Service")
 app.add_middleware(
@@ -13,6 +21,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(transform_router)
+
+
+def start_app_handler(app: FastAPI) -> Callable:
+    def startup() -> None:
+        logging.info("Running app start handler.")
+        load_model_cache(app)
+
+    return startup
+
+
+app.add_event_handler("startup", start_app_handler(app))
 
 if __name__ == "__main__":
     import uvicorn  # type: ignore

@@ -2,7 +2,8 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, List
 
-from fastapi import APIRouter, HTTPException
+from app.models import model_name
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, conlist
 
 router = APIRouter(tags=["transform"])
@@ -18,10 +19,6 @@ except Exception:
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
-all_models = {
-    # pre-loaded with miniLM
-    "all-MiniLM-L12-v2": SentenceTransformer("./models"),
-}
 
 if TYPE_CHECKING:
     Vector = List[str]
@@ -45,14 +42,18 @@ class ResponseModel(BaseModel):
 
 
 @router.post("/v1/embeddings", response_model=ResponseModel)
-def batch_transform(payload: Batch) -> ResponseModel:
+def batch_transform(request: Request, payload: Batch) -> ResponseModel:
     logging.info({"batch-predict-len": len(payload.input)})
     batches = chunk_list(payload.input, BATCH_SIZE)
     num_batches = len(batches)
     responses: list[list[float]] = []
 
+    requested_model = model_name(payload.model)
+
     try:
-        model = get_model(payload.model)
+        model = get_model(
+            model_name=payload.model, model_cache=request.app.state.model_cache
+        )
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -80,17 +81,25 @@ def chunk_list(lst: List[Any], chunk_size: int) -> List[List[Any]]:
     return chunks
 
 
-def get_model(model_name: str) -> SentenceTransformer:
+def get_model(
+    model_name: str, model_cache: dict[str, SentenceTransformer]
+) -> SentenceTransformer:
     if MULTI_MODEL:
-        model = all_models.get(model_name)
+        model = model_cache.get(model_name)
     else:
         raise HTTPException(
             status_code=400,
             detail="Must enable multi-model via MULTI_MODEL env var",
         )
     if model is None:
+        # try to download from HF when MULTI_MODEL enabled
+        # and model not in cache
+        logging.debug(f"Model: {model_name} not in cache.")
         try:
             model = SentenceTransformer(model_name)
+            # add model to cache
+            model_cache[model_name] = model
+            logging.debug(f"Added model: {model_name} to cache.")
         except Exception:
             logging.exception("Failed to load model %s", model_name)
             raise

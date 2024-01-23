@@ -11,8 +11,8 @@ RUN pip install \
     sentence-transformers==2.2.2
 
 # Download models, save to image cache
-COPY app/init_models.py .
-RUN python init_models.py
+COPY app/models.py .
+RUN python models.py
 
 COPY . .
 
