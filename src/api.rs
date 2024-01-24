@@ -2,6 +2,7 @@ use crate::executor::VectorizeMeta;
 use crate::guc;
 use crate::init;
 use crate::search::cosine_similarity_search;
+use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::{openai, transform};
 use crate::types;
 use crate::types::JobParams;
@@ -38,10 +39,10 @@ fn table(
 
     // get prim key type
     let pkey_type = init::get_column_datatype(&schema, table, &primary_key);
+    init::init_pgmq()?;
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
-    init::init_pgmq()?;
     match transformer.as_ref() {
         "text-embedding-ada-002" => {
             let openai_key = match api_key {
@@ -56,7 +57,10 @@ fn table(
             openai::validate_api_key(&openai_key)?;
         }
         // todo: make sure model exists
-        _ => panic!("check"),
+        t => {
+            // TODO: parse svc_url so that we can send GET to /info endpoint here, and in table create
+            let _ = sync_get_model_info(t).expect("transformer does not exist");
+        }
     }
 
     let valid_params = types::JobParams {

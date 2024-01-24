@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+use crate::guc;
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
@@ -63,18 +64,18 @@ pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<Pai
 }
 
 #[pg_extern]
-pub fn mod_info(model_name: &str, url: &str) -> pgrx::JsonB {
-    let meta = sync_get_model_info(model_name, url).unwrap();
+pub fn mod_info(model_name: &str) -> pgrx::JsonB {
+    let meta = sync_get_model_info(model_name).unwrap();
     pgrx::JsonB(serde_json::to_value(meta).unwrap())
 }
 
-pub fn sync_get_model_info(model_name: &str, url: &str) -> Result<TransformerMetadata> {
+pub fn sync_get_model_info(model_name: &str) -> Result<TransformerMetadata> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-    let meta = match runtime.block_on(async { get_model_info(model_name, url).await }) {
+    let meta = match runtime.block_on(async { get_model_info(model_name).await }) {
         Ok(e) => e,
         Err(e) => {
             error!("error getting embeddings: {}", e);
@@ -83,9 +84,12 @@ pub fn sync_get_model_info(model_name: &str, url: &str) -> Result<TransformerMet
     Ok(meta)
 }
 
-pub async fn get_model_info(model_name: &str, url: &str) -> Result<TransformerMetadata> {
+pub async fn get_model_info(model_name: &str) -> Result<TransformerMetadata> {
+    let svc_url = guc::get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
+        .expect("vectorize.embedding_service_url must be set to a valid service");
+    let info_url = svc_url.replace("/embeddings", "/info");
     let client = reqwest::Client::new();
-    let req = client.get(url).query(&[("model_name", model_name)]);
+    let req = client.get(info_url).query(&[("model_name", model_name)]);
     let resp = req.send().await?;
     let meta_response = handle_response::<TransformerMetadata>(resp, "info").await?;
     Ok(meta_response)

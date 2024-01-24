@@ -1,5 +1,4 @@
 use crate::{
-    guc::{self, VectorizeGuc},
     query::check_input,
     transformers::{http_handler::sync_get_model_info, types::TransformerMetadata},
     types,
@@ -18,8 +17,10 @@ pub fn init_pgmq() -> Result<()> {
     ))?
     .context("error checking if queue exists")?;
     if queue_exists {
+        info!("queue already exists");
         return Ok(());
     } else {
+        info!("creating queue;");
         let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
             let _r = c.update(
                 &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),
@@ -80,11 +81,7 @@ pub fn init_embedding_table_query(
         // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
         "text-embedding-ada-002" => "vector(1536)".to_owned(),
         _ => {
-            log!("getting model info");
-            // all-MiniLM-L12-v2
-            let svc_url = guc::get_guc(VectorizeGuc::EmbeddingServiceUrl)
-                .expect("vectorize.embedding_service_url must be set to a valid service");
-            let model_info: TransformerMetadata = sync_get_model_info(transformer, &svc_url)
+            let model_info: TransformerMetadata = sync_get_model_info(transformer)
                 .expect("failed to call vectorize.embedding_service_url");
             let dim = model_info.embedding_dimension;
             format!("vector({dim})")
