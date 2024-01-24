@@ -2,20 +2,13 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, List
 
-from app.models import model_name
+from app.models import model_org_name, get_model
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, conlist
 
 router = APIRouter(tags=["transform"])
 
 logging.basicConfig(level=logging.DEBUG)
-
-from sentence_transformers import SentenceTransformer
-
-try:
-    MULTI_MODEL = int(os.getenv("MULTI_MODEL", 1))
-except Exception:
-    MULTI_MODEL = 1
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
@@ -29,6 +22,7 @@ else:
 class Batch(BaseModel):
     input: Vector
     model: str = "all-MiniLM-L12-v2"
+    normalize: bool = False
 
 
 class Embedding(BaseModel):
@@ -48,11 +42,11 @@ def batch_transform(request: Request, payload: Batch) -> ResponseModel:
     num_batches = len(batches)
     responses: list[list[float]] = []
 
-    requested_model = model_name(payload.model)
+    requested_model = model_org_name(payload.model)
 
     try:
         model = get_model(
-            model_name=payload.model, model_cache=request.app.state.model_cache
+            model_name=requested_model, model_cache=request.app.state.model_cache
         )
     except Exception as e:
         raise HTTPException(
@@ -62,14 +56,18 @@ def batch_transform(request: Request, payload: Batch) -> ResponseModel:
 
     for idx, batch in enumerate(batches):
         logging.info(f"Batch {idx} / {num_batches}")
-        responses.extend(model.encode(batch).tolist())
+        responses.extend(
+            model.encode(
+                sentences=batch, normalize_embeddings=payload.normalize
+            ).tolist()
+        )
     logging.info("Completed %s batches", num_batches)
     embeds = [
         Embedding(embedding=embedding, index=i) for i, embedding in enumerate(responses)
     ]
     return ResponseModel(
         data=embeds,
-        model=payload.model,
+        model=requested_model,
     )
 
 
@@ -79,28 +77,3 @@ def chunk_list(lst: List[Any], chunk_size: int) -> List[List[Any]]:
     for i in range(0, len(lst), chunk_size):
         chunks.append(lst[i : i + chunk_size])
     return chunks
-
-
-def get_model(
-    model_name: str, model_cache: dict[str, SentenceTransformer]
-) -> SentenceTransformer:
-    if MULTI_MODEL:
-        model = model_cache.get(model_name)
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Must enable multi-model via MULTI_MODEL env var",
-        )
-    if model is None:
-        # try to download from HF when MULTI_MODEL enabled
-        # and model not in cache
-        logging.debug(f"Model: {model_name} not in cache.")
-        try:
-            model = SentenceTransformer(model_name)
-            # add model to cache
-            model_cache[model_name] = model
-            logging.debug(f"Added model: {model_name} to cache.")
-        except Exception:
-            logging.exception("Failed to load model %s", model_name)
-            raise
-    return model

@@ -4,8 +4,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-
 from app.routes.transform import router as transform_router
+from app.routes.info import router as info_router
 from app.models import load_model_cache
 
 import logging
@@ -21,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(transform_router)
+app.include_router(info_router)
 
 
 def start_app_handler(app: FastAPI) -> Callable:
