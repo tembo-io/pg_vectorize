@@ -5,6 +5,8 @@ use crate::transformers::types::{
 };
 use pgrx::prelude::*;
 
+use super::types::TransformerMetadata;
+
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
     method: &'static str,
@@ -58,4 +60,33 @@ pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<Pai
             embeddings: value,
         })
         .collect()
+}
+
+#[pg_extern]
+pub fn mod_info(model_name: &str, url: &str) -> pgrx::JsonB {
+    let meta = sync_get_model_info(model_name, url).unwrap();
+    pgrx::JsonB(serde_json::to_value(meta).unwrap())
+}
+
+pub fn sync_get_model_info(model_name: &str, url: &str) -> Result<TransformerMetadata> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+    let meta = match runtime.block_on(async { get_model_info(model_name, url).await }) {
+        Ok(e) => e,
+        Err(e) => {
+            error!("error getting embeddings: {}", e);
+        }
+    };
+    Ok(meta)
+}
+
+pub async fn get_model_info(model_name: &str, url: &str) -> Result<TransformerMetadata> {
+    let client = reqwest::Client::new();
+    let req = client.get(url).query(&[("model_name", model_name)]);
+    let resp = req.send().await?;
+    let meta_response = handle_response::<TransformerMetadata>(resp, "info").await?;
+    Ok(meta_response)
 }

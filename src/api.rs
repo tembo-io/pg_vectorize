@@ -19,7 +19,7 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(String, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
-    transformer: default!(types::Transformer, "'text_embedding_ada_002'"),
+    transformer: default!(String, "'text_embedding_ada_002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
@@ -41,9 +41,9 @@ fn table(
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
-    init::init_pgmq(&transformer)?;
-    match transformer {
-        types::Transformer::text_embedding_ada_002 => {
+    init::init_pgmq()?;
+    match transformer.as_ref() {
+        "text-embedding-ada-002" => {
             let openai_key = match api_key {
                 Some(k) => serde_json::from_value::<String>(k.clone())?,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
@@ -55,8 +55,8 @@ fn table(
             };
             openai::validate_api_key(&openai_key)?;
         }
-        // no-op
-        types::Transformer::all_MiniLM_L12_v2 => (),
+        // todo: make sure model exists
+        _ => panic!("check"),
     }
 
     let valid_params = types::JobParams {
@@ -105,14 +105,8 @@ fn table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q = init::init_embedding_table_query(
-        &job_name,
-        &schema,
-        table,
-        &transformer,
-        &search_alg,
-        &table_method,
-    );
+    let init_embed_q =
+        init::init_embedding_table_query(&job_name, &schema, table, &transformer, &table_method);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
@@ -152,7 +146,7 @@ fn search(
     let schema = proj_params.schema;
     let table = proj_params.table;
 
-    let embeddings = transform(query, project_meta.transformer, api_key);
+    let embeddings = transform(query, &project_meta.transformer, api_key);
 
     let search_results = match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
@@ -171,8 +165,8 @@ fn search(
 #[pg_extern]
 fn transform_embeddings(
     input: &str,
-    model_name: default!(types::Transformer, "'text_embedding_ada_002'"),
+    model_name: default!(String, "'text_embedding_ada_002'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>, spi::Error> {
-    Ok(transform(input, model_name, api_key).remove(0))
+    Ok(transform(input, &model_name, api_key).remove(0))
 }

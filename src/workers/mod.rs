@@ -11,20 +11,18 @@ use sqlx::{Pool, Postgres};
 pub async fn run_workers(
     queue: PGMQueueExt,
     conn: &Pool<Postgres>,
-    queues: &[String],
+    queue_name: &str,
 ) -> Result<()> {
-    for queue_name in queues {
-        if let Ok(()) = run_worker(queue.clone(), conn, queue_name).await {
-            log!("pg-vectorize: worker finished");
-        } else {
-            warning!("pg-vectorize: worker failed");
-        }
+    if let Ok(()) = run_worker(queue.clone(), conn, queue_name).await {
+        log!("pg-vectorize: worker finished");
+    } else {
+        warning!("pg-vectorize: worker failed");
     }
     Ok(())
 }
 
 pub async fn run_worker(queue: PGMQueueExt, conn: &Pool<Postgres>, queue_name: &str) -> Result<()> {
-    let msg: Message<JobMessage> = match queue.pop::<JobMessage>(queue_name).await {
+    let msg: Message<JobMessage> = match queue.read::<JobMessage>(queue_name, 180_i32).await {
         Ok(Some(msg)) => msg,
         Ok(None) => {
             log!("pg-vectorize: No messages in queue");
@@ -154,14 +152,12 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
     let job_meta = msg.message.job_meta;
     let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match job_meta.transformer {
-        types::Transformer::text_embedding_ada_002 => {
+    let embedding_request = match job_meta.transformer.as_ref() {
+        "text-embedding-ada-002" => {
             log!("pg-vectorize: OpenAI transformer");
             openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs)
         }
-        types::Transformer::all_MiniLM_L12_v2 => {
-            generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs)
-        }
+        _ => generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs),
     }?;
 
     let embeddings = http_handler::openai_embedding_request(embedding_request).await?;

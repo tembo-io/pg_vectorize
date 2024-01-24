@@ -2,7 +2,7 @@ use pgrx::prelude::*;
 
 use crate::errors::DatabaseError;
 use crate::guc::BATCH_SIZE;
-use crate::init::QUEUE_MAPPING;
+use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
 use crate::transformers::types::Inputs;
 use crate::types;
@@ -23,7 +23,7 @@ pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub job_type: types::JobType,
-    pub transformer: types::Transformer,
+    pub transformer: String,
     pub search_alg: types::SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
@@ -112,11 +112,8 @@ fn job_execute(job_name: String) {
                         job_meta: meta.clone(),
                         inputs: b,
                     };
-                    let queue_name = QUEUE_MAPPING
-                        .get(&meta.transformer)
-                        .expect("invalid transformer");
                     let msg_id = queue
-                        .send(queue_name, &msg)
+                        .send(VECTORIZE_QUEUE, &msg)
                         .await
                         .unwrap_or_else(|e| error!("failed to send message updates: {}", e));
                     log!("message sent: {}", msg_id);

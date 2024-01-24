@@ -37,3 +37,10 @@ pub struct PairedEmbeddings {
     pub primary_key: String,
     pub embeddings: Vec<f64>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TransformerMetadata {
+    pub model: String,
+    pub max_seq_len: i32,
+    pub embedding_dimension: i32,
+}
