@@ -20,7 +20,7 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(String, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
-    transformer: default!(String, "'text_embedding_ada_002'"),
+    transformer: default!(String, "'text-embedding-ada-002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'append'"),
     schedule: default!(String, "'* * * * *'"),
@@ -169,7 +169,7 @@ fn search(
 #[pg_extern]
 fn transform_embeddings(
     input: &str,
-    model_name: default!(String, "'text_embedding_ada_002'"),
+    model_name: default!(String, "'text-embedding-ada-002'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>, spi::Error> {
     Ok(transform(input, &model_name, api_key).remove(0))
