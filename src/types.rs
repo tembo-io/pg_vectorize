@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
-
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
 pub enum SimilarityAlg {
