@@ -8,3 +8,5 @@ Cargo.lock
 pg_cron
 pgvector
 test.sql
+META.json
+/vectorize-*

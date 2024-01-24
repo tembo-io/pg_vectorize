@@ -5,6 +5,7 @@ The simplest way to do vector search in Postgres. Vectorize is a Postgres extens
 One function call to initialize your data. Another function call to search.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
+[![PGXN version](https://badge.fury.io/pg/pg_vectorize.svg)](https://pgxn.org/dist/pg_vectorize/)
 
 ## Installation
 
@@ -26,7 +27,7 @@ Enable the extension and its dependencies
 CREATE EXTENSION vectorize CASCADE;
 ```
 
-If you're installing in an existing Postgres instance, you will need the following depdencies:
+If you're installing in an existing Postgres instance, you will need the following dependencies:
 
 Rust:
 
@@ -66,6 +67,8 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 
 ```sql
 ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
+
+SELECT pg_reload_conf();
 ```
 
 ```sql
@@ -101,3 +104,5 @@ SELECT * FROM vectorize.search(
  {"product_id": 24, "product_name": "Tablet Holder", "similarity_score": 0.8295404213393001}
  {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8248579643539758}
 ```
+
+Try it for yourself! Install with a single click on a Vector DB Stack (or any other instance) in [Tembo Cloud](https://cloud.tembo.io/) today.
