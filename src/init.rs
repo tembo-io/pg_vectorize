@@ -1,33 +1,32 @@
-use crate::{query::check_input, types, types::TableMethod, types::Transformer};
+use crate::{
+    query::check_input,
+    transformers::{http_handler::sync_get_model_info, types::TransformerMetadata},
+    types,
+    types::TableMethod,
+};
 use pgrx::prelude::*;
-use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use lazy_static::lazy_static;
 
-lazy_static! {
-    // each model has its own job queue
-    // maintain the mapping of transformer to queue name here
-    pub static ref QUEUE_MAPPING: HashMap<Transformer, &'static str> = {
-        let mut m = HashMap::new();
-        m.insert(Transformer::text_embedding_ada_002, "v_openai");
-        m.insert(Transformer::all_MiniLM_L12_v2, "v_all_MiniLM_L12_v2");
-        m
-    };
-}
+pub static VECTORIZE_QUEUE: &str = "vectorize_jobs";
 
-pub fn init_pgmq(transformer: &Transformer) -> Result<()> {
-    let qname = QUEUE_MAPPING.get(transformer).expect("invalid transformer");
+pub fn init_pgmq() -> Result<()> {
     // check if queue already created:
     let queue_exists: bool = Spi::get_one(&format!(
-        "SELECT EXISTS (SELECT 1 FROM pgmq.meta WHERE queue_name = '{qname}');",
+        "SELECT EXISTS (SELECT 1 FROM pgmq.meta WHERE queue_name = '{VECTORIZE_QUEUE}');",
     ))?
     .context("error checking if queue exists")?;
     if queue_exists {
+        info!("queue already exists");
         return Ok(());
     } else {
+        info!("creating queue;");
         let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-            let _r = c.update(&format!("SELECT pgmq.create('{qname}');"), None, None)?;
+            let _r = c.update(
+                &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),
+                None,
+                None,
+            )?;
             Ok(())
         });
         if let Err(e) = ran {
@@ -69,38 +68,30 @@ pub fn init_embedding_table_query(
     job_name: &str,
     schema: &str,
     table: &str,
-    transformer: &types::Transformer,
-    search_alg: &types::SimilarityAlg,
+    transformer: &str,
     transform_method: &TableMethod,
 ) -> Vec<String> {
-    // TODO: when adding support for other models, add the output dimension to the transformer attributes
-    // so that they can be read here, not hard-coded here below
-    // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
-    // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-
     check_input(job_name).expect("invalid job name");
-    let col_type = match (transformer, search_alg) {
-        // TODO: when adding support for other models, add the output dimension to the transformer attributes
-        // so that they can be read here, not hard-coded here below
-        // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
+    let col_type = match transformer {
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-        (
-            types::Transformer::text_embedding_ada_002,
-            types::SimilarityAlg::pgv_cosine_similarity,
-        ) => "vector(1536)",
-        (types::Transformer::all_MiniLM_L12_v2, types::SimilarityAlg::pgv_cosine_similarity) => {
-            "vector(384)"
+        // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
+        "text-embedding-ada-002" => "vector(1536)".to_owned(),
+        _ => {
+            let model_info: TransformerMetadata = sync_get_model_info(transformer)
+                .expect("failed to call vectorize.embedding_service_url");
+            let dim = model_info.embedding_dimension;
+            format!("vector({dim})")
         }
     };
     match transform_method {
         TableMethod::append => {
             vec![
-                append_embedding_column(job_name, schema, table, col_type),
+                append_embedding_column(job_name, schema, table, &col_type),
                 create_hnsw_cosine_index(job_name, schema, table),
             ]
         }
         TableMethod::join => {
-            vec![create_embedding_table(job_name, col_type)]
+            vec![create_embedding_table(job_name, &col_type)]
         }
     }
 }
@@ -125,11 +116,6 @@ fn create_hnsw_cosine_index(job_name: &str, schema: &str, table: &str) -> String
 }
 
 fn append_embedding_column(job_name: &str, schema: &str, table: &str, col_type: &str) -> String {
-    // TODO: when adding support for other models, add the output dimension to the transformer attributes
-    // so that they can be read here, not hard-coded here below
-    // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
-    // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-
     check_input(job_name).expect("invalid job name");
     format!(
         "

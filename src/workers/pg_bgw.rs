@@ -1,6 +1,5 @@
 use crate::guc::init_guc;
-use crate::init::QUEUE_MAPPING;
-use crate::types::Transformer;
+use crate::init::VECTORIZE_QUEUE;
 use crate::util::get_pg_conn;
 use anyhow::Result;
 use pgrx::bgworkers::*;
@@ -40,19 +39,12 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
-    let oai_q = QUEUE_MAPPING
-        .get(&Transformer::text_embedding_ada_002)
-        .expect("invalid transformer");
-    let aux_q = QUEUE_MAPPING
-        .get(&Transformer::all_MiniLM_L12_v2)
-        .expect("invalid transformer");
-    let queues = vec![oai_q.to_string(), aux_q.to_string()];
     while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
         let _: Result<()> =
-            runtime.block_on(async { run_workers(queue.clone(), &conn, &queues).await });
+            runtime.block_on(async { run_workers(queue.clone(), &conn, VECTORIZE_QUEUE).await });
     }
     log!("pg-vectorize: shutting down");
 }

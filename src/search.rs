@@ -8,13 +8,12 @@ pub fn cosine_similarity_search(
     num_results: i32,
     embeddings: &[f64],
 ) -> Result<Vec<(pgrx::JsonB,)>, spi::Error> {
-    let emb = serde_json::to_string(&embeddings).expect("failed to serialize embeddings");
     let query = format!(
         "
     SELECT to_jsonb(t)
     as results FROM (
         SELECT 
-        1 - ({project}_embeddings <=> '{emb}'::vector) AS similarity_score,
+        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
         {cols}
     FROM {schema}.{table}
     WHERE {project}_updated_at is NOT NULL
@@ -24,10 +23,16 @@ pub fn cosine_similarity_search(
     ",
         cols = return_columns.join(", "),
     );
-    log!("query: {}", query);
     Spi::connect(|client| {
         let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
-        let tup_table = client.select(&query, None, None)?;
+        let tup_table = client.select(
+            &query,
+            None,
+            Some(vec![(
+                PgBuiltInOids::FLOAT8ARRAYOID.oid(),
+                embeddings.into_datum(),
+            )]),
+        )?;
         for row in tup_table {
             match row["results"].value()? {
                 Some(r) => results.push((r,)),

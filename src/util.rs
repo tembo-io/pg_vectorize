@@ -93,7 +93,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
             job_id,
             name,
             job_type: job_type.into(),
-            transformer: transformer.into(),
+            transformer,
             search_alg: search_alg.into(),
             params: serde_json::to_value(params).unwrap(),
             last_completion: None,
