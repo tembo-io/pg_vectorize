@@ -56,9 +56,8 @@ fn table(
             };
             openai::validate_api_key(&openai_key)?;
         }
-        // todo: make sure model exists
         t => {
-            // TODO: parse svc_url so that we can send GET to /info endpoint here, and in table create
+            // make sure transformer exists
             let _ = sync_get_model_info(t).expect("transformer does not exist");
         }
     }

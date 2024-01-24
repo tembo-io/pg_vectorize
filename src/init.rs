@@ -73,11 +73,7 @@ pub fn init_embedding_table_query(
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let col_type = match transformer {
-        // TODO: when adding support for other models, add the output dimension to the transformer attributes
-        // so that they can be read here, not hard-coded here below
-        // currently only supports the text-embedding-ada-002 embedding model - output dim 1536
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-
         // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
         "text-embedding-ada-002" => "vector(1536)".to_owned(),
         _ => {
