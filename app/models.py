@@ -41,6 +41,9 @@ def _model_dir(model: str) -> str:
 
 def model_org_name(model_name: str) -> str:
     """prepends with the HF if the org is not specified"""
+    if model_name == "all_MiniLM_L12_v2":
+        model_name = "all-MiniLM-L12-v2"
+
     if "/" not in model_name:
         return f"{_HF_ORG}/{model_name}"
     else:
