@@ -6,6 +6,7 @@ use crate::transformers::types::{
 };
 use pgrx::prelude::*;
 
+use super::generic::get_generic_svc_url;
 use super::types::TransformerMetadata;
 
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
@@ -85,8 +86,7 @@ pub fn sync_get_model_info(model_name: &str) -> Result<TransformerMetadata> {
 }
 
 pub async fn get_model_info(model_name: &str) -> Result<TransformerMetadata> {
-    let svc_url = guc::get_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
-        .expect("vectorize.embedding_service_url must be set to a valid service");
+    let svc_url = get_generic_svc_url()?;
     let info_url = svc_url.replace("/embeddings", "/info");
     let client = reqwest::Client::new();
     let req = client.get(info_url).query(&[("model_name", model_name)]);
