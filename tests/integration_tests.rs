@@ -1,7 +1,6 @@
 use rand::Rng;
 mod util;
-use sqlx::postgres::PgRow;
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::FromRow;
 
 use util::common;
 

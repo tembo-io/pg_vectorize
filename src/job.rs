@@ -56,7 +56,7 @@ static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
 /// creates a function that can be called by trigger
 pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &str) -> String {
-    let input_concat = generate_input_concat(&input_columns);
+    let input_concat = generate_input_concat(input_columns);
     format!(
         "
 CREATE OR REPLACE FUNCTION {TRIGGER_FN_PREFIX}{job_name}()
@@ -76,7 +76,7 @@ $$ LANGUAGE plpgsql;
 
 // creates the trigger for a row update
 pub fn create_update_trigger(job_name: &str, table_name: &str, input_columns: &[String]) -> String {
-    let trigger_condition = generate_trigger_condition(&input_columns);
+    let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
@@ -160,7 +160,7 @@ mod tests {
 
         let expected = format!(
             "
-CREATE OR REPLACE TRIGGER vectorize_trigger_example_job
+CREATE OR REPLACE TRIGGER vectorize_update_trigger_example_job
 AFTER UPDATE ON example_table
 FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2 )
@@ -178,7 +178,7 @@ EXECUTE FUNCTION vectorize.handle_update_example_job();"
 
         let expected = format!(
             "
-CREATE OR REPLACE TRIGGER vectorize_trigger_another_job
+CREATE OR REPLACE TRIGGER vectorize_update_trigger_another_job
 AFTER UPDATE ON another_table
 FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
