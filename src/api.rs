@@ -129,7 +129,7 @@ fn table(
     match schedule.as_ref() {
         "realtime" => {
             // setup triggers
-            // TODO:
+            // create the trigger if not exists
 
             // start with initial batch load
             let rows_need_update_query: String = new_rows_query(&job_name, &valid_params);
@@ -156,7 +156,9 @@ fn table(
             let batches = create_batches(inputs, max_batch_size);
             let vectorize_meta = VectorizeMeta {
                 name: job_name.clone(),
-                job_id: 0, // TODO: lookup job id once this gets put into use
+                // TODO: in future, lookup job id once this gets put into use
+                // job_id is currently not used, job_name is unique
+                job_id: 0,
                 job_type: job_type.clone(),
                 params: serde_json::to_value(valid_params.clone()).unwrap(),
                 transformer: transformer.clone(),
