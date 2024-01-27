@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_trigger_multi() {
+    fn test_create_update_trigger_multi() {
         let job_name = "example_job";
         let table_name = "example_table";
         let input_columns = vec!["column1".to_string(), "column2".to_string()];
@@ -171,7 +171,7 @@ EXECUTE FUNCTION vectorize.handle_update_example_job();"
     }
 
     #[test]
-    fn test_create_trigger_single() {
+    fn test_create_update_trigger_single() {
         let job_name = "another_job";
         let table_name = "another_table";
         let input_columns = vec!["column1".to_string()];
@@ -185,6 +185,22 @@ WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
         );
         let result = create_update_trigger(job_name, table_name, &input_columns);
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_create_insert_trigger_single() {
+        let job_name = "another_job";
+        let table_name = "another_table";
+
+        let expected = format!(
+            "
+CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
+AFTER INSERT ON another_table
+FOR EACH ROW
+EXECUTE FUNCTION vectorize.handle_update_another_job();"
+        );
+        let result = create_insert_trigger(job_name, table_name);
         assert_eq!(expected, result);
     }
 }
