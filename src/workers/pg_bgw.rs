@@ -39,7 +39,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
-    while BackgroundWorker::wait_latch(Some(Duration::from_secs(5))) {
+    while BackgroundWorker::wait_latch(Some(Duration::from_millis(500))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }

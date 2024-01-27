@@ -14,7 +14,6 @@ pub async fn run_workers(
     queue_name: &str,
 ) -> Result<()> {
     if let Ok(()) = run_worker(queue.clone(), conn, queue_name).await {
-        log!("pg-vectorize: worker finished");
     } else {
         warning!("pg-vectorize: worker failed");
     }
@@ -26,6 +25,8 @@ pub async fn run_worker(queue: PGMQueueExt, conn: &Pool<Postgres>, queue_name: &
         Ok(Some(msg)) => msg,
         Ok(None) => {
             log!("pg-vectorize: No messages in queue");
+            // sleep 2 seconds when no messages
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             return Ok(());
         }
         Err(e) => {

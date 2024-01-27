@@ -3,6 +3,7 @@ use crate::guc;
 use crate::guc::BATCH_SIZE;
 use crate::init;
 use crate::init::VECTORIZE_QUEUE;
+use crate::job::{create_trigger, create_trigger_handler};
 use crate::search::cosine_similarity_search;
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::types::Inputs;
@@ -73,7 +74,7 @@ fn table(
         columns: columns.clone(),
         update_time_col: update_col,
         table_method: table_method.clone(),
-        primary_key,
+        primary_key: primary_key.clone(),
         pkey_type,
         api_key: api_key
             .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
@@ -130,6 +131,15 @@ fn table(
         "realtime" => {
             // setup triggers
             // create the trigger if not exists
+            let trigger_handler = create_trigger_handler(&job_name, &columns, &primary_key);
+
+            let trigger = create_trigger(&job_name, table, &columns);
+
+            let _: Result<_, spi::Error> = Spi::connect(|mut c| {
+                let _r = c.update(&trigger_handler, None, None)?;
+                let _r = c.update(&trigger, None, None)?;
+                Ok(())
+            });
 
             // start with initial batch load
             let rows_need_update_query: String = new_rows_query(&job_name, &valid_params);

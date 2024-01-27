@@ -29,7 +29,7 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
 // handle an OpenAI compatible embedding transform request
 pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<Vec<f64>>> {
     log!(
-        "pg-vectorize: openai request size: {}",
+        "pg-vectorize: embedding request size: {}",
         request.payload.input.len()
     );
     let client = reqwest::Client::new();
