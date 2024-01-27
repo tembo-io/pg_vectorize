@@ -4,9 +4,9 @@ use crate::util::get_pg_conn;
 use anyhow::Result;
 use pgrx::bgworkers::*;
 use pgrx::*;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use crate::workers::run_workers;
+use crate::workers::run_worker;
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {
@@ -39,12 +39,23 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
 
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
-    while BackgroundWorker::wait_latch(Some(Duration::from_millis(500))) {
+    while BackgroundWorker::wait_latch(Some(Duration::from_millis(10))) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
-        let _: Result<()> =
-            runtime.block_on(async { run_workers(queue.clone(), &conn, VECTORIZE_QUEUE).await });
+        let _: Result<()> = runtime.block_on(async {
+            // continue to poll without pauses
+            let start = Instant::now();
+            let duration = Duration::from_secs(1);
+            while start.elapsed() < duration {
+                let ran = run_worker(queue.clone(), &conn, VECTORIZE_QUEUE).await?;
+                if ran.is_none() {
+                    // sleep 1 second between empty queue poll
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+            }
+            Ok(())
+        });
     }
     log!("pg-vectorize: shutting down");
 }
