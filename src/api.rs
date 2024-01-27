@@ -1,14 +1,18 @@
-use crate::executor::VectorizeMeta;
+use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
 use crate::guc;
+use crate::guc::BATCH_SIZE;
 use crate::init;
+use crate::init::VECTORIZE_QUEUE;
 use crate::search::cosine_similarity_search;
 use crate::transformers::http_handler::sync_get_model_info;
+use crate::transformers::types::Inputs;
 use crate::transformers::{openai, transform};
 use crate::types;
 use crate::types::JobParams;
 use crate::util;
 use anyhow::Result;
 use pgrx::prelude::*;
+use tiktoken_rs::cl100k_base;
 
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
@@ -23,7 +27,8 @@ fn table(
     transformer: default!(String, "'text-embedding-ada-002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'append'"),
-    schedule: default!(String, "'* * * * *'"),
+    // cron-like for a cron based update model, or 'realtime' for a trigger-based
+    schedule: default!(String, "'realtime'"),
 ) -> Result<String> {
     let job_type = types::JobType::Columns;
 
@@ -73,7 +78,8 @@ fn table(
         api_key: api_key
             .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
     };
-    let params = pgrx::JsonB(serde_json::to_value(valid_params).expect("error serializing params"));
+    let params =
+        pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
 
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
@@ -120,9 +126,65 @@ fn table(
     if let Err(e) = ran {
         error!("error creating embedding table: {}", e);
     }
-    // TODO: first batch update
-    // initialize cron
-    let _ = init::init_cron(&schedule, &job_name); // handle this error
+    match schedule.as_ref() {
+        "realtime" => {
+            // setup triggers
+            // TODO:
+
+            // start with initial batch load
+            let rows_need_update_query: String = new_rows_query(&job_name, &valid_params);
+            let mut inputs: Vec<Inputs> = Vec::new();
+            let bpe = cl100k_base().unwrap();
+            let _: Result<_, spi::Error> = Spi::connect(|c| {
+                let rows = c.select(&rows_need_update_query, None, None)?;
+                for row in rows {
+                    let ipt = row["input_text"]
+                        .value::<String>()?
+                        .expect("input_text is null");
+                    let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
+                    inputs.push(Inputs {
+                        record_id: row["record_id"]
+                            .value::<String>()?
+                            .expect("record_id is null"),
+                        inputs: ipt,
+                        token_estimate,
+                    });
+                }
+                Ok(())
+            });
+            let max_batch_size = BATCH_SIZE.get();
+            let batches = create_batches(inputs, max_batch_size);
+            let vectorize_meta = VectorizeMeta {
+                name: job_name.clone(),
+                job_id: 0, // TODO: lookup job id once this gets put into use
+                job_type: job_type.clone(),
+                params: serde_json::to_value(valid_params.clone()).unwrap(),
+                transformer: transformer.clone(),
+                search_alg: search_alg.clone(),
+                last_completion: None,
+            };
+            for b in batches {
+                let job_message = JobMessage {
+                    job_name: job_name.clone(),
+                    job_meta: vectorize_meta.clone(),
+                    inputs: b,
+                };
+                let query = format!(
+                    "select pgmq.send('{VECTORIZE_QUEUE}', '{}');",
+                    serde_json::to_string(&job_message).unwrap()
+                );
+                let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+                    let _r = c.update(&query, None, None)?;
+                    Ok(())
+                });
+            }
+        }
+        _ => {
+            // initialize cron
+            init::init_cron(&schedule, &job_name)?;
+            log!("Initialized cron job");
+        }
+    }
     Ok(format!("Successfully created job: {job_name}"))
 }
 
