@@ -1,15 +1,12 @@
 use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
-use crate::guc;
-use crate::guc::BATCH_SIZE;
-use crate::init;
-use crate::init::VECTORIZE_QUEUE;
+use crate::guc::{self, BATCH_SIZE};
+use crate::init::{self, VECTORIZE_QUEUE};
 use crate::job::{create_insert_trigger, create_trigger_handler, create_update_trigger};
 use crate::search::cosine_similarity_search;
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::types::Inputs;
 use crate::transformers::{openai, transform};
 use crate::types;
-use crate::types::JobParams;
 use crate::util;
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -214,7 +211,7 @@ fn search(
     } else {
         error!("failed to get project metadata");
     };
-    let proj_params: JobParams = serde_json::from_value(
+    let proj_params: types::JobParams = serde_json::from_value(
         serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
         }),

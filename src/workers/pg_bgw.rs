@@ -46,11 +46,15 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         let _worker_ran: Result<()> = runtime.block_on(async {
             // continue to poll without pauses
             let start = Instant::now();
-            let duration = Duration::from_secs(1);
+            let duration = Duration::from_secs(6);
+            // return control to wait_latch() after `duration` has elapsed
             while start.elapsed() < duration {
                 match run_worker(queue.clone(), &conn, VECTORIZE_QUEUE).await {
+                    // sleep for 2 seconds when no messages in the queue
                     Ok(None) => tokio::time::sleep(Duration::from_secs(2)).await,
+                    // sleep for 6 seconds when there is an error reading messages
                     Err(_) => tokio::time::sleep(Duration::from_secs(6)).await,
+                    // continue to poll where there was a message consumed
                     Ok(Some(_)) => continue,
                 }
             }

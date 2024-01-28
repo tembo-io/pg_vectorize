@@ -1,12 +1,10 @@
-use anyhow::Result;
-
+use super::generic::get_generic_svc_url;
+use super::types::TransformerMetadata;
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
+use anyhow::Result;
 use pgrx::prelude::*;
-
-use super::generic::get_generic_svc_url;
-use super::types::TransformerMetadata;
 
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
