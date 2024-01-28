@@ -8,16 +8,15 @@ on:
     branches:
       - main
 
-defaults:
-  run:
-    working-directory: ./vector-serve
-
 permissions:
   id-token: write
   contents: read
 
 jobs:
   build_and_push:
+    defaults:
+      run:
+        working-directory: ./vector-serve
     name: Build and push images
     runs-on:
       - self-hosted
