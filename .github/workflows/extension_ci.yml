@@ -110,6 +110,7 @@ jobs:
           ~/.cargo/bin/trunk install pgvector --pg-config ${pgrx15_config}
           ~/.cargo/bin/trunk install pgmq --pg-config ${pgrx15_config}
           ~/.cargo/bin/trunk install pg_cron --pg-config ${pgrx15_config}
+          echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-15/postgresql.conf
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
           cargo pgrx run ${pg_version} --pgcli || true
