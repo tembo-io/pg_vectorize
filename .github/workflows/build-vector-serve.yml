@@ -54,8 +54,8 @@ jobs:
         # push a build for every commit
         uses: docker/build-push-action@v5
         with:
-          file: ./Dockerfile
-          context: .
+          file: ./vector-serve/Dockerfile
+          context: ./vector-serve
           platforms: linux/amd64
           push: true
           tags: |
@@ -66,8 +66,8 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
-          file: ./Dockerfile
-          context: .
+          file: ./vector-serve/Dockerfile
+          context: ./vector-serve
           platforms: linux/amd64
           push: true
           tags: |
