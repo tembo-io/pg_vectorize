@@ -80,6 +80,12 @@ jobs:
     name: Run tests
     needs: dependencies
     runs-on: ubuntu-22.04
+    services:
+      # Label used to access the service container
+      vector-serve:
+        image: quay.io/tembo/vector-serve:latest
+        ports:
+          - 3000:3000
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
@@ -113,17 +119,14 @@ jobs:
           echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-15/postgresql.conf
           rm -rf ./target/pgrx-test-data-* || true
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
-          docker run -p 3000:3000 -d quay.io/tembo/vector-serve:latest
       - name: unit-test
         run: |
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
           cargo pgrx test ${pg_version}
       - name: integration-test
         run: |
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          cargo pgrx run ${pg_version} --pgcli || true
+          cargo pgrx start ${pg_version}
           cargo test -- --ignored --test-threads=1
 
   publish:
