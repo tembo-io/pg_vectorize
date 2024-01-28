@@ -124,7 +124,7 @@ jobs:
         run: |
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
           cargo pgrx run ${pg_version} --pgcli || true
-          cargo test -- --ignored
+          cargo test -- --ignored --test-threads=1
 
   publish:
     if: github.event_name == 'release'
