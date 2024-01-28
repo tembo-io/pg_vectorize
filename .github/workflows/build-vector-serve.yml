@@ -4,19 +4,28 @@ on:
   push:
     branches:
       - main
+    paths:
+      - ".github/workflows/build-vector-serve.yml"
+      - "./vector-serve/**"
+
   pull_request:
     branches:
       - main
+    paths:
+      - ".github/workflows/build-vector-serve.yml"
+      - "./vector-serve/**"
 
 permissions:
   id-token: write
   contents: read
 
+defaults:
+  run:
+    shell: bash
+    working-directory: ./vector-serve/
+  
 jobs:
   build_and_push:
-    defaults:
-      run:
-        working-directory: ./vector-serve
     name: Build and push images
     runs-on:
       - self-hosted
