@@ -118,7 +118,6 @@ jobs:
           ~/.cargo/bin/trunk install pg_cron --pg-config ${pgrx15_config}
           echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-15/postgresql.conf
           rm -rf ./target/pgrx-test-data-* || true
-          pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
       - name: unit-test
         run: |
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
@@ -126,7 +125,7 @@ jobs:
       - name: integration-test
         run: |
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          cargo pgrx start ${pg_version}
+          cargo pgrx start ${pg_version} || true
           cargo test -- --ignored --test-threads=1
 
   publish:
