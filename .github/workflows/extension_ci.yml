@@ -120,12 +120,13 @@ jobs:
           rm -rf ./target/pgrx-test-data-* || true
       - name: unit-test
         run: |
-          pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          cargo pgrx test ${pg_version}
+          cargo pgrx test
       - name: integration-test
         run: |
+          pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
           cargo pgrx start ${pg_version} || true
+          cargo pgrx install --pg-config ${pgrx15_config}
           cargo test -- --ignored --test-threads=1
 
   publish:

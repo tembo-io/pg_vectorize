@@ -43,15 +43,15 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
         if BackgroundWorker::sighup_received() {
             // on SIGHUP, you might want to reload configurations and env vars
         }
-        let _: Result<()> = runtime.block_on(async {
+        let _worker_ran: Result<()> = runtime.block_on(async {
             // continue to poll without pauses
             let start = Instant::now();
             let duration = Duration::from_secs(1);
             while start.elapsed() < duration {
-                let ran = run_worker(queue.clone(), &conn, VECTORIZE_QUEUE).await?;
-                if ran.is_none() {
-                    // sleep 1 second between empty queue poll
-                    tokio::time::sleep(Duration::from_secs(2)).await;
+                match run_worker(queue.clone(), &conn, VECTORIZE_QUEUE).await {
+                    Ok(None) =>  tokio::time::sleep(Duration::from_secs(2)).await,
+                    Err(_) => tokio::time::sleep(Duration::from_secs(6)).await,
+                    Ok(Some(_)) => continue
                 }
             }
             Ok(())
