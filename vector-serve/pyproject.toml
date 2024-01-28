@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "app"
+version = "0.1.0"
+description = ""
+authors = ["Tembo <engineering@tembo.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.104.0"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
+sentence-transformers = "^2.2.2"
+gunicorn = "^21.2.0"
+torch = "^2.1.2"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.1.13"
+black = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
