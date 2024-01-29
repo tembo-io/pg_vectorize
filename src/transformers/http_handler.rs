@@ -1,6 +1,5 @@
 use anyhow::Result;
 
-use crate::guc;
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
