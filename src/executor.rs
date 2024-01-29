@@ -6,14 +6,14 @@ use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
 use crate::transformers::types::Inputs;
 use crate::types;
-use crate::util::{from_env_default, get_pg_conn};
+use crate::util::get_pg_conn;
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use chrono::TimeZone;
 use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
-use sqlx::{FromRow, PgPool, Pool, Postgres, Row};
+use sqlx::{FromRow, Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
 
 // schema for every job
@@ -32,7 +32,7 @@ pub struct VectorizeMeta {
 
 // creates batches based on total token count
 // batch_size is the max token count per batch
-fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
+pub fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
     let mut groups: Vec<Vec<Inputs>> = Vec::new();
     let mut current_group: Vec<Inputs> = Vec::new();
     let mut current_token_count = 0;
@@ -146,18 +146,12 @@ pub async fn get_vectorize_meta(
     Ok(row)
 }
 
-// queries a table and returns rows that need new embeddings
-// used for the TableMethod::append, which has source and embedding on the same table
-pub async fn get_new_updates_append(
-    pool: &Pool<Postgres>,
-    job_name: &str,
-    job_params: types::JobParams,
-) -> Result<Option<Vec<Inputs>>, DatabaseError> {
+pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
     let cols = collapse_to_csv(&job_params.columns);
 
     // query source and return any new rows that need transformation
     // return any row where last updated embedding is also null (never populated)
-    let new_rows_query = format!(
+    format!(
         "
         SELECT 
             {record_id}::text as record_id,
@@ -173,9 +167,19 @@ pub async fn get_new_updates_append(
         schema = job_params.schema,
         table = job_params.table,
         updated_at_col = job_params.update_time_col,
-    );
+    )
+}
 
-    let rows: Result<Vec<PgRow>, Error> = sqlx::query(&new_rows_query).fetch_all(pool).await;
+// queries a table and returns rows that need new embeddings
+// used for the TableMethod::append, which has source and embedding on the same table
+pub async fn get_new_updates_append(
+    pool: &Pool<Postgres>,
+    job_name: &str,
+    job_params: types::JobParams,
+) -> Result<Option<Vec<Inputs>>, DatabaseError> {
+    let query = new_rows_query(job_name, &job_params);
+
+    let rows: Result<Vec<PgRow>, Error> = sqlx::query(&query).fetch_all(pool).await;
     match rows {
         Ok(rows) => {
             if !rows.is_empty() {
@@ -195,57 +199,6 @@ pub async fn get_new_updates_append(
             } else {
                 Ok(None)
             }
-        }
-        Err(sqlx::error::Error::RowNotFound) => Ok(None),
-        Err(e) => Err(e)?,
-    }
-}
-
-// queries a table and returns rows that need new embeddings
-#[allow(dead_code)]
-pub async fn get_new_updates_shared(
-    job_params: types::JobParams,
-    last_completion: chrono::DateTime<Utc>,
-) -> Result<Option<Vec<Inputs>>, DatabaseError> {
-    let pool = PgPool::connect(&from_env_default(
-        "DATABASE_URL",
-        "postgres:://postgres:postgres@localhost:5432/",
-    ))
-    .await?;
-
-    let cols = collapse_to_csv(&job_params.columns);
-
-    // query source and return any new rows that need transformation
-    let new_rows_query = format!(
-        "
-        SELECT 
-            {record_id}::text as record_id,
-            {cols} as input_text
-        FROM {schema}.{table}
-        WHERE {updated_at_col} > '{last_completion}'::timestamp;
-    ",
-        record_id = job_params.primary_key,
-        schema = job_params.schema,
-        table = job_params.table,
-        updated_at_col = job_params.update_time_col,
-    );
-
-    let mut new_inputs: Vec<Inputs> = Vec::new();
-
-    let rows: Result<Vec<PgRow>, Error> = sqlx::query(&new_rows_query).fetch_all(&pool).await;
-    match rows {
-        Ok(rows) => {
-            let bpe = cl100k_base().unwrap();
-            for r in rows {
-                let ipt: String = r.get("input_text");
-                let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
-                new_inputs.push(Inputs {
-                    record_id: r.get("record_id"),
-                    inputs: ipt,
-                    token_estimate,
-                })
-            }
-            Ok(Some(new_inputs))
         }
         Err(sqlx::error::Error::RowNotFound) => Ok(None),
         Err(e) => Err(e)?,

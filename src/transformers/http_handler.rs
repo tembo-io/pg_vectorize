@@ -1,12 +1,11 @@
+use super::generic::get_generic_svc_url;
+use super::types::TransformerMetadata;
 use anyhow::Result;
 
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
 use pgrx::prelude::*;
-
-use super::generic::get_generic_svc_url;
-use super::types::TransformerMetadata;
 
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
@@ -29,7 +28,7 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
 // handle an OpenAI compatible embedding transform request
 pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<Vec<f64>>> {
     log!(
-        "pg-vectorize: openai request size: {}",
+        "pg-vectorize: embedding request size: {}",
         request.payload.input.len()
     );
     let client = reqwest::Client::new();

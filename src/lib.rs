@@ -5,6 +5,7 @@ mod errors;
 mod executor;
 mod guc;
 mod init;
+mod job;
 mod query;
 mod search;
 mod transformers;
@@ -15,18 +16,8 @@ mod workers;
 pgrx::pg_module_magic!();
 
 extension_sql_file!("../sql/meta.sql");
-
 // example dataset
 extension_sql_file!("../sql/example.sql");
-
-#[cfg(any(test, feature = "pg_test"))]
-#[pg_schema]
-mod tests {
-    // #[pg_test]
-    // fn test_hello_tembo() {
-    //     assert_eq!("Hello, tembo", crate::hello_tembo());
-    // }
-}
 
 /// This module is required by `cargo pgrx test` invocations.
 /// It must be visible at the root of your extension crate.
