@@ -19,7 +19,7 @@ anyhow = "1.0.72"
 chrono = {version = "0.4.26", features = ["serde"] }
 lazy_static = "1.4.0"
 log = "0.4.19"
-pgmq = "0.26.0"
+pgmq = "0.26.1"
 pgrx = "0.11.2"
 postgres-types = "0.2.5"
 regex = "1.9.2"
