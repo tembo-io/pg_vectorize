@@ -8,29 +8,20 @@ use pgmq::{Message, PGMQueueExt};
 use pgrx::*;
 use sqlx::{Pool, Postgres};
 
-pub async fn run_workers(
+pub async fn run_worker(
     queue: PGMQueueExt,
     conn: &Pool<Postgres>,
     queue_name: &str,
-) -> Result<()> {
-    if let Ok(()) = run_worker(queue.clone(), conn, queue_name).await {
-        log!("pg-vectorize: worker finished");
-    } else {
-        warning!("pg-vectorize: worker failed");
-    }
-    Ok(())
-}
-
-pub async fn run_worker(queue: PGMQueueExt, conn: &Pool<Postgres>, queue_name: &str) -> Result<()> {
+) -> Result<Option<()>> {
     let msg: Message<JobMessage> = match queue.read::<JobMessage>(queue_name, 180_i32).await {
         Ok(Some(msg)) => msg,
         Ok(None) => {
             log!("pg-vectorize: No messages in queue");
-            return Ok(());
+            return Ok(None);
         }
         Err(e) => {
             warning!("pg-vectorize: Error reading message: {e}");
-            return Ok(());
+            return Err(anyhow::anyhow!("failed to read message"));
         }
     };
 
@@ -58,7 +49,9 @@ pub async fn run_worker(queue: PGMQueueExt, conn: &Pool<Postgres>, queue_name: &
             }
         }
     }
-    Ok(())
+    // return Some(), indicating that worker consumed some message
+    // any possibly more messages on queue
+    Ok(Some(()))
 }
 
 async fn upsert_embedding_table(

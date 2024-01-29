@@ -25,22 +25,8 @@ pub mod common {
         ))
         .await;
 
-        // DROP EXTENSION
-        let _ = sqlx::query("DROP EXTENSION IF EXISTS vectorize CASCADE")
-            .execute(&conn)
-            .await
-            .expect("failed to drop extension");
-        let _ = sqlx::query("DROP EXTENSION IF EXISTS pgmq CASCADE")
-            .execute(&conn)
-            .await
-            .expect("failed to drop extension");
-        let _ = sqlx::query("DROP EXTENSION IF EXISTS pg_cron CASCADE")
-            .execute(&conn)
-            .await
-            .expect("failed to drop extension");
-
         // CREATE EXTENSION
-        let _ = sqlx::query("CREATE EXTENSION vectorize CASCADE")
+        let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS vectorize CASCADE")
             .execute(&conn)
             .await
             .expect("failed to create extension");
@@ -97,5 +83,17 @@ pub mod common {
             .await
             .expect("failed to select from test_table")
             .get::<i64, usize>(0)
+    }
+
+    pub async fn init_embedding_svc_url(conn: &Pool<Postgres>) {
+        let set_guc = format!(
+            "ALTER SYSTEM SET vectorize.embedding_service_url to 'http://0.0.0.0:3000/v1/embeddings';");
+        let reload = "SELECT pg_reload_conf();".to_string();
+        for q in vec![set_guc, reload] {
+            sqlx::query(&q)
+                .execute(conn)
+                .await
+                .expect("failed to init embedding svc url");
+        }
     }
 }
