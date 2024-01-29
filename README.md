@@ -10,11 +10,9 @@ One function call to initialize your data. Another function call to search.
 [![PGXN version](https://badge.fury.io/pg/pg_vectorize.svg)](https://pgxn.org/dist/pg_vectorize/)
 
 1. [Installation](#installation)
-2. [Overview](#overview)
-2. [HuggingFace Example](#huggingface-example)
-3. [OpenAI Example](#openai-example)
-4. [Fourth Example](#fourth-examplehttpwwwfourthexamplecom)
-
+2. [API Overview](#api-overview)
+3. [HuggingFace Example](#huggingface-example)
+4. [OpenAI Example](#openai-example)
 
 ## Installation
 
@@ -54,7 +52,7 @@ Postgres Extensions:
 
 </details>
 
-## Overview
+## API Overview
 
 pg_vectorize is a high level API over pgvector and provides integrations into orcehstrating the transform of text to embeddings through three functions:
 
