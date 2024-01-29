@@ -56,7 +56,9 @@ Postgres Extensions:
 
 pg_vectorize is a high level API over pgvector and provides integrations into orcehstrating the transform of text to embeddings through three functions:
 
-### `vectorize.table()` - sets up a vectorize job which handles transforming existing data into embeddings, and keeping the embeddings updated as new data is inserted or existing rows are updated.
+### `vectorize.table()`
+
+Configures a vectorize job which handles transforming existing data into embeddings, and keeping the embeddings updated as new data is inserted or existing rows are updated.
 
 ```sql
 SELECT vectorize.table(
@@ -70,7 +72,9 @@ SELECT vectorize.table(
 
 ### `vectorize.search()`
 
-an abstraction over a text-to-embedding transformation and pgvector's vector similarity search functionality. Used in conjuction with `vectorize.table()`..
+An abstraction over a text-to-embedding transformation and pgvector's vector similarity search functionality. Used in conjuction with `vectorize.table()`.
+
+Returns `ARRAY[json]`
 
 ```sql
 SELECT * FROM vectorize.search(
@@ -83,15 +87,18 @@ SELECT * FROM vectorize.search(
 
 ### `vectorize.transform_embeddings()`
 
-a direct hook to a transformer model of your choice.
+A direct hook to a transformer model of your choice.
+
+Returns `ARRAY[float]` (embeddings)
 
 ```sql
 select vectorize.transform_embeddings(
     input => 'the quick brown fox jumped over the lazy dogs',
     model_name => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
-)
-```
+);
 
+{-0.2556323707103729,-0.3213586211204529 ..., -0.0951206386089325}
+```
 
 ## HuggingFace Example
 
