@@ -1,0 +1,74 @@
+name: Build and deploy server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-vector-serve.yml"
+      - "./vector-serve/**"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-vector-serve.yml"
+      - "./vector-serve/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./vector-serve/
+  
+jobs:
+  build_and_push:
+    name: Build and push images
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
+    outputs:
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Set version strings
+        id: versions
+        run: |
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+  
+      - name: Login to Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+
+      - name: Build and push -- Commit
+        # push a build for every commit
+        uses: docker/build-push-action@v5
+        with:
+          file: ./vector-serve/Dockerfile
+          context: ./vector-serve
+          platforms: linux/amd64
+          push: true
+          tags: |
+            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: Build and push -- Latest
+        # only push latest off main
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          file: ./vector-serve/Dockerfile
+          context: ./vector-serve
+          platforms: linux/amd64
+          push: true
+          tags: |
+            quay.io/tembo/vector-serve:latest

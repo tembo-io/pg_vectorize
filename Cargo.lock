@@ -1464,9 +1464,9 @@ dependencies = [
 
 [[package]]
 name = "pgmq"
-version = "0.26.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c0159d414341a3badb16cc9b7282cad40ee8c461d30c1a1a32f3be17d4039d6"
+checksum = "ff3ab5bc329e915320344453e927080b4b3550f3aa0c91091e9684e33ceb795b"
 dependencies = [
  "chrono",
  "log",
@@ -1481,9 +1481,9 @@ dependencies = [
 
 [[package]]
 name = "pgmq-core"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20f19308759ed74b4085e5021e23c84b1e9c645a8784339af920dd841df6fa32"
+checksum = "65f1c261a1ee2cd46727c41a1e4257bb1d9aeea72a5c55cd91bc08805d4b0246"
 dependencies = [
  "chrono",
  "log",
