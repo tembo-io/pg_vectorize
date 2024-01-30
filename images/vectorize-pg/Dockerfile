@@ -1,9 +1,9 @@
 FROM postgres:15.4-bookworm as builder
 
-ARG PGMQ_VER=0.33.1
-ARG VECTOR_VER=0.5.1
-ARG VECTORIZE_VER=0.5.0
-ARG PARTMAN_VER=4.7.3
+ARG PGMQ_VER=1.1.1
+ARG VECTOR_VER=0.6.0
+ARG CRON_VER=1.6.2
+ARG PGRX_VER=0.11.3
 
 RUN apt-get update \
     && apt-get install -y \
@@ -28,7 +28,7 @@ RUN git clone https://github.com/pgvector/pgvector.git && \
     cd .. && rm -rf pgvector
 
 # install pg_cron
-RUN git clone https://github.com/citusdata/pg_cron.git && \
+RUN git clone https://github.com/citusdata/pg_cron.git --branch v$CRON_VER && \
 	cd pg_cron && \
 	make && make install && \
     cd .. && rm -rf pg_cron
@@ -38,7 +38,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
 # install pgrx
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.11.0 --locked
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
 
 # install pgmq
 RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
