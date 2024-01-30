@@ -24,13 +24,13 @@ One function call to initialize your data. Another function call to search.
 The fastest way to get started is by running the Tembo docker container and the vector server with docker compose:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Then connect to Postgres:
 
 ```text
-docker-compose exec -it postgres psql
+docker compose exec -it postgres psql
 ```
 
 Enable the extension and its dependencies
