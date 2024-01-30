@@ -56,19 +56,19 @@ jobs:
         with:
           file: ./vector-serve/Dockerfile
           context: ./vector-serve
-          platforms: linux/amd64
+          platforms: linux/amd64, linux/arm64
           push: true
           tags: |
             quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Latest
         # only push latest off main
-        if: github.ref == 'refs/heads/main'
+        # if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           file: ./vector-serve/Dockerfile
           context: ./vector-serve
-          platforms: linux/amd64
+          platforms: linux/amd64, linux/arm64
           push: true
           tags: |
             quay.io/tembo/vector-serve:latest
