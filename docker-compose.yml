@@ -1,0 +1,15 @@
+version: '3.2'
+
+services:
+  postgres:
+    restart: always
+    image: quay.io/tembo/vectorize-pg:latest
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=postgres
+  vector-serve:
+    restart: always
+    image: quay.io/tembo/vector-serve:latest
+    ports:
+      - 3000:3000
