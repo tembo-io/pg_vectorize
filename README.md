@@ -9,17 +9,22 @@ One function call to initialize your data. Another function call to search.
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
 [![PGXN version](https://badge.fury.io/pg/pg_vectorize.svg)](https://pgxn.org/dist/pg_vectorize/)
 
-1. [Installation](#installation)
-2. [API Overview](#api-overview)
-3. [HuggingFace Example](#huggingface-example)
-4. [OpenAI Example](#openai-example)
+- [pg\_vectorize](#pg_vectorize)
+  - [Installation](#installation)
+  - [API Overview](#api-overview)
+    - [`vectorize.table()`](#vectorizetable)
+    - [`vectorize.search()`](#vectorizesearch)
+    - [`vectorize.transform_embeddings()`](#vectorizetransform_embeddings)
+  - [HuggingFace Example](#huggingface-example)
+  - [OpenAI Example](#openai-example)
+  - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
 
 The fastest way to get started is by running the Tembo docker container and the vector server with docker compose:
 
 ```bash
-docker-compose up
+docker-compose up -d
 ```
 
 Then connect to Postgres:
