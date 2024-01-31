@@ -1,6 +1,6 @@
 # pg_vectorize
 
-The simplest way to do vector search in Postgres. Vectorize is a Postgres extension that automates that the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
+The simplest way to do vector search in Postgres. Vectorize is a Postgres extension that automates the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
 
 It has integrations into both OpenAI's embedding's endpoint and a self-hosted container running HuggingFace's Sentence-Transformers.
 
