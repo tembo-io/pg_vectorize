@@ -57,6 +57,22 @@ Postgres Extensions:
 - [pgmq](https://github.com/tembo-io/pgmq) ^1
 - [pgvector](https://github.com/pgvector/pgvector) ^0.5.0
 
+Then set the following either in postgresql.conf or as a configuration parameter:
+
+```sql
+-- requires restart of Postgres
+alter system set shared_preload_libraries = 'vectorize,pg_cron';
+alter system set cron.database_name = 'postgres'
+```
+
+And if you're running the vector-serve container, set the following url as a configuration parameter in Postgres.
+
+```sql
+alter system set vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
+
+SELECT pg_reload_conf();
+```
+
 </details>
 
 ## API Overview
