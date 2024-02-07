@@ -20,7 +20,6 @@ One function call to initialize your data. Another function call to search. Auto
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 
-
 ## Features
 
 - Integrations with [OpenAI's embeddings](https://platform.openai.com/docs/guides/embeddings) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
@@ -35,8 +34,9 @@ One function call to initialize your data. Another function call to search. Auto
   - [`vectorize.table()`](#vectorizetable)
   - [`vectorize.search()`](#vectorizesearch)
   - [`vectorize.transform_embeddings()`](#vectorizetransform_embeddings)
-- [HuggingFace Example](#huggingface-example)
+- [Hugging Face Example](#hugging-face-example)
 - [OpenAI Example](#openai-example)
+- [Trigger based updates](#trigger-based-updates)
 - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
@@ -141,7 +141,7 @@ select vectorize.transform_embeddings(
 {-0.2556323707103729,-0.3213586211204529 ..., -0.0951206386089325}
 ```
 
-## HuggingFace Example
+## Hugging Face Example
 
 Setup a products table. Copy from the example data provided by the extension.
 
@@ -175,7 +175,6 @@ SELECT vectorize.table(
 
 This adds a new column to your table, in our case it is named `product_search_embeddings`, then populates that data with the transformed embeddings from the `product_name` and `description` columns.
 
-
 Then search,
 
 ```sql
@@ -196,7 +195,6 @@ SELECT * FROM vectorize.search(
 ## OpenAI Example
 
 pg_vectorize also works with using OpenAI's embeddings, but first you'll need an API key.
-
 
 - [openai API key](https://platform.openai.com/docs/guides/embeddings)
 
@@ -245,6 +243,19 @@ SELECT * FROM vectorize.search(
  {"product_id": 24, "product_name": "Tablet Holder", "similarity_score": 0.8295988934993099}
  {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8250355616233103}
 (3 rows)
+```
+
+## Trigger based updates
+
+When vectorize job is set up as `realtime` (the default behavior, via `vectorize.table(..., schedule => 'realtime')`), vectorize will create triggers on your table that will keep your embeddings up to date. When the text inputs are updated or if new rows are inserted, the triggers handle creating a background job that updates the embeddings. Since the transformation is executed in a background job and the transformer model is invoked in a separate container, there is minimal impact on the performance of the update or insert statement.
+
+```sql
+INSERT INTO products (product_id, product_name, description)
+VALUES (12345, 'pizza', 'dish of Italian origin consisting of a flattened disk of bread');
+
+UPDATE products
+SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
+WHERE product_name = 'Hammock';
 ```
 
 ## Try it on Tembo Cloud
