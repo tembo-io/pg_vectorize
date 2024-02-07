@@ -1,23 +1,35 @@
-# pg_vectorize
+<h1 align="center">
+ <b>pg_vectorize: Automated Vector Search on Postgres</b>
+<br>
+   
+<br/>
+  <a href="https://tembo.io"><img src="https://github.com/tembo-io/pg_vectorize/assets/15756360/34d65cba-065b-485f-84a4-76284e9def19" alt="pg_vectorize" width="368px"></a>
 
-![tembo_ml](https://github.com/tembo-io/pg_vectorize/assets/15756360/34d65cba-065b-485f-84a4-76284e9def19)
+</h1>
 
-The simplest way to do vector search in Postgres. Vectorize is a Postgres extension that automates the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
+<p align="center">
+  
+</p>
+
+A Postgres extension that automates the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
 
 One function call to initialize your data. Another function call to search. Automated management of Postgres triggers and background jobs to keep your embeddings up to date.
 
-[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
+---
+
+[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 
 
 ## Features
 
-- Integrations with [OpenAI's embeddings](https://platform.openai.com/docs/guides/embeddings) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers).
-- Automated creation of Postgres triggers to keep your embeddings up to date.
+- Integrations with [OpenAI's embeddings](https://platform.openai.com/docs/guides/embeddings) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
+- Automated creation of Postgres triggers to keep your embeddings up to date
 - High level API - one function to initialize embeddings transformations, and another function to search
 
-- [pg\_vectorize](#pg_vectorize)
+## Table of Contents
 - [Features](#features)
+- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
 - [API Overview](#api-overview)
   - [`vectorize.table()`](#vectorizetable)
