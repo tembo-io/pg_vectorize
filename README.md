@@ -4,22 +4,28 @@
 
 The simplest way to do vector search in Postgres. Vectorize is a Postgres extension that automates the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
 
-It has integrations into both OpenAI's embedding's endpoint and a self-hosted container running HuggingFace's Sentence-Transformers.
-
-One function call to initialize your data. Another function call to search.
+One function call to initialize your data. Another function call to search. Automated management of Postgres triggers and background jobs to keep your embeddings up to date.
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-20dtnhcmo-pLNV7_Aobi50TdTLpfQ~EQ)
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 
+
+## Features
+
+- Integrations with [OpenAI's embeddings](https://platform.openai.com/docs/guides/embeddings) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers).
+- Automated creation of Postgres triggers to keep your embeddings up to date.
+- High level API - one function to initialize embeddings transformations, and another function to search
+
 - [pg\_vectorize](#pg_vectorize)
-  - [Installation](#installation)
-  - [API Overview](#api-overview)
-    - [`vectorize.table()`](#vectorizetable)
-    - [`vectorize.search()`](#vectorizesearch)
-    - [`vectorize.transform_embeddings()`](#vectorizetransform_embeddings)
-  - [HuggingFace Example](#huggingface-example)
-  - [OpenAI Example](#openai-example)
-  - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
+- [Features](#features)
+- [Installation](#installation)
+- [API Overview](#api-overview)
+  - [`vectorize.table()`](#vectorizetable)
+  - [`vectorize.search()`](#vectorizesearch)
+  - [`vectorize.transform_embeddings()`](#vectorizetransform_embeddings)
+- [HuggingFace Example](#huggingface-example)
+- [OpenAI Example](#openai-example)
+- [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
 
