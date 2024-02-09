@@ -12,6 +12,11 @@ use anyhow::Result;
 use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 
+use openai_api_rs::v1::api::Client;
+use std::env;
+
+use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
+
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table(
@@ -340,21 +345,15 @@ fn chat(
 
     let rendered_prompt = RenderedPromt {
         sys_rendered: sys_prompt_template,
-        user_rendered: user_rendered,
+        user_rendered,
     };
 
     // http request to chat completions
-    let chat_response = call_chat_completions(rendered_prompt)?;
+    let chat_response = call_chat_completions(rendered_prompt, chat_model)?;
     Ok(chat_response)
 }
 
-use openai_api_rs::v1::api::Client;
-use std::env;
-
-use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest, ChatCompletionResponse};
-use openai_api_rs::v1::common::GPT4;
-
-fn call_chat_completions(prompts: RenderedPromt) -> Result<String> {
+fn call_chat_completions(prompts: RenderedPromt, model: String) -> Result<String> {
     let client = Client::new(env::var("OPENAI_API_KEY").unwrap().to_string());
 
     let sys_msg = chat_completion::ChatCompletionMessage {
@@ -368,7 +367,7 @@ fn call_chat_completions(prompts: RenderedPromt) -> Result<String> {
         name: None,
     };
 
-    let req = ChatCompletionRequest::new(GPT4.to_string(), vec![sys_msg, usr_msg]);
+    let req = ChatCompletionRequest::new(model, vec![sys_msg, usr_msg]);
     let result = client.chat_completion(req)?;
     // println!("{:?}", result.choices[0].message.content);
     let resp = format!("{:?}", result.choices[0].message.content);
