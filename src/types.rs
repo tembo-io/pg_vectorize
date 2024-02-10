@@ -88,7 +88,7 @@ pub struct JobParams {
     pub schema: String,
     pub table: String,
     pub columns: Vec<String>,
-    pub update_time_col: String,
+    pub update_time_col: Option<String>,
     pub table_method: TableMethod,
     pub primary_key: String,
     pub pkey_type: String,

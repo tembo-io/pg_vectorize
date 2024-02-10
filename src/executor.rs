@@ -151,23 +151,36 @@ pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
 
     // query source and return any new rows that need transformation
     // return any row where last updated embedding is also null (never populated)
-    format!(
+    let base_query = format!(
         "
         SELECT 
-            {record_id}::text as record_id,
-            {cols} as input_text
+        {record_id}::text as record_id,
+        {cols} as input_text
         FROM {schema}.{table}
-        WHERE {updated_at_col} > COALESCE
-            (
-                {job_name}_updated_at::timestamp,
-                '0001-01-01 00:00:00'::timestamp
-            );
-    ",
+        ",
         record_id = job_params.primary_key,
         schema = job_params.schema,
         table = job_params.table,
-        updated_at_col = job_params.update_time_col,
-    )
+    );
+    if let Some(updated_at_col) = &job_params.update_time_col {
+        // updated_at_column is not required when `schedule` is realtime
+        let where_clause = format!(
+            "
+            WHERE {updated_at_col} > COALESCE
+            (
+                {job_name}_updated_at::timestamp,
+                '0001-01-01 00:00:00'::timestamp
+            )",
+        );
+        format!(
+            "
+            {base_query}
+            {where_clause}
+        "
+        )
+    } else {
+        base_query
+    }
 }
 
 // queries a table and returns rows that need new embeddings
