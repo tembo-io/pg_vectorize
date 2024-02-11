@@ -46,7 +46,7 @@ fn search(
     api_key: default!(Option<String>, "NULL"),
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
-) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>, spi::Error> {
+) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
     let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
         js
     } else {
@@ -83,7 +83,7 @@ fn transform_embeddings(
     input: &str,
     model_name: default!(String, "'text-embedding-ada-002'"),
     api_key: default!(Option<String>, "NULL"),
-) -> Result<Vec<f64>, spi::Error> {
+) -> Result<Vec<f64>> {
     Ok(transform(input, &model_name, api_key).remove(0))
 }
 
@@ -93,8 +93,8 @@ fn chat_table(
     agent_name: &str,
     table_name: &str,
     unique_record_id: &str,
-    // columns that have data we want to be able to chat with
-    columns: Vec<String>,
+    // column that have data we want to be able to chat with
+    column: &str,
     schema: default!(&str, "'public'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'text-embedding-ada-002'"),
@@ -102,6 +102,8 @@ fn chat_table(
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'append'"),
 ) -> Result<String> {
+    // chat only supports single columns transform
+    let columns = vec![column.to_string()];
     init_table(
         agent_name,
         schema,
@@ -124,6 +126,9 @@ fn chat(
     query: &str,
     chat_model: default!(&str, "'gpt-3.5-turbo'"),
     task: default!(&str, "'question_answer'"),
-) -> Result<String> {
-    call_chat(agent_name, query, chat_model, task)
+    api_key: default!(Option<&str>, "NULL"),
+) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
+    let resp = call_chat(agent_name, query, chat_model, task, api_key)?;
+    let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
+    Ok(TableIterator::new(iter))
 }

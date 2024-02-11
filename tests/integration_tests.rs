@@ -157,3 +157,47 @@ async fn test_realtime_job() {
     }
     assert!(found_it);
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_chat() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+    let test_table_name = common::init_test_table(test_num, &conn).await;
+    let agent_name = format!("agnet_{}", test_num);
+
+    println!("test_table_name: {}", test_table_name);
+    println!("agent_name: {}", agent_name);
+    // initialize
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.chat_table(
+            agent_name => '{agent_name}',
+            table_name => '{test_table_name}',
+            unique_record_id => 'product_id',
+            columns => ARRAY['description'],
+            transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    // must be able to conduct vector search on agent tables
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.search(
+        job_name => '{agent_name}',
+        query => 'car testing devices',
+        return_columns => ARRAY['description'],
+        num_results => 3
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to select from test_table");
+    assert_eq!(result.rows_affected(), 3);
+}
