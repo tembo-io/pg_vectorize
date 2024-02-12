@@ -176,7 +176,7 @@ async fn test_chat() {
             agent_name => '{agent_name}',
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',
-            columns => ARRAY['description'],
+            \"column\" => 'description',
             transformer => 'sentence-transformers/all-MiniLM-L12-v2'
     );"
     ))
