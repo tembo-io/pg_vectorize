@@ -124,11 +124,27 @@ fn chat_table(
 fn chat(
     agent_name: &str,
     query: &str,
+    // chat models: currently only supports gpt 3.5 and 4
+    // https://platform.openai.com/docs/models/gpt-3-5-turbo
+    // https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
     chat_model: default!(&str, "'gpt-3.5-turbo'"),
+    // points to the type of prompt template to use
     task: default!(&str, "'question_answer'"),
     api_key: default!(Option<&str>, "NULL"),
+    // number of records to include in the context
+    num_context: default!(i32, 2),
+    // truncates context to fit the model's context window
+    force_trim: default!(bool, false),
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
-    let resp = call_chat(agent_name, query, chat_model, task, api_key)?;
+    let resp = call_chat(
+        agent_name,
+        query,
+        chat_model,
+        task,
+        api_key,
+        num_context,
+        force_trim,
+    )?;
     let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
     Ok(TableIterator::new(iter))
 }
