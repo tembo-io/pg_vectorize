@@ -1,13 +1,15 @@
 use crate::executor::VectorizeMeta;
 use crate::guc;
+use crate::types;
 use crate::util::get_vectorize_meta_spi;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
 use serde::Serialize;
+use tiktoken_rs::{get_bpe_from_model, model::get_context_size, CoreBPE};
 
 struct PromptTemplate {
     pub sys_prompt: String,
@@ -19,10 +21,11 @@ struct RenderedPromt {
     pub user_rendered: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct ContextualSearch {
     pub record_id: String,
     pub content: String,
+    pub token_ct: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -37,6 +40,8 @@ pub fn call_chat(
     chat_model: &str,
     task: &str,
     api_key: Option<&str>,
+    num_context: i32,
+    force_trim: bool,
 ) -> Result<ChatResponse> {
     // get job metadata
     let project_meta: VectorizeMeta = if let Ok(Some(js)) = get_vectorize_meta_spi(agent_name) {
@@ -44,9 +49,12 @@ pub fn call_chat(
     } else {
         error!("failed to get project metadata");
     };
-    use crate::types;
+
     let job_params = serde_json::from_value::<types::JobParams>(project_meta.params.clone())
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
+
+    // for various token count estimations
+    let bpe = get_bpe_from_model(chat_model).expect("failed to get BPE from model");
 
     // can only be 1 column in a chat job, for now, so safe to grab first element
     let content_column = job_params.columns[0].clone();
@@ -62,7 +70,7 @@ pub fn call_chat(
             job_name => '{agent_name}',
             query => '{query}',
             return_columns => $1,
-            num_results => 2
+            num_results => {num_context}
         )",
         );
         let tup_table = c.select(
@@ -84,11 +92,15 @@ pub fn call_chat(
             let content = row_js
                 .get(&content_column)
                 .unwrap_or_else(|| error!("`{content_column}` not found"));
+            let text_content =
+                serde_json::to_string(content).expect("failed to serialize content to string");
+
+            let token_ct = bpe.encode_with_special_tokens(&text_content).len() as i32;
             results.push(ContextualSearch {
                 record_id: serde_json::to_string(record_id)
                     .expect("failed to serialize record_id to string"),
-                content: serde_json::to_string(content)
-                    .expect("failed to serialize content to string"),
+                content: text_content,
+                token_ct,
             });
         }
         Ok(results)
@@ -120,13 +132,19 @@ pub fn call_chat(
 
     let sys_prompt_template = p_ok.sys_prompt;
     let user_prompt_template = p_ok.user_prompt;
-    let combined_content = search_results
-        .iter()
-        .map(|cs| cs.content.as_str())
-        .collect::<Vec<&str>>()
-        .join("\n\n");
+
+    let max_context_length = get_context_size(chat_model) as i32;
+
+    // determine how much of the context_limit is consumed by the prompt
+    let sys_prompt_token_ct = bpe.encode_with_special_tokens(&sys_prompt_template).len() as i32;
+    let user_prompt_token_ct = bpe.encode_with_special_tokens(&user_prompt_template).len() as i32;
+
+    let remaining_tokens = max_context_length - sys_prompt_token_ct - user_prompt_token_ct;
+
+    let prepared_context = prepare_context(&search_results, remaining_tokens, force_trim, &bpe)?;
+
     let render_vals = serde_json::json!({
-        "context_str": combined_content,
+        "context_str": prepared_context,
         "query_str": query,
     });
     let user_rendered: String = handlebars.render_template(&user_prompt_template, &render_vals)?;
@@ -183,4 +201,82 @@ fn call_chat_completions(
         .clone()
         .expect("no response from chat model");
     Ok(chat_response)
+}
+
+// Trims the context to fit within the token limit when force_trim = True
+// Otherwise returns an error if the context exceeds the token limit
+fn prepare_context(
+    searches: &[ContextualSearch],
+    context_limit: i32,
+    force_trim: bool,
+    bpe: &CoreBPE,
+) -> Result<String> {
+    let num_results = searches.len() as i32;
+    let total_tokens: i32 = searches.iter().map(|s| s.token_ct).sum();
+
+    // we separate each contextual result with a newline, which adds 1 token
+    let total_tokens: i32 = total_tokens + num_results - 1;
+    let exceed_limit = total_tokens > context_limit;
+
+    if exceed_limit && !force_trim {
+        let err_msg = format!(
+            "context exceeds limit: {} > {}",
+            total_tokens, context_limit
+        );
+        return Err(anyhow!(err_msg));
+    }
+
+    let combined_string = searches
+        .iter()
+        .map(|s| s.content.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n\n");
+
+    let tokens = bpe.split_by_token(&combined_string, true)?;
+
+    // naively trimming the context
+    let trimmed_context: String = tokens
+        .iter()
+        .take(context_limit as usize)
+        .cloned()
+        .collect::<String>();
+    Ok(trimmed_context)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepare_context() {
+        let bpe = get_bpe_from_model("gpt-4").unwrap();
+        let sentence1 = "This is a test";
+        let sentence2 = "This is a much longer test";
+
+        let context = ContextualSearch {
+            record_id: "1".to_string(),
+            content: sentence1.to_string(),
+            token_ct: bpe.encode_with_special_tokens(&sentence1).len() as i32,
+        };
+
+        let context2 = ContextualSearch {
+            record_id: "2".to_string(),
+            content: sentence2.to_string(),
+            token_ct: bpe.encode_with_special_tokens(&sentence2).len() as i32,
+        };
+        let context_str =
+            prepare_context(&[context.clone(), context2.clone()], 11, false, &bpe).unwrap();
+        assert_eq!("This is a test\n\nThis is a much longer test", context_str);
+
+        // without force_trim, this errors
+        let context_str = prepare_context(&[context.clone(), context2.clone()], 1, false, &bpe);
+        assert!(context_str.is_err());
+
+        // force trim the result
+        let context_str =
+            prepare_context(&[context.clone(), context2.clone()], 1, true, &bpe).unwrap();
+        assert_eq!("This", context_str);
+        let context_str = prepare_context(&[context, context2], 6, true, &bpe).unwrap();
+        assert_eq!("This is a test\n\nThis", context_str);
+    }
 }
