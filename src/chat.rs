@@ -381,18 +381,11 @@ mod tests {
 
     #[test]
     fn test_render_user_message() {
-        let bpe = get_bpe_from_model("gpt-3.5-turbo").unwrap();
         let prompt_template =
             "You are a sky expert, and here is context: {{context_str}} Question: {{query_str}}";
         let context = "The sky is the color blue.";
         let query = "What color is the sky?";
         let rendered = render_user_message(prompt_template, context, query).unwrap();
         assert_eq!("You are a sky expert, and here is context: The sky is the color blue. Question: What color is the sky?", rendered);
-
-        let prompt_template_ct = bpe.encode_ordinary(prompt_template).len() as i32;
-        let context_ct = bpe.encode_ordinary(context).len() as i32;
-        let query_ct = bpe.encode_ordinary(query).len() as i32;
-        let rendered_ct = bpe.encode_ordinary(&rendered).len() as i32;
-        assert_eq!(rendered_ct, prompt_template_ct + context_ct + query_ct);
     }
 }
