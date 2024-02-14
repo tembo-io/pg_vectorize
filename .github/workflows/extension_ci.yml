@@ -75,7 +75,7 @@ jobs:
         with:
           working-directory: ./
       - name: Cargo format
-        run: cargo +nightly fmt --all --check
+        run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy
 
@@ -123,13 +123,13 @@ jobs:
           rm -rf ./target/pgrx-test-data-* || true
       - name: unit-test
         run: |
-          cargo pgrx test
+          make test-unit
       - name: integration-test
         run: |
           pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
           echo "\q" | make run
-          cargo test -- --ignored --test-threads=1
+          make test-integration
 
   publish:
     if: github.event_name == 'release'

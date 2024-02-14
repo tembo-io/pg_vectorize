@@ -99,9 +99,9 @@ fn job_execute(job_name: String) {
 
         match new_or_updated_rows {
             Some(rows) => {
-                log!("num new records: {}", rows.len());
+                info!("num new records: {}", rows.len());
                 let batches = create_batches(rows, max_batch_size);
-                log!(
+                info!(
                     "total batches: {}, max_batch_size: {}",
                     batches.len(),
                     max_batch_size
@@ -131,7 +131,6 @@ pub async fn get_vectorize_meta(
     job_name: &str,
     conn: &Pool<Postgres>,
 ) -> Result<VectorizeMeta, DatabaseError> {
-    log!("fetching job: {}", job_name);
     let row = sqlx::query_as!(
         VectorizeMeta,
         "

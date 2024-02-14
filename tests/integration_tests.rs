@@ -160,7 +160,7 @@ async fn test_realtime_job() {
 
 #[ignore]
 #[tokio::test]
-async fn test_chat() {
+async fn test_rag() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
     let mut rng = rand::thread_rng();
@@ -172,7 +172,7 @@ async fn test_chat() {
     println!("agent_name: {}", agent_name);
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.chat_table(
+        "SELECT vectorize.init_rag(
             agent_name => '{agent_name}',
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',

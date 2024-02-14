@@ -106,11 +106,9 @@ pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
     let mut cfg = Config::default();
 
     if let Some(host) = guc::get_guc(guc::VectorizeGuc::Host) {
-        log!("Using socket url from GUC: {:?}", host);
+        info!("Using socket url from GUC: {:?}", host);
         cfg.vectorize_socket_url = Some(host);
     };
-
-    log!("pg-vectorize: config {:?}", cfg);
 
     let opts = get_pg_options(cfg)?;
     let pgp = PgPoolOptions::new()
@@ -159,13 +157,13 @@ fn get_pgc_tcp_opt(url: Url) -> Result<PgConnectOptions> {
 pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
     match cfg.vectorize_socket_url {
         Some(socket_url) => {
-            log!("VECTORIZE_SOCKET_URL={:?}", socket_url);
+            info!("VECTORIZE_SOCKET_URL={:?}", socket_url);
             let socket_conn = PostgresSocketConnection::from_unix_socket_string(&socket_url)
                 .expect("failed to parse socket url");
             get_pgc_socket_opt(socket_conn)
         }
         None => {
-            log!("DATABASE_URL={}", cfg.pg_conn_str);
+            info!("DATABASE_URL={}", cfg.pg_conn_str);
             let url = Url::parse(&cfg.pg_conn_str)?;
             get_pgc_tcp_opt(url)
         }
