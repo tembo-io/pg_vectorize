@@ -172,7 +172,7 @@ async fn test_chat() {
     println!("agent_name: {}", agent_name);
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.chat_table(
+        "SELECT vectorize.init_chat(
             agent_name => '{agent_name}',
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',

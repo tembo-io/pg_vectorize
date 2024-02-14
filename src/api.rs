@@ -89,7 +89,7 @@ fn transform_embeddings(
 
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
-fn chat_table(
+fn init_chat(
     agent_name: &str,
     table_name: &str,
     unique_record_id: &str,
