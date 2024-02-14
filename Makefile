@@ -26,3 +26,10 @@ pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
 
 clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
+
+
+test-integration:
+	cargo test -- --ignored --test-threads=1
+
+test-unit:
+	cargo pgrx test

@@ -26,10 +26,6 @@ pub mod common {
         .await;
 
         // CREATE EXTENSION
-        let _ = sqlx::query("DROP EXTENSION IF NOT EXISTS vectorize CASCADE")
-        .execute(&conn)
-        .await
-        .expect("failed to create extension");
         let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS vectorize CASCADE")
             .execute(&conn)
             .await
