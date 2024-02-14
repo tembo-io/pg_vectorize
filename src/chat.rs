@@ -16,7 +16,7 @@ struct PromptTemplate {
     pub user_prompt: String,
 }
 
-struct RenderedPromt {
+struct RenderedPrompt {
     pub sys_rendered: String,
     pub user_rendered: String,
 }
@@ -95,7 +95,7 @@ pub fn call_chat(
             let text_content =
                 serde_json::to_string(content).expect("failed to serialize content to string");
 
-            let token_ct = bpe.encode_with_special_tokens(&text_content).len() as i32;
+            let token_ct = bpe.encode_ordinary(&text_content).len() as i32;
             results.push(ContextualSearch {
                 record_id: serde_json::to_string(record_id)
                     .expect("failed to serialize record_id to string"),
@@ -109,7 +109,6 @@ pub fn call_chat(
     let search_results = search_results?;
 
     // read prompt template
-    let handlebars = Handlebars::new();
     let res_prompts: Result<PromptTemplate, spi::Error> = Spi::connect(|c| {
         let q = format!("select * from vectorize.prompts where prompt_type = '{task}'");
         let tup_table = c.select(&q, None, None)?;
@@ -135,24 +134,15 @@ pub fn call_chat(
 
     let max_context_length = get_context_size(chat_model) as i32;
 
-    // determine how much of the context_limit is consumed by the prompt
-    let sys_prompt_token_ct = bpe.encode_with_special_tokens(&sys_prompt_template).len() as i32;
-    let user_prompt_token_ct = bpe.encode_with_special_tokens(&user_prompt_template).len() as i32;
-
-    let remaining_tokens = max_context_length - sys_prompt_token_ct - user_prompt_token_ct;
-
-    let prepared_context = prepare_context(&search_results, remaining_tokens, force_trim, &bpe)?;
-
-    let render_vals = serde_json::json!({
-        "context_str": prepared_context,
-        "query_str": query,
-    });
-    let user_rendered: String = handlebars.render_template(&user_prompt_template, &render_vals)?;
-
-    let rendered_prompt = RenderedPromt {
-        sys_rendered: sys_prompt_template,
-        user_rendered,
-    };
+    let rendered_prompt = prepared_prompt(
+        &search_results,
+        &sys_prompt_template,
+        &user_prompt_template,
+        query,
+        force_trim,
+        &bpe,
+        max_context_length,
+    )?;
 
     // http request to chat completions
     let chat_response = call_chat_completions(rendered_prompt, chat_model, api_key)?;
@@ -162,8 +152,18 @@ pub fn call_chat(
     })
 }
 
+fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -> Result<String> {
+    let handlebars = Handlebars::new();
+    let render_vals = serde_json::json!({
+        "context_str": context,
+        "query_str": query,
+    });
+    let user_rendered: String = handlebars.render_template(user_prompt_template, &render_vals)?;
+    Ok(user_rendered)
+}
+
 fn call_chat_completions(
-    prompts: RenderedPromt,
+    prompts: RenderedPrompt,
     model: &str,
     api_key: Option<&str>,
 ) -> Result<String> {
@@ -178,7 +178,6 @@ fn call_chat_completions(
     };
 
     let client = Client::new(openai_key);
-
     let sys_msg = chat_completion::ChatCompletionMessage {
         role: chat_completion::MessageRole::system,
         content: chat_completion::Content::Text(prompts.sys_rendered),
@@ -205,42 +204,86 @@ fn call_chat_completions(
 
 // Trims the context to fit within the token limit when force_trim = True
 // Otherwise returns an error if the context exceeds the token limit
-fn prepare_context(
-    searches: &[ContextualSearch],
-    context_limit: i32,
-    force_trim: bool,
-    bpe: &CoreBPE,
-) -> Result<String> {
-    let num_results = searches.len() as i32;
-    let total_tokens: i32 = searches.iter().map(|s| s.token_ct).sum();
-
+fn trim_context(context: &str, overage: i32, bpe: &CoreBPE) -> Result<String> {
     // we separate each contextual result with a newline, which adds 1 token
-    let total_tokens: i32 = total_tokens + num_results - 1;
-    let exceed_limit = total_tokens > context_limit;
 
-    if exceed_limit && !force_trim {
+    let tokens = bpe.split_by_token(context, false)?;
+    let token_ct = tokens.len() as i32;
+
+    let to_index = token_ct - overage;
+
+    if to_index < 0 {
         let err_msg = format!(
-            "context exceeds limit: {} > {}",
-            total_tokens, context_limit
+            "prompt template exceeds context limit: {} > {}",
+            token_ct,
+            token_ct - overage
         );
         return Err(anyhow!(err_msg));
     }
 
+    // naively trimming the context
+    let trimmed_context: String = tokens
+        .iter()
+        .take(to_index as usize)
+        .cloned()
+        .collect::<String>();
+    Ok(trimmed_context)
+}
+
+// handles all preparation of prompt with context
+// optionally rims the context to fit within the token limit
+fn prepared_prompt(
+    searches: &[ContextualSearch],
+    sys_prompt_template: &str,
+    user_prompt_template: &str,
+    query: &str,
+    force_trim: bool,
+    bpe: &CoreBPE,
+    max_context_length: i32,
+) -> Result<RenderedPrompt> {
     let combined_string = searches
         .iter()
         .map(|s| s.content.as_str())
         .collect::<Vec<&str>>()
         .join("\n\n");
 
-    let tokens = bpe.split_by_token(&combined_string, true)?;
+    let user_message = render_user_message(user_prompt_template, &combined_string, query)?;
 
-    // naively trimming the context
-    let trimmed_context: String = tokens
-        .iter()
-        .take(context_limit as usize)
-        .cloned()
-        .collect::<String>();
-    Ok(trimmed_context)
+    // get the token count of the user message
+    let user_message_ct = bpe.encode_ordinary(&user_message).len() as i32;
+
+    let sys_prompt_token_ct = bpe.encode_ordinary(sys_prompt_template).len() as i32;
+    let user_prompt_token_ct = bpe.encode_ordinary(user_prompt_template).len() as i32;
+
+    let remaining_tokens = max_context_length - sys_prompt_token_ct - user_prompt_token_ct;
+
+    // overage
+    let overage = user_message_ct >= remaining_tokens;
+    if overage && !force_trim {
+        let err_msg = format!(
+            "context exceeds limit: {} > {}",
+            user_message_ct, remaining_tokens
+        );
+        return Err(anyhow!(err_msg));
+    }
+    if !overage {
+        return Ok(RenderedPrompt {
+            sys_rendered: sys_prompt_template.to_string(),
+            user_rendered: user_message,
+        });
+    }
+
+    let overage_amt = user_message_ct - remaining_tokens;
+
+    // there is an overage in context
+    let trimmed_context = trim_context(&combined_string, overage_amt, bpe)?;
+
+    let user_message = render_user_message(user_prompt_template, &trimmed_context, query)?;
+
+    Ok(RenderedPrompt {
+        sys_rendered: sys_prompt_template.to_string(),
+        user_rendered: user_message,
+    })
 }
 
 #[cfg(test)]
@@ -248,35 +291,108 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_prepare_context() {
-        let bpe = get_bpe_from_model("gpt-4").unwrap();
-        let sentence1 = "This is a test";
-        let sentence2 = "This is a much longer test";
-
-        let context = ContextualSearch {
+    fn test_prepared_prompt() {
+        let bpe = get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        let sys_prompt_template = "You are a sky expert";
+        let user_prompt_template = "Here is context: {{context_str}} \nQuestion: {{query_str}}";
+        let query = "What color is the sky?";
+        let searches = vec![ContextualSearch {
             record_id: "1".to_string(),
-            content: sentence1.to_string(),
-            token_ct: bpe.encode_with_special_tokens(&sentence1).len() as i32,
-        };
+            content: "The sky is the color blue.".to_string(),
+            token_ct: 7,
+        }];
+        let rendered = prepared_prompt(
+            &searches,
+            sys_prompt_template,
+            user_prompt_template,
+            query,
+            true,
+            &bpe,
+            36,
+        )
+        .unwrap();
+        assert_eq!(rendered.sys_rendered, sys_prompt_template);
+        // content must be trimmed to fit within the token limit when force_trim = True
+        assert_eq!(
+            rendered.user_rendered,
+            "Here is context: The sky is \nQuestion: What color is the sky?"
+        );
+        // error when force_trim = False and context exceeds token limit
+        let rendered = prepared_prompt(
+            &searches,
+            sys_prompt_template,
+            user_prompt_template,
+            query,
+            false,
+            &bpe,
+            36,
+        );
+        assert!(rendered.is_err());
+        // no trim when length is within token limit
+        let rendered = prepared_prompt(
+            &searches,
+            sys_prompt_template,
+            user_prompt_template,
+            query,
+            false,
+            &bpe,
+            1000,
+        )
+        .expect("failed to prepare prompt");
+        assert_eq!(
+            rendered.user_rendered,
+            "Here is context: The sky is the color blue. \nQuestion: What color is the sky?"
+        );
 
-        let context2 = ContextualSearch {
-            record_id: "2".to_string(),
-            content: sentence2.to_string(),
-            token_ct: bpe.encode_with_special_tokens(&sentence2).len() as i32,
-        };
-        let context_str =
-            prepare_context(&[context.clone(), context2.clone()], 11, false, &bpe).unwrap();
-        assert_eq!("This is a test\n\nThis is a much longer test", context_str);
+        // no trim when length is within token limit, and force_trim = True
+        let rendered = prepared_prompt(
+            &searches,
+            sys_prompt_template,
+            user_prompt_template,
+            query,
+            true,
+            &bpe,
+            1000,
+        )
+        .expect("failed to prepare prompt");
+        assert_eq!(
+            rendered.user_rendered,
+            "Here is context: The sky is the color blue. \nQuestion: What color is the sky?"
+        );
+    }
 
-        // without force_trim, this errors
-        let context_str = prepare_context(&[context.clone(), context2.clone()], 1, false, &bpe);
-        assert!(context_str.is_err());
+    #[test]
+    fn test_trim_context() {
+        let bpe = get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        let context = "The sky is the color blue.";
 
-        // force trim the result
-        let context_str =
-            prepare_context(&[context.clone(), context2.clone()], 1, true, &bpe).unwrap();
-        assert_eq!("This", context_str);
-        let context_str = prepare_context(&[context, context2], 6, true, &bpe).unwrap();
-        assert_eq!("This is a test\n\nThis", context_str);
+        let overage = 1;
+        let trimmed = trim_context(context, overage, &bpe).unwrap();
+        assert_eq!("The sky is the color blue", trimmed);
+
+        let overage = 2;
+        let trimmed = trim_context(context, overage, &bpe).unwrap();
+        assert_eq!("The sky is the color", trimmed);
+
+        let overage = 5;
+        let trimmed = trim_context(context, overage, &bpe).unwrap();
+        assert_eq!("The sky", trimmed);
+    }
+
+    #[test]
+    fn test_render_user_message() {
+        let bpe = get_bpe_from_model("gpt-3.5-turbo").unwrap();
+        let prompt_template =
+            "You are a sky expert, and here is context: {{context_str}} Question: {{query_str}}";
+        let context = "The sky is the color blue.";
+        let query = "What color is the sky?";
+        let rendered = render_user_message(prompt_template, context, query).unwrap();
+        assert_eq!("You are a sky expert, and here is context: The sky is the color blue. Question: What color is the sky?", rendered);
+
+        let prompt_template_ct = bpe.encode_ordinary(prompt_template).len() as i32;
+        let context_ct = bpe.encode_ordinary(context).len() as i32;
+        let query_ct = bpe.encode_ordinary(query).len() as i32;
+        let rendered_ct = bpe.encode_ordinary(&rendered).len() as i32;
+        assert_eq!(rendered_ct, prompt_template_ct + context_ct + query_ct);
     }
 }

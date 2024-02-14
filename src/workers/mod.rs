@@ -16,7 +16,7 @@ pub async fn run_worker(
     let msg: Message<JobMessage> = match queue.read::<JobMessage>(queue_name, 180_i32).await {
         Ok(Some(msg)) => msg,
         Ok(None) => {
-            log!("pg-vectorize: No messages in queue");
+            info!("pg-vectorize: No messages in queue");
             return Ok(None);
         }
         Err(e) => {
@@ -27,7 +27,7 @@ pub async fn run_worker(
 
     let msg_id: i64 = msg.msg_id;
     let read_ct: i32 = msg.read_ct;
-    log!(
+    info!(
         "pg-vectorize: received message for job: {:?}",
         msg.message.job_name
     );
@@ -42,7 +42,7 @@ pub async fn run_worker(
     if delete_it {
         match queue.delete(queue_name, msg_id).await {
             Ok(_) => {
-                log!("pg-vectorize: deleted message: {}", msg_id);
+                info!("pg-vectorize: deleted message: {}", msg_id);
             }
             Err(e) => {
                 warning!("pg-vectorize: Error deleting message: {}", e);
@@ -147,7 +147,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
 
     let embedding_request = match job_meta.transformer.as_ref() {
         "text-embedding-ada-002" => {
-            log!("pg-vectorize: OpenAI transformer");
+            info!("pg-vectorize: OpenAI transformer");
             openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs)
         }
         _ => generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs),
