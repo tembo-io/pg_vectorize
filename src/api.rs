@@ -89,7 +89,7 @@ fn transform_embeddings(
 
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
-fn init_chat(
+fn init_rag(
     agent_name: &str,
     table_name: &str,
     unique_record_id: &str,
@@ -121,7 +121,7 @@ fn init_chat(
 
 /// creates an table indexed with embeddings for chat completion workloads
 #[pg_extern]
-fn chat(
+fn rag(
     agent_name: &str,
     query: &str,
     // chat models: currently only supports gpt 3.5 and 4
