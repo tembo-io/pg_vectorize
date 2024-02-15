@@ -2,7 +2,7 @@ import logging
 import os
 from typing import TYPE_CHECKING, Any, List
 
-from app.models import model_org_name, get_model
+from app.models import model_org_name, get_model, parse_header
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, conlist
 
@@ -46,9 +46,7 @@ def batch_transform(
 
     requested_model = model_org_name(payload.model)
 
-    api_key = None
-    if authorization is not None:
-        api_key = authorization.split("Bearer ")[-1]
+    api_key = parse_header(authorization)
     try:
         model = get_model(
             model_name=requested_model,

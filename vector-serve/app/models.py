@@ -17,6 +17,12 @@ except Exception:
     MULTI_MODEL = 1
 
 
+def parse_header(authorization: str) -> str | None:
+    if authorization is not None:
+        return authorization.split("Bearer ")[-1]
+    return None
+
+
 def load_model_cache(app: FastAPI) -> dict[str, SentenceTransformer]:
     model_cache = {}
     for m in MODELS_TO_CACHE:
@@ -70,6 +76,8 @@ def get_model(
             model_cache[model_name] = model
             logging.debug(f"Added model: {model_name} to cache.")
         except Exception:
+            if api_key is None:
+                logging.warning("No api_key provided for model: %s", model_name)
             logging.exception("Failed to load model %s", model_name)
             raise
     return model
