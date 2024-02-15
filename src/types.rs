@@ -1,5 +1,6 @@
 use pgrx::prelude::*;
 use serde::{Deserialize, Serialize};
+use sqlx::{Decode, FromRow};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -83,7 +84,7 @@ pub enum TableMethod {
     join,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
 pub struct JobParams {
     pub schema: String,
     pub table: String,

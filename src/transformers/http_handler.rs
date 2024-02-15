@@ -63,18 +63,21 @@ pub fn merge_input_output(inputs: Vec<Inputs>, values: Vec<Vec<f64>>) -> Vec<Pai
 }
 
 #[pg_extern]
-pub fn mod_info(model_name: &str) -> pgrx::JsonB {
-    let meta = sync_get_model_info(model_name).unwrap();
+pub fn mod_info(model_name: &str, api_key: default!(Option<String>, "NULL")) -> pgrx::JsonB {
+    let meta = sync_get_model_info(model_name, api_key).unwrap();
     pgrx::JsonB(serde_json::to_value(meta).unwrap())
 }
 
-pub fn sync_get_model_info(model_name: &str) -> Result<TransformerMetadata> {
+pub fn sync_get_model_info(
+    model_name: &str,
+    api_key: Option<String>,
+) -> Result<TransformerMetadata> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-    let meta = match runtime.block_on(async { get_model_info(model_name).await }) {
+    let meta = match runtime.block_on(async { get_model_info(model_name, api_key).await }) {
         Ok(e) => e,
         Err(e) => {
             error!("error getting embeddings: {}", e);
@@ -83,11 +86,17 @@ pub fn sync_get_model_info(model_name: &str) -> Result<TransformerMetadata> {
     Ok(meta)
 }
 
-pub async fn get_model_info(model_name: &str) -> Result<TransformerMetadata> {
+pub async fn get_model_info(
+    model_name: &str,
+    api_key: Option<String>,
+) -> Result<TransformerMetadata> {
     let svc_url = get_generic_svc_url()?;
     let info_url = svc_url.replace("/embeddings", "/info");
     let client = reqwest::Client::new();
-    let req = client.get(info_url).query(&[("model_name", model_name)]);
+    let mut req = client.get(info_url).query(&[("model_name", model_name)]);
+    if let Some(key) = api_key {
+        req = req.header("Authorization", format!("Bearer {}", key));
+    }
     let resp = req.send().await?;
     let meta_response = handle_response::<TransformerMetadata>(resp, "info").await?;
     Ok(meta_response)

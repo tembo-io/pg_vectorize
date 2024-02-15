@@ -28,15 +28,16 @@ pub fn init_table(
 ) -> Result<String> {
     let job_type = types::JobType::Columns;
 
-    // write job to table
-    let init_job_q = init::init_job_query();
     let arguments = match serde_json::to_value(args) {
         Ok(a) => a,
         Err(e) => {
             error!("invalid json for argument `args`: {}", e);
         }
     };
-    let api_key = arguments.get("api_key");
+    let api_key = match arguments.get("api_key") {
+        Some(k) => Some(serde_json::from_value::<String>(k.clone())?),
+        None => None,
+    };
 
     // get prim key type
     let pkey_type = init::get_column_datatype(schema, table, primary_key);
@@ -46,8 +47,8 @@ pub fn init_table(
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
     match transformer {
         "text-embedding-ada-002" => {
-            let openai_key = match api_key {
-                Some(k) => serde_json::from_value::<String>(k.clone())?,
+            let openai_key = match api_key.clone() {
+                Some(k) => k,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
@@ -59,7 +60,7 @@ pub fn init_table(
         }
         t => {
             // make sure transformer exists
-            let _ = sync_get_model_info(t).expect("transformer does not exist");
+            let _ = sync_get_model_info(t, api_key.clone()).expect("transformer does not exist");
         }
     }
 
@@ -71,12 +72,13 @@ pub fn init_table(
         table_method: table_method.clone(),
         primary_key: primary_key.to_string(),
         pkey_type,
-        api_key: api_key
-            .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
+        api_key: api_key.clone(),
     };
     let params =
         pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
 
+    // write job to table
+    let init_job_q = init::init_job_query();
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
@@ -110,8 +112,14 @@ pub fn init_table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q =
-        init::init_embedding_table_query(job_name, schema, table, transformer, &table_method);
+    let init_embed_q = init::init_embedding_table_query(
+        job_name,
+        schema,
+        table,
+        transformer,
+        &table_method,
+        api_key,
+    );
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {

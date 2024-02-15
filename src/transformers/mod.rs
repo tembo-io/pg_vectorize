@@ -49,7 +49,7 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
             EmbeddingRequest {
                 url,
                 payload: embedding_request,
-                api_key: None,
+                api_key,
             }
         }
     };
