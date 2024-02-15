@@ -3,7 +3,7 @@ import os
 from typing import TYPE_CHECKING, Any, List
 
 from app.models import model_org_name, get_model
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, conlist
 
 router = APIRouter(tags=["transform"])
@@ -36,7 +36,9 @@ class ResponseModel(BaseModel):
 
 
 @router.post("/v1/embeddings", response_model=ResponseModel)
-def batch_transform(request: Request, payload: Batch) -> ResponseModel:
+def batch_transform(
+    request: Request, payload: Batch, authorization: str = Header(None)
+) -> ResponseModel:
     logging.info({"batch-predict-len": len(payload.input)})
     batches = chunk_list(payload.input, BATCH_SIZE)
     num_batches = len(batches)
@@ -44,9 +46,14 @@ def batch_transform(request: Request, payload: Batch) -> ResponseModel:
 
     requested_model = model_org_name(payload.model)
 
+    api_key = None
+    if authorization is not None:
+        api_key = authorization.split("Bearer ")[-1]
     try:
         model = get_model(
-            model_name=requested_model, model_cache=request.app.state.model_cache
+            model_name=requested_model,
+            model_cache=request.app.state.model_cache,
+            api_key=api_key,
         )
     except Exception as e:
         raise HTTPException(

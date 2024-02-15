@@ -51,9 +51,8 @@ def model_org_name(model_name: str) -> str:
 
 
 def get_model(
-    model_name: str, model_cache: dict[str, SentenceTransformer]
+    model_name: str, model_cache: dict[str, SentenceTransformer], api_key: str = None
 ) -> SentenceTransformer:
-
     model = model_cache.get(model_name)
     if model is None:
         if not MULTI_MODEL:
@@ -65,7 +64,8 @@ def get_model(
         # and model not in cache
         logging.debug(f"Model: {model_name} not in cache.")
         try:
-            model = SentenceTransformer(model_name)
+            logging.error("api_key: %s", api_key)
+            model = SentenceTransformer(model_name, use_auth_token=api_key)
             # add model to cache
             model_cache[model_name] = model
             logging.debug(f"Added model: {model_name} to cache.")
