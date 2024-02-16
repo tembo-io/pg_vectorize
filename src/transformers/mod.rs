@@ -21,7 +21,7 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
     let embedding_request = match transformer {
         "text-embedding-ada-002" => {
             let openai_key = match api_key {
-                Some(k) => k,
+                Some(k) => k.to_owned(),
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
@@ -37,7 +37,7 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
             EmbeddingRequest {
                 url: OPENAI_EMBEDDING_URL.to_owned(),
                 payload: embedding_request,
-                api_key: Some(openai_key),
+                api_key: Some(openai_key.to_string()),
             }
         }
         _ => {
@@ -49,7 +49,7 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
             EmbeddingRequest {
                 url,
                 payload: embedding_request,
-                api_key,
+                api_key: api_key.map(|s| s.to_string()),
             }
         }
     };

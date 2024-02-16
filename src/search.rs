@@ -4,8 +4,10 @@ use crate::init::{self, VECTORIZE_QUEUE};
 use crate::job::{create_insert_trigger, create_trigger_handler, create_update_trigger};
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
+use crate::transformers::transform;
 use crate::transformers::types::Inputs;
 use crate::types;
+use crate::util;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -206,6 +208,42 @@ pub fn init_table(
     Ok(format!("Successfully created job: {job_name}"))
 }
 
+pub fn search(
+    job_name: &str,
+    query: &str,
+    api_key: Option<String>,
+    return_columns: Vec<String>,
+    num_results: i32,
+) -> Result<Vec<pgrx::JsonB>> {
+    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
+        js
+    } else {
+        error!("failed to get project metadata");
+    };
+    let proj_params: types::JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
+            error!("failed to serialize metadata: {}", e);
+        }),
+    )
+    .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
+
+    let schema = proj_params.schema;
+    let table = proj_params.table;
+
+    let embeddings = transform(query, &project_meta.transformer, api_key);
+
+    match project_meta.search_alg {
+        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+            job_name,
+            &schema,
+            &table,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+        ),
+    }
+}
+
 pub fn cosine_similarity_search(
     project: &str,
     schema: &str,
@@ -213,7 +251,7 @@ pub fn cosine_similarity_search(
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
-) -> Result<Vec<(pgrx::JsonB,)>, spi::Error> {
+) -> Result<Vec<pgrx::JsonB>> {
     let query = format!(
         "
     SELECT to_jsonb(t)
@@ -230,7 +268,8 @@ pub fn cosine_similarity_search(
         cols = return_columns.join(", "),
     );
     Spi::connect(|client| {
-        let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
+        // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
+        let mut results: Vec<pgrx::JsonB> = Vec::new();
         let tup_table = client.select(
             &query,
             None,
@@ -241,7 +280,7 @@ pub fn cosine_similarity_search(
         )?;
         for row in tup_table {
             match row["results"].value()? {
-                Some(r) => results.push((r,)),
+                Some(r) => results.push(r),
                 None => error!("failed to get results"),
             }
         }
