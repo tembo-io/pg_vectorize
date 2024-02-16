@@ -48,7 +48,7 @@ jobs:
       - name: Install sys dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
-          make install-dependencies
+          make setup
       - name: Run old version (v0.9.0)
         run: |
           rm -rf ./target/pgrx-test-data-* || true
