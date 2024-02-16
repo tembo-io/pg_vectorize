@@ -6,6 +6,8 @@ PG_VERSION:=15
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.9.0
 
+.PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade
+
 sqlx-cache:
 	cargo sqlx prepare
 
