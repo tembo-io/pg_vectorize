@@ -39,20 +39,17 @@ jobs:
       - name: Get current version
         id: current-version
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+      - name: Install sys dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          make setup
       - name: Checkout old version (v0.9.0)
         run: |
           git fetch --tags
           git checkout tags/v0.9.0
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./
-          force: true
-      - name: Install sys dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
-          ls -alh
-          cat Makefile
-          make setup
       - name: Run old version (v0.9.0)
         run: |
           make test-version
