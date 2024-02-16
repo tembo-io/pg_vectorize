@@ -53,7 +53,7 @@ jobs:
       - name: Run old version (v0.9.0)
         # make commands not present on 0.9 release
         run: |
-          echo "\q" | $(MAKE) run
+          echo "\q" | make run
           cargo test -- --ignored --test-threads=1
       - name: Checkout branch's version
         env:
