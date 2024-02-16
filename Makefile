@@ -5,6 +5,7 @@ DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*
 PG_VERSION:=15
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.9.0
+BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade
 
@@ -67,16 +68,15 @@ test-unit:
 test-version:
 	git fetch --tags
 	git checkout tags/v${UPGRADE_FROM_VER}
-	echo "\q" | $(MAKE) run
+	echo "\q" | make run
 	cargo test -- --ignored --test-threads=1
 
-BRANCH:=main
 test-branch:
 	git checkout ${BRANCH}
-	echo "\q" | $(MAKE) run
-	$(MAKE) test-integration
+	echo "\q" | make run
+	make test-integration
 
 test-upgrade:
-	$(MAKE) test-version RUN_VER=${RUN_VER}
+	make test-version RUN_VER=${RUN_VER}
 	psql -c "ALTER EXTENSION vectorize UPDATE"
-	$(MAKE) test-branch BRANCH=${BRANCH}
+	make test-branch BRANCH=${BRANCH}
