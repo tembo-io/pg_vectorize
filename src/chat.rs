@@ -1,5 +1,6 @@
 use crate::executor::VectorizeMeta;
 use crate::guc;
+use crate::search;
 use crate::types;
 use crate::util::get_vectorize_meta_spi;
 
@@ -39,7 +40,7 @@ pub fn call_chat(
     query: &str,
     chat_model: &str,
     task: &str,
-    api_key: Option<&str>,
+    api_key: Option<String>,
     num_context: i32,
     force_trim: bool,
 ) -> Result<ChatResponse> {
@@ -60,53 +61,28 @@ pub fn call_chat(
     let content_column = job_params.columns[0].clone();
     let pk = job_params.primary_key;
     let columns = vec![pk.clone(), content_column.clone()];
-    // query the relevant vectorize table using the query
-    // TODO: refactor so we can call an internal access vector search function
-    let search_results: Result<Vec<ContextualSearch>, spi::Error> = Spi::connect(|c| {
-        let mut results: Vec<ContextualSearch> = Vec::new();
-        let q = format!(
-            "
-        select search_results from vectorize.search(
-            job_name => '{agent_name}',
-            query => '{query}',
-            return_columns => $1,
-            num_results => {num_context}
-        )",
-        );
-        let tup_table = c.select(
-            &q,
-            None,
-            Some(vec![(
-                PgBuiltInOids::TEXTARRAYOID.oid(),
-                columns.into_datum(),
-            )]),
-        )?;
 
-        for row in tup_table {
-            let row_pgrx_js: pgrx::JsonB = row.get_by_name("search_results").unwrap().unwrap();
-            let row_js: serde_json::Value = row_pgrx_js.0;
+    let raw_search = search::search(agent_name, query, api_key.clone(), columns, num_context)?;
 
-            let record_id = row_js
-                .get(&pk)
-                .unwrap_or_else(|| error!("`{pk}` not found"));
-            let content = row_js
-                .get(&content_column)
-                .unwrap_or_else(|| error!("`{content_column}` not found"));
-            let text_content =
-                serde_json::to_string(content).expect("failed to serialize content to string");
-
-            let token_ct = bpe.encode_ordinary(&text_content).len() as i32;
-            results.push(ContextualSearch {
-                record_id: serde_json::to_string(record_id)
-                    .expect("failed to serialize record_id to string"),
-                content: text_content,
-                token_ct,
-            });
-        }
-        Ok(results)
-    });
-
-    let search_results = search_results?;
+    let mut search_results: Vec<ContextualSearch> = Vec::new();
+    for s in raw_search {
+        let row_js: serde_json::Value = s.0;
+        let record_id = row_js
+            .get(&pk)
+            .unwrap_or_else(|| error!("`{pk}` not found"));
+        let content = row_js
+            .get(&content_column)
+            .unwrap_or_else(|| error!("`{content_column}` not found"));
+        let text_content =
+            serde_json::to_string(content).expect("failed to serialize content to string");
+        let token_ct = bpe.encode_ordinary(&text_content).len() as i32;
+        search_results.push(ContextualSearch {
+            record_id: serde_json::to_string(record_id)
+                .expect("failed to serialize record_id to string"),
+            content: text_content,
+            token_ct,
+        });
+    }
 
     // read prompt template
     let res_prompts: Result<PromptTemplate, spi::Error> = Spi::connect(|c| {
@@ -165,7 +141,7 @@ fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -
 fn call_chat_completions(
     prompts: RenderedPrompt,
     model: &str,
-    api_key: Option<&str>,
+    api_key: Option<String>,
 ) -> Result<String> {
     let openai_key = match api_key {
         Some(k) => k.to_string(),

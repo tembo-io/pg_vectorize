@@ -1,9 +1,7 @@
 use crate::chat::call_chat;
-use crate::executor::VectorizeMeta;
-use crate::search::{cosine_similarity_search, init_table};
+use crate::search::{self, init_table};
 use crate::transformers::transform;
 use crate::types;
-use crate::util;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -41,41 +39,14 @@ fn table(
 
 #[pg_extern]
 fn search(
-    job_name: &str,
-    query: &str,
+    job_name: String,
+    query: String,
     api_key: default!(Option<String>, "NULL"),
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
-    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
-        js
-    } else {
-        error!("failed to get project metadata");
-    };
-    let proj_params: types::JobParams = serde_json::from_value(
-        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
-            error!("failed to serialize metadata: {}", e);
-        }),
-    )
-    .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
-
-    let schema = proj_params.schema;
-    let table = proj_params.table;
-
-    let embeddings = transform(query, &project_meta.transformer, api_key);
-
-    let search_results = match project_meta.search_alg {
-        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
-            job_name,
-            &schema,
-            &table,
-            &return_columns,
-            num_results,
-            &embeddings[0],
-        )?,
-    };
-
-    Ok(TableIterator::new(search_results))
+    let search_results = search::search(&job_name, &query, api_key, return_columns, num_results)?;
+    Ok(TableIterator::new(search_results.into_iter().map(|r| (r,))))
 }
 
 #[pg_extern]
@@ -127,10 +98,10 @@ fn rag(
     // chat models: currently only supports gpt 3.5 and 4
     // https://platform.openai.com/docs/models/gpt-3-5-turbo
     // https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
-    chat_model: default!(&str, "'gpt-3.5-turbo'"),
+    chat_model: default!(String, "'gpt-3.5-turbo'"),
     // points to the type of prompt template to use
-    task: default!(&str, "'question_answer'"),
-    api_key: default!(Option<&str>, "NULL"),
+    task: default!(String, "'question_answer'"),
+    api_key: default!(Option<String>, "NULL"),
     // number of records to include in the context
     num_context: default!(i32, 2),
     // truncates context to fit the model's context window
@@ -139,8 +110,8 @@ fn rag(
     let resp = call_chat(
         agent_name,
         query,
-        chat_model,
-        task,
+        &chat_model,
+        &task,
         api_key,
         num_context,
         force_trim,

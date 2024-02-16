@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, Header, HTTPException, Request, Query
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 import logging
+from app.models import parse_header
 
 from app.models import model_org_name, get_model
 
@@ -15,11 +16,17 @@ class InfoResponse(BaseModel):
 
 
 @router.get("/v1/info/", response_model=InfoResponse)
-def model_info(request: Request, model_name: str = Query(...)) -> InfoResponse:
+def model_info(
+    request: Request, model_name: str = Query(...), authorization: str = Header(None)
+) -> InfoResponse:
     requested_model = model_org_name(model_name)
     try:
+        api_key = parse_header(authorization)
+
         model: SentenceTransformer = get_model(
-            model_name=requested_model, model_cache=request.app.state.model_cache
+            model_name=requested_model,
+            model_cache=request.app.state.model_cache,
+            api_key=api_key,
         )
     except Exception as e:
         raise HTTPException(

@@ -70,6 +70,7 @@ pub fn init_embedding_table_query(
     table: &str,
     transformer: &str,
     transform_method: &TableMethod,
+    api_key: Option<String>,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let col_type = match transformer {
@@ -77,7 +78,7 @@ pub fn init_embedding_table_query(
         // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
         "text-embedding-ada-002" => "vector(1536)".to_owned(),
         _ => {
-            let model_info: TransformerMetadata = sync_get_model_info(transformer)
+            let model_info: TransformerMetadata = sync_get_model_info(transformer, api_key)
                 .expect("failed to call vectorize.embedding_service_url");
             let dim = model_info.embedding_dimension;
             format!("vector({dim})")

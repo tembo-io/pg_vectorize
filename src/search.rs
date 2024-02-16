@@ -4,8 +4,10 @@ use crate::init::{self, VECTORIZE_QUEUE};
 use crate::job::{create_insert_trigger, create_trigger_handler, create_update_trigger};
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
+use crate::transformers::transform;
 use crate::transformers::types::Inputs;
 use crate::types;
+use crate::util;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -28,15 +30,16 @@ pub fn init_table(
 ) -> Result<String> {
     let job_type = types::JobType::Columns;
 
-    // write job to table
-    let init_job_q = init::init_job_query();
     let arguments = match serde_json::to_value(args) {
         Ok(a) => a,
         Err(e) => {
             error!("invalid json for argument `args`: {}", e);
         }
     };
-    let api_key = arguments.get("api_key");
+    let api_key = match arguments.get("api_key") {
+        Some(k) => Some(serde_json::from_value::<String>(k.clone())?),
+        None => None,
+    };
 
     // get prim key type
     let pkey_type = init::get_column_datatype(schema, table, primary_key);
@@ -46,8 +49,8 @@ pub fn init_table(
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
     match transformer {
         "text-embedding-ada-002" => {
-            let openai_key = match api_key {
-                Some(k) => serde_json::from_value::<String>(k.clone())?,
+            let openai_key = match api_key.clone() {
+                Some(k) => k,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
                     Some(k) => k,
                     None => {
@@ -59,7 +62,7 @@ pub fn init_table(
         }
         t => {
             // make sure transformer exists
-            let _ = sync_get_model_info(t).expect("transformer does not exist");
+            let _ = sync_get_model_info(t, api_key.clone()).expect("transformer does not exist");
         }
     }
 
@@ -71,12 +74,13 @@ pub fn init_table(
         table_method: table_method.clone(),
         primary_key: primary_key.to_string(),
         pkey_type,
-        api_key: api_key
-            .map(|k| serde_json::from_value::<String>(k.clone()).expect("error parsing api key")),
+        api_key: api_key.clone(),
     };
     let params =
         pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
 
+    // write job to table
+    let init_job_q = init::init_job_query();
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
@@ -110,8 +114,14 @@ pub fn init_table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q =
-        init::init_embedding_table_query(job_name, schema, table, transformer, &table_method);
+    let init_embed_q = init::init_embedding_table_query(
+        job_name,
+        schema,
+        table,
+        transformer,
+        &table_method,
+        api_key,
+    );
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
@@ -198,6 +208,42 @@ pub fn init_table(
     Ok(format!("Successfully created job: {job_name}"))
 }
 
+pub fn search(
+    job_name: &str,
+    query: &str,
+    api_key: Option<String>,
+    return_columns: Vec<String>,
+    num_results: i32,
+) -> Result<Vec<pgrx::JsonB>> {
+    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
+        js
+    } else {
+        error!("failed to get project metadata");
+    };
+    let proj_params: types::JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
+            error!("failed to serialize metadata: {}", e);
+        }),
+    )
+    .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
+
+    let schema = proj_params.schema;
+    let table = proj_params.table;
+
+    let embeddings = transform(query, &project_meta.transformer, api_key);
+
+    match project_meta.search_alg {
+        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+            job_name,
+            &schema,
+            &table,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+        ),
+    }
+}
+
 pub fn cosine_similarity_search(
     project: &str,
     schema: &str,
@@ -205,7 +251,7 @@ pub fn cosine_similarity_search(
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
-) -> Result<Vec<(pgrx::JsonB,)>, spi::Error> {
+) -> Result<Vec<pgrx::JsonB>> {
     let query = format!(
         "
     SELECT to_jsonb(t)
@@ -222,7 +268,8 @@ pub fn cosine_similarity_search(
         cols = return_columns.join(", "),
     );
     Spi::connect(|client| {
-        let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
+        // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
+        let mut results: Vec<pgrx::JsonB> = Vec::new();
         let tup_table = client.select(
             &query,
             None,
@@ -233,7 +280,7 @@ pub fn cosine_similarity_search(
         )?;
         for row in tup_table {
             match row["results"].value()? {
-                Some(r) => results.push((r,)),
+                Some(r) => results.push(r),
                 None => error!("failed to get results"),
             }
         }
