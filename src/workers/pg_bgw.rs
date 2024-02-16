@@ -1,6 +1,6 @@
 use crate::guc::init_guc;
 use crate::init::VECTORIZE_QUEUE;
-use crate::util::get_pg_conn;
+use crate::util::{get_pg_conn, ready};
 use anyhow::Result;
 use pgrx::bgworkers::*;
 use pgrx::*;
@@ -40,9 +40,13 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     log!("Starting BG Workers {}", BackgroundWorker::get_name(),);
 
     while BackgroundWorker::wait_latch(Some(Duration::from_millis(10))) {
-        if BackgroundWorker::sighup_received() {
-            // on SIGHUP, you might want to reload configurations and env vars
-        }
+        runtime.block_on(async {
+            while !ready(&conn).await {
+                log!("pg-vectorize: waiting for CREATE EXTENSION vectorize");
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        });
+
         let _worker_ran: Result<()> = runtime.block_on(async {
             // continue to poll without pauses
             let start = Instant::now();
