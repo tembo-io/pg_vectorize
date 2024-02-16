@@ -52,14 +52,13 @@ test-integration:
 test-unit:
 	cargo pgrx test
 
-
 # tests upgrading from specific version
 RUN_VER:=0.9.0
 test-version:
 	git fetch --tags
 	git checkout tags/v${RUN_VER}
 	echo "\q" | make run
-	$(MAKE) test-integration
+	cargo test -- --ignored --test-threads=1
 
 BRANCH:=main
 test-branch:
