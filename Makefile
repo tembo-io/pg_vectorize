@@ -38,21 +38,25 @@ setup: install-pg_cron install-pg_vector install-pgmq
 install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
 	cd pg_cron && \
+	sed -i.bak 's/-Werror//g' Makefile && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
-	PG_CONFIG=${PGRX_PG_CONFIG} make install
+	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
+	cd .. && rm -rf pg_cron
 
 install-pgvector:
 	git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git && \
 	cd pgvector && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
-	PG_CONFIG=${PGRX_PG_CONFIG} make install
+	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
+	cd .. && rm -rf pgvector
 
 install-pgmq:
 	git clone https://github.com/tembo-io/pgmq.git && \
 	cd pgmq && \
-	cargo pgrx install --pg-config=${PGRX_PG_CONFIG}
+	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
+	cd .. && rm -rf pgmq
 
 test-integration:
 	cargo test -- --ignored --test-threads=1
