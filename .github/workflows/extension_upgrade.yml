@@ -47,7 +47,7 @@ jobs:
           force: true
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
-      - name: Install pg_partman
+      - name: Install extension dependencies
         run: |
           make install-dependencies
       - name: Run old version (v0.9.0)

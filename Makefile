@@ -30,6 +30,7 @@ clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
 
 install-dependencies: install-pg_cron install-pg_vector install-pgmq
+	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 
 install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
@@ -61,13 +62,13 @@ RUN_VER:=0.9.0
 test-version:
 	git fetch --tags
 	git checkout tags/v${RUN_VER}
-	echo "\q" | make run
+	echo "\q" | $(MAKE) run
 	cargo test -- --ignored --test-threads=1
 
 BRANCH:=main
 test-branch:
 	git checkout ${BRANCH}
-	echo "\q" | make run
+	echo "\q" | $(MAKE) run
 	$(MAKE) test-integration
 
 test-upgrade:
