@@ -1,0 +1,68 @@
+name: Extension Upgrade
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - created
+
+jobs:
+  test:
+    name: Upgrade Test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "extension-upgrade-test"
+          workspaces: |
+            vectorize
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - name: Get current version
+        id: current-version
+        run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
+      - name: Checkout old version (v0.9.0)
+        run: |
+          git fetch --tags
+          git checkout tags/v0.9.0
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+          force: true
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+      - name: Install pg_partman
+        run: |
+          make install-dependencies
+      - name: Run old version (v0.9.0)
+        run: |
+          rm -rf ./target/pgrx-test-data-* || true
+          make test-version
+      - name: Checkout branch's version
+        env:
+          CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
+        run: |
+          test-branch BRANCH=$CI_BRANCH
+      - uses: ./.github/actions/pgx-init
+        with:
+          working-directory: ./
+          force: true
+      - name: Upgrade and run tests
+        run: |
+          make test-upgrade
