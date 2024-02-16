@@ -32,12 +32,14 @@ clean:
 install_pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
 	cd pg_cron && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install
 
 install_pg_vector:
 	git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git && \
 	cd pgvector && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install
 
