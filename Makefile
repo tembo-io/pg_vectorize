@@ -4,6 +4,7 @@ DISTNAME = $(shell grep -m 1 '^name' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0
 DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 PG_VERSION:=15
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
+UPGRADE_FROM_VER:=0.9.0
 
 sqlx-cache:
 	cargo sqlx prepare
@@ -57,11 +58,9 @@ test-integration:
 test-unit:
 	cargo pgrx test
 
-# tests upgrading from specific version
-RUN_VER:=0.9.0
 test-version:
 	git fetch --tags
-	git checkout tags/v${RUN_VER}
+	git checkout tags/v${UPGRADE_FROM_VER}
 	echo "\q" | $(MAKE) run
 	cargo test -- --ignored --test-threads=1
 
