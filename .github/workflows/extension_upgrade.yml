@@ -21,7 +21,9 @@ jobs:
     name: Upgrade Test
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository content
+        uses: actions/checkout@v2
+
       - name: Install Rust stable toolchain
         uses: actions-rs/toolchain@v1
         with:
