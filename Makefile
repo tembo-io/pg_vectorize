@@ -63,6 +63,7 @@ install-pgmq:
 	cd .. && rm -rf pgmq
 
 test-integration:
+	echo "\q" | make run
 	cargo test -- --ignored --test-threads=1
 
 test-unit:
