@@ -76,5 +76,5 @@ test-version:
 
 test-update:
 	echo "\q" | make run
-        psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
+	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
 	make test-integration
