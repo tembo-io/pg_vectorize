@@ -65,5 +65,8 @@ jobs:
           make test-update
       - name: Debugging information
         if: always()
+        env:
+          CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
+          git checkout $CI_BRANCH
           make cat-logs
