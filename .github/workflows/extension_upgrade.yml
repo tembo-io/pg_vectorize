@@ -64,6 +64,7 @@ jobs:
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
+          git checkout $CI_BRANCH
           test-branch BRANCH=$CI_BRANCH
       - uses: ./.github/actions/pgx-init
         with:
