@@ -6,14 +6,14 @@ on:
       - main
     paths:
       - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**"
+      - "./vector-serve/**/*"
 
   pull_request:
     branches:
       - main
     paths:
       - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**"
+      - "./vector-serve/**/*"
 
 permissions:
   id-token: write
