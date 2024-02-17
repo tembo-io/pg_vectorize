@@ -73,6 +73,7 @@ test-version:
 	git fetch --tags
 	git checkout tags/v${UPGRADE_FROM_VER}
 	echo "\q" | make run
+	psql ${DATABASE_URL} -c "DROP EXTENSION IF EXISTS vectorize"
 	cargo test -- --ignored --test-threads=1
 
 test-update:
