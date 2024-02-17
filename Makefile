@@ -33,7 +33,7 @@ pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
 clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
 
-setup: install-pg_cron install-pg_vector install-pgmq
+setup: install-pg_cron install-pgvector install-pgmq
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 
 install-pg_cron:
