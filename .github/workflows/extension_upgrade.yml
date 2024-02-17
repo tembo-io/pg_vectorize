@@ -51,7 +51,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           make setup
-      - name: Test previous version (v0.10.0)
+      - name: Test previous version (main))
         run: |
           git fetch --tags
           git checkout main
