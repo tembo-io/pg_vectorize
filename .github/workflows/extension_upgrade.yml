@@ -54,7 +54,7 @@ jobs:
       - name: Test previous version (v0.10.0)
         run: |
           git fetch --tags
-          git checkout tags/v0.10.0
+          git checkout main
           echo "\q" | make run
           cargo test -- --ignored --test-threads=1
       - name: Test branch's version
@@ -65,5 +65,8 @@ jobs:
           make test-update
       - name: Debugging information
         if: always()
+        env:
+          CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
+          git checkout $CI_BRANCH
           make cat-logs

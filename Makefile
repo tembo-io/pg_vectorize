@@ -7,7 +7,7 @@ PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.9.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 
-.PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade
+.PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs
 
 sqlx-cache:
 	cargo sqlx prepare
@@ -77,5 +77,5 @@ test-version:
 
 test-update:
 	echo "\q" | make run
-	psql -c "ALTER EXTENSION vectorize UPDATE"
+	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
 	make test-integration
