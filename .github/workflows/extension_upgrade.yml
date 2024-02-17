@@ -51,24 +51,18 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           make setup
-      - name: Checkout old version (v0.10.0)
+      - name: Test previous version (v0.10.0)
         run: |
           git fetch --tags
           git checkout tags/v0.10.0
-      - name: Run old version (v0.10.0)
-        # make commands not present on 0.9 release
-        run: |
           echo "\q" | make run
           cargo test -- --ignored --test-threads=1
-      - name: Checkout branch's version
+      - name: Test branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
         run: |
           git checkout $CI_BRANCH
-          make test-branch BRANCH=$CI_BRANCH
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./
+          make test-update
       - name: Debugging information
         if: always()
         run: |

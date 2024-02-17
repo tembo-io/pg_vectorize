@@ -74,8 +74,7 @@ test-version:
 	echo "\q" | make run
 	cargo test -- --ignored --test-threads=1
 
-test-branch:
-	git checkout ${BRANCH}
+test-update:
 	echo "\q" | make run
 	psql -c "ALTER EXTENSION vectorize UPDATE"
 	make test-integration
