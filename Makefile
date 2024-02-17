@@ -36,6 +36,9 @@ clean:
 setup: install-pg_cron install-pgvector install-pgmq
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 
+cat-logs:
+	cat ~/.pgrx/${PG_VERSION}.log
+
 install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
 	cd pg_cron && \

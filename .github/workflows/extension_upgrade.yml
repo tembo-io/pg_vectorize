@@ -73,3 +73,7 @@ jobs:
       - name: Upgrade and run tests
         run: |
           make test-upgrade
+      - name: Debugging information
+        if: always()
+        run: |
+          make cat-logs
