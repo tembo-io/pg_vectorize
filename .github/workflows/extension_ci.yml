@@ -128,8 +128,6 @@ jobs:
         run: |
           pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)
-          git fetch --tags
-          git checkout tags/v0.9.0
           echo "\q" | make run
           make test-integration
 
