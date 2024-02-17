@@ -169,3 +169,21 @@ pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
         }
     }
 }
+
+pub async fn ready(conn: &Pool<Postgres>) -> bool {
+    sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT 1
+            FROM pg_tables
+            WHERE schemaname = 'vectorize'
+        ) AND EXISTS (
+            SELECT 1
+            FROM pg_tables
+            WHERE schemaname = 'pgmq'
+            AND tablename = 'q_vectorize_jobs'
+        ) AS both_exist;",
+    )
+    .fetch_one(conn)
+    .await
+    .expect("failed")
+}

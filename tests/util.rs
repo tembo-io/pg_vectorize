@@ -1,9 +1,24 @@
 pub mod common {
+    use anyhow::Result;
     use log::LevelFilter;
     use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-    use sqlx::ConnectOptions;
+    use sqlx::{ConnectOptions, FromRow};
     use sqlx::{Pool, Postgres, Row};
     use url::{ParseError, Url};
+
+    #[allow(dead_code)]
+    #[derive(FromRow, Debug, serde::Deserialize)]
+    pub struct SearchResult {
+        pub product_id: i32,
+        pub product_name: String,
+        pub similarity_score: f64,
+    }
+
+    #[allow(dead_code)]
+    #[derive(FromRow, Debug)]
+    pub struct SearchJSON {
+        pub search_results: serde_json::Value,
+    }
 
     pub async fn connect(url: &str) -> Pool<Postgres> {
         let options = conn_options(url).expect("failed to parse url");
@@ -100,5 +115,35 @@ pub mod common {
                 .await
                 .expect("failed to init embedding svc url");
         }
+    }
+
+    pub async fn search_with_retry(
+        conn: &Pool<Postgres>,
+        query: &str,
+        job_name: &str,
+        retries: usize,
+        delay_seconds: usize,
+    ) -> Result<Vec<SearchJSON>> {
+        let mut results: Vec<SearchJSON> = vec![];
+        for i in 0..retries {
+            results = sqlx::query_as::<_, SearchJSON>(&format!(
+                "SELECT * from vectorize.search(
+                job_name => '{job_name}',
+                query => '{query}',
+                return_columns => ARRAY['product_id', 'product_name'],
+                num_results => 3
+            ) as search_results;"
+            ))
+            .fetch_all(conn)
+            .await?;
+            if results.len() != 3 {
+                println!("retrying search query: {}/{}", i + 1, retries);
+                tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds as u64)).await;
+            } else {
+                return Ok(results);
+            }
+        }
+        println!("results: {:?}", results);
+        Err(anyhow::anyhow!("timed out waiting for search query"))
     }
 }

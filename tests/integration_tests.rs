@@ -1,7 +1,5 @@
-use rand::Rng;
 mod util;
-use sqlx::FromRow;
-
+use rand::Rng;
 use util::common;
 
 // Integration tests are ignored by default
@@ -87,22 +85,10 @@ async fn test_realtime_job() {
     .await
     .expect("failed to init job");
 
-    // embedding should be updated after few seconds
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-
-    let result = sqlx::query(&format!(
-        "SELECT vectorize.search(
-        job_name => '{job_name}',
-        query => 'mobile devices',
-        return_columns => ARRAY['product_name', 'product_id'],
-        num_results => 3
-    );"
-    ))
-    .execute(&conn)
-    .await
-    .expect("failed to select from test_table");
-    // 3 rows returned
-    assert_eq!(result.rows_affected(), 3);
+    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2)
+        .await
+        .expect("failed to exec search");
+    assert_eq!(search_results.len(), 3);
 
     let random_product_id = rng.gen_range(0..100000);
 
@@ -117,42 +103,20 @@ async fn test_realtime_job() {
         .await
         .expect("failed to insert into test_table");
 
-    // embedding should be updated after few seconds
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-
-    #[allow(dead_code)]
-    #[derive(FromRow, Debug, serde::Deserialize)]
-    struct SearchResult {
-        product_id: i32,
-        product_name: String,
-        similarity_score: f64,
-    }
-
-    #[allow(dead_code)]
-    #[derive(FromRow, Debug)]
-    struct SearchJSON {
-        search_results: serde_json::Value,
-    }
-
-    let result = sqlx::query_as::<_, SearchJSON>(&format!(
-        "SELECT search_results from vectorize.search(
-        job_name => '{job_name}',
-        query => 'car testing devices',
-        return_columns => ARRAY['product_id','product_name'],
-        num_results => 3
-    ) as search_results;"
-    ))
-    .fetch_all(&conn)
-    .await
-    .expect("failed to execute search");
+    // index will need to rebuild
+    tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
+    let search_results = common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2)
+        .await
+        .expect("failed to exec search");
 
     let mut found_it = false;
-    for row in result {
-        println!("row: {:?}", row);
-        let row: SearchResult = serde_json::from_value(row.search_results).unwrap();
+    for row in search_results {
+        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "car tester");
             found_it = true;
+        } else {
+            println!("row: {:?}", row);
         }
     }
     assert!(found_it);
@@ -184,20 +148,9 @@ async fn test_rag() {
     .await
     .expect("failed to init job");
 
-    // embedding should be updated after few seconds
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-
     // must be able to conduct vector search on agent tables
-    let result = sqlx::query(&format!(
-        "SELECT vectorize.search(
-        job_name => '{agent_name}',
-        query => 'car testing devices',
-        return_columns => ARRAY['description'],
-        num_results => 3
-    );"
-    ))
-    .execute(&conn)
-    .await
-    .expect("failed to select from test_table");
-    assert_eq!(result.rows_affected(), 3);
+    let search_results = common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2)
+        .await
+        .expect("failed to exec search");
+    assert_eq!(search_results.len(), 3);
 }
