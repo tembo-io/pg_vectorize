@@ -1,7 +1,5 @@
-use rand::Rng;
 mod util;
-use sqlx::FromRow;
-
+use rand::Rng;
 use util::common;
 
 // Integration tests are ignored by default
