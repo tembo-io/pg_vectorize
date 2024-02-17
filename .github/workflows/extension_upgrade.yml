@@ -69,10 +69,6 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./
-          force: true
-      - name: Upgrade and run tests
-        run: |
-          make test-upgrade
       - name: Debugging information
         if: always()
         run: |

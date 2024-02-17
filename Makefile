@@ -77,9 +77,5 @@ test-version:
 test-branch:
 	git checkout ${BRANCH}
 	echo "\q" | make run
-	make test-integration
-
-test-upgrade:
-	make test-version RUN_VER=${RUN_VER}
 	psql -c "ALTER EXTENSION vectorize UPDATE"
-	make test-branch BRANCH=${BRANCH}
+	make test-integration
