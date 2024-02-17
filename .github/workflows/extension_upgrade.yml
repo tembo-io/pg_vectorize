@@ -20,6 +20,11 @@ jobs:
   test:
     name: Upgrade Test
     runs-on: ubuntu-22.04
+    services:
+      vector-serve:
+        image: quay.io/tembo/vector-serve:latest
+        ports:
+          - 3000:3000
     steps:
       - name: Checkout repository content
         uses: actions/checkout@v2
