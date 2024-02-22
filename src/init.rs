@@ -139,7 +139,7 @@ fn append_embedding_column(job_name: &str, schema: &str, table: &str, col_type: 
     )
 }
 
-pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> String {
+pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<String> {
     Spi::get_one_with_args(
         "
         SELECT data_type
@@ -154,7 +154,9 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> String {
             (PgBuiltInOids::TEXTOID.oid(), table.into_datum()),
             (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
         ],
-    )
-    .expect("error getting column datatype")
-    .expect("no resultset for column datatype")
+    )?
+    .context(format!(
+        "could not determine data type of column `{column}` on relation: `{schema}.{table}`"
+    ))
+    .context("no resultset for column datatype")
 }
