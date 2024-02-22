@@ -42,7 +42,7 @@ pub fn init_table(
     };
 
     // get prim key type
-    let pkey_type = init::get_column_datatype(schema, table, primary_key);
+    let pkey_type = init::get_column_datatype(schema, table, primary_key)?;
     init::init_pgmq()?;
 
     // certain embedding services require an API key, e.g. openAI
