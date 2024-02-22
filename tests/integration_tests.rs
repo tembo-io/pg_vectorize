@@ -154,3 +154,35 @@ async fn test_rag() {
         .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_rag_alternate_schema() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+    let test_table_name = common::init_test_table(test_num, &conn).await;
+    let agent_name = format!("agnet_{}", test_num);
+    println!("test_table_name: {}", test_table_name);
+    println!("agent_name: {}", agent_name);
+    // initialize
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.init_rag(
+            agent_name => '{agent_name}',
+            table_name => '{test_table_name}',
+            unique_record_id => 'product_id',
+            \"column\" => 'description',
+            transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // must be able to conduct vector search on agent tables
+    let search_results = common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2)
+        .await
+        .expect("failed to exec search");
+    assert_eq!(search_results.len(), 3);
+}

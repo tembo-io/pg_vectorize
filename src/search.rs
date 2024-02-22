@@ -137,8 +137,8 @@ pub fn init_table(
             // setup triggers
             // create the trigger if not exists
             let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
-            let insert_trigger = create_insert_trigger(job_name, table);
-            let update_trigger = create_update_trigger(job_name, table, &columns);
+            let insert_trigger = create_insert_trigger(job_name, schema, table);
+            let update_trigger = create_update_trigger(job_name, schema, table, &columns);
 
             let _: Result<_, spi::Error> = Spi::connect(|mut c| {
                 let _r = c.update(&trigger_handler, None, None)?;
