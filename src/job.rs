@@ -171,7 +171,7 @@ FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2 )
 EXECUTE FUNCTION vectorize.handle_update_example_job();"
         );
-        let result = create_update_trigger(job_name, table_name, "myschema", &input_columns);
+        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
         assert_eq!(expected, result);
     }
 
@@ -189,7 +189,7 @@ FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
         );
-        let result = create_update_trigger(job_name, table_name, "myschema", &input_columns);
+        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
         assert_eq!(expected, result);
     }
 
