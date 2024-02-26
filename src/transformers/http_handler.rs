@@ -20,6 +20,8 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
         );
         warning!("pg-vectorize: error handling response: {}", errmsg);
         return Err(anyhow::anyhow!(errmsg));
+    } else {
+        warning!("pg-vectorize: error: {:?}", resp);
     }
     let value = resp.json::<T>().await?;
     Ok(value)

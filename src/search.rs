@@ -10,7 +10,6 @@ use crate::types;
 use crate::util;
 
 use anyhow::Result;
-use openai_api_rs::v1::api;
 use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 
