@@ -35,6 +35,8 @@ jobs:
         python-version: 3.11.1
     - name: Setup
       run: make setup
+    - name: Init Model Cache
+      run: make download.models
     - name: Lints
       run: make check
     - name: Tests
