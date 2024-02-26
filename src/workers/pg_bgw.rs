@@ -1,4 +1,4 @@
-use crate::guc::init_guc;
+use crate::guc::{init_guc, NUM_BGW_PROC};
 use crate::init::VECTORIZE_QUEUE;
 use crate::util::{get_pg_conn, ready};
 use anyhow::Result;
@@ -11,11 +11,17 @@ use crate::workers::run_worker;
 #[pg_guard]
 pub extern "C" fn _PG_init() {
     init_guc();
-    BackgroundWorkerBuilder::new("PG Vectorize Background Worker")
-        .set_function("background_worker_main")
-        .set_library("vectorize")
-        .enable_spi_access()
-        .load();
+
+    let num_bgw = NUM_BGW_PROC.get();
+    for i in 0..num_bgw {
+        log!("pg-vectorize: starting background worker {}", i);
+        let bginst = format!("pg-vectorize-bgw-{}", i);
+        BackgroundWorkerBuilder::new(&bginst)
+            .set_function("background_worker_main")
+            .set_library("vectorize")
+            .enable_spi_access()
+            .load();
+    }
 }
 
 #[pg_guard]
