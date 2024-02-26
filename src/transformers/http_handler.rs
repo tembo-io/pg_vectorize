@@ -94,11 +94,12 @@ pub async fn get_model_info(
 ) -> Result<TransformerMetadata> {
     let svc_url = get_generic_svc_url()?;
     let info_url = svc_url.replace("/embeddings", "/info");
+    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
     let client = reqwest::Client::new();
     let mut req = client
         .get(info_url)
         .query(&[("model_name", model_name)])
-        .timeout(std::time::Duration::from_secs(5)); // model info must always be fast
+        .timeout(std::time::Duration::from_secs(timeout as u64));
     if let Some(key) = api_key {
         req = req.header("Authorization", format!("Bearer {}", key));
     }
