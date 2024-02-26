@@ -6,7 +6,7 @@ description = "The simplest way to orchestrate vector search on Postgres."
 homepage = "https://github.com/tembo-io/pg_vectorize"
 documentation = "https://github.com/tembo-io/pg_vectorize"
 categories = ["orchestration", "machine_learning"]
-version = "0.10.1"
+version = "0.11.0"
 
 [build]
 postgres_version = "15"
