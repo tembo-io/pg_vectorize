@@ -41,7 +41,6 @@ pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<V
     }
     let resp = req.send().await?;
     let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
-
     let embeddings = embedding_resp
         .data
         .iter()
