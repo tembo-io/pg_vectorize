@@ -14,7 +14,7 @@ class AliveResponse(BaseModel):
 
 
 @router.get("/ready", response_model=ReadyResponse)
-def model_info() -> ReadyResponse:
+def ready() -> ReadyResponse:
     logging.debug("Health check")
     return ReadyResponse(
         ready=True,
@@ -22,7 +22,7 @@ def model_info() -> ReadyResponse:
 
 
 @router.get("/alive", response_model=AliveResponse)
-def model_info() -> AliveResponse:
+def alive() -> AliveResponse:
     logging.debug("Health check")
     return AliveResponse(
         alive=True,
