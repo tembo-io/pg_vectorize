@@ -3,10 +3,13 @@ pub mod pg_bgw;
 use crate::executor::JobMessage;
 use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
 use crate::types;
+
 use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
 use pgrx::*;
+use serde_json::to_string;
 use sqlx::{Pool, Postgres};
+use std::fmt::Write;
 
 pub async fn run_worker(
     queue: PGMQueueExt,
@@ -106,7 +109,90 @@ fn build_upsert_query(
     (query, bindings)
 }
 
-use serde_json::to_string;
+async fn update_embeddings(
+    pool: &Pool<Postgres>,
+    schema: &str,
+    table: &str,
+    project: &str,
+    pkey: &str,
+    pkey_type: &str,
+    embeddings: Vec<PairedEmbeddings>,
+) -> anyhow::Result<()> {
+    if embeddings.len() > 10 {
+        bulk_update_embeddings(pool, schema, table, project, pkey, pkey_type, embeddings).await
+    } else {
+        update_append_table(pool, embeddings, schema, table, project, pkey, pkey_type).await
+    }
+}
+
+// creates a temporary table, inserts all new values into the temporary table, and then performs an update by join
+async fn bulk_update_embeddings(
+    pool: &Pool<Postgres>,
+    schema: &str,
+    table: &str,
+    project: &str,
+    pkey: &str,
+    pkey_type: &str,
+    embeddings: Vec<PairedEmbeddings>,
+) -> anyhow::Result<()> {
+    let mut tx = pool.begin().await?;
+
+    let tmp_table = format!("temp_embeddings_{project}");
+
+    let temp_table_query = format!(
+        "CREATE TEMP TABLE IF NOT EXISTS {tmp_table} (
+            pkey {pkey_type} PRIMARY KEY,
+            embeddings vector
+        ) ON COMMIT DROP;", // note, dropping on commit
+    );
+
+    sqlx::query(&temp_table_query).execute(&mut *tx).await?;
+
+    // insert all new values into the temporary table
+    let mut insert_query = format!("INSERT INTO {tmp_table} (pkey, embeddings) VALUES ");
+    let mut params: Vec<(String, String)> = Vec::new();
+
+    for embed in &embeddings {
+        let embedding_json = to_string(&embed.embeddings).expect("failed to serialize embedding");
+        params.push((embed.primary_key.to_string(), embedding_json));
+    }
+
+    // Constructing query values part and collecting bind parameters
+    for (i, (_pkey, _embedding)) in params.iter().enumerate() {
+        if i > 0 {
+            insert_query.push_str(", ");
+        }
+        write!(
+            &mut insert_query,
+            "(${}::{}, ${}::vector)",
+            i * 2 + 1,
+            pkey_type,
+            i * 2 + 2
+        )
+        .expect("Failed to write to query string");
+    }
+
+    let mut insert_statement = sqlx::query(&insert_query);
+
+    for (pkey, embedding) in params {
+        insert_statement = insert_statement.bind(pkey).bind(embedding);
+    }
+    // insert to the temp table
+    insert_statement.execute(&mut *tx).await?;
+
+    let update_query = format!(
+        "UPDATE {schema}.{table} SET
+            {project}_embeddings = temp.embeddings,
+            {project}_updated_at = (NOW())
+        FROM {tmp_table} temp
+        WHERE {schema}.{table}.{pkey}::{pkey_type} = temp.pkey::{pkey_type};"
+    );
+
+    sqlx::query(&update_query).execute(&mut *tx).await?;
+    tx.commit().await?;
+
+    Ok(())
+}
 
 async fn update_append_table(
     pool: &Pool<Postgres>,
@@ -127,7 +213,7 @@ async fn update_append_table(
             UPDATE {schema}.{table}
             SET 
                 {project}_embeddings = $1::vector,
-                {project}_updated_at = (NOW() at time zone 'utc')
+                {project}_updated_at = (NOW())
             WHERE {pkey} = $2::{pkey_type}
         "
         );
@@ -158,17 +244,18 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
     let paired_embeddings: Vec<PairedEmbeddings> =
         http_handler::merge_input_output(msg.message.inputs, embeddings);
 
+    log!("pg-vectorize: embeddings size: {}", paired_embeddings.len());
     // write embeddings to result table
     match job_params.clone().table_method {
         types::TableMethod::append => {
-            update_append_table(
+            update_embeddings(
                 &dbclient,
-                paired_embeddings,
                 &job_params.schema,
                 &job_params.table,
                 &job_meta.clone().name,
                 &job_params.primary_key,
                 &job_params.pkey_type,
+                paired_embeddings,
             )
             .await?;
         }
