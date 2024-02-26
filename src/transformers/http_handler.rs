@@ -2,6 +2,7 @@ use super::generic::get_generic_svc_url;
 use super::types::TransformerMetadata;
 use anyhow::Result;
 
+use crate::guc::EMBEDDING_REQ_TIMEOUT_SEC;
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
@@ -20,8 +21,6 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
         );
         warning!("pg-vectorize: error handling response: {}", errmsg);
         return Err(anyhow::anyhow!(errmsg));
-    } else {
-        warning!("pg-vectorize: error: {:?}", resp);
     }
     let value = resp.json::<T>().await?;
     Ok(value)
@@ -34,8 +33,10 @@ pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<V
         request.payload.input.len()
     );
     let client = reqwest::Client::new();
+    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
     let mut req = client
         .post(request.url)
+        .timeout(std::time::Duration::from_secs(timeout as u64))
         .json::<EmbeddingPayload>(&request.payload)
         .header("Content-Type", "application/json");
     if let Some(key) = request.api_key {
@@ -94,7 +95,10 @@ pub async fn get_model_info(
     let svc_url = get_generic_svc_url()?;
     let info_url = svc_url.replace("/embeddings", "/info");
     let client = reqwest::Client::new();
-    let mut req = client.get(info_url).query(&[("model_name", model_name)]);
+    let mut req = client
+        .get(info_url)
+        .query(&[("model_name", model_name)])
+        .timeout(std::time::Duration::from_secs(5)); // model must always be fast
     if let Some(key) = api_key {
         req = req.header("Authorization", format!("Bearer {}", key));
     }
