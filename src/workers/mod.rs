@@ -35,10 +35,15 @@ pub async fn run_worker(
         msg.message.job_name
     );
     let job_success = execute_job(conn.clone(), msg).await;
-    let delete_it = if job_success.is_ok() {
-        true
-    } else {
-        read_ct > 2
+    let delete_it = match job_success {
+        Ok(_) => {
+            info!("pg-vectorize: job success");
+            true
+        }
+        Err(e) => {
+            warning!("pg-vectorize: job failed: {:?}", e);
+            read_ct > 2
+        }
     };
 
     // delete message from queue

@@ -6,6 +6,7 @@ use crate::{
     executor::VectorizeMeta,
     guc,
     transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs},
+    types,
 };
 
 use super::openai::trim_inputs;
@@ -63,12 +64,14 @@ pub fn prepare_generic_embedding_request(
         model: job_meta.transformer.to_string(),
     };
 
+    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
+
     let svc_host = get_generic_svc_url().context("failed to get embedding service url from GUC")?;
 
     Ok(EmbeddingRequest {
         url: svc_host,
         payload,
-        api_key: None,
+        api_key: job_params.api_key,
     })
 }
 

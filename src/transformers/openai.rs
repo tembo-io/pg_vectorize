@@ -82,6 +82,7 @@ pub fn validate_api_key(key: &str) -> Result<()> {
             .get("https://api.openai.com/v1/models")
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", key))
+            .timeout(std::time::Duration::from_secs(5)) // api validation should be fast
             .send()
             .await
             .unwrap_or_else(|e| error!("failed to make Open AI key validation call: {}", e));
