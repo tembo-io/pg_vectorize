@@ -98,7 +98,7 @@ pub async fn get_model_info(
     let mut req = client
         .get(info_url)
         .query(&[("model_name", model_name)])
-        .timeout(std::time::Duration::from_secs(5)); // model must always be fast
+        .timeout(std::time::Duration::from_secs(5)); // model info must always be fast
     if let Some(key) = api_key {
         req = req.header("Authorization", format!("Bearer {}", key));
     }
