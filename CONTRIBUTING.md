@@ -122,7 +122,15 @@ To list out the enabled extensions, run:
 (6 rows)
 ```
 
-#### 4.2 Change embedding service url to localhost
+#### 4.2 Confirm embedding service url is set to localhost
+
+In section 3.1., we set the following postgresql.conf variable:
+
+```text
+vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
+```
+
+To confirm its success, run the following SHOW command:
 
 ```sql
 SHOW vectorize.embedding_service_url;
@@ -134,12 +142,14 @@ SHOW vectorize.embedding_service_url;
 (1 row)
 ```
 
-We have to use local host
+Say, for example, instead of local host, `vector-serve:3000` was the target?
+Should you desire to change this from within Postgre, simply run:
+
 ```
 ALTER SYSTEM SET vectorize.embedding_service_url TO 'http://localhost:3000/v1/embeddings';
 ```
 
-Upon making this change, run:
+Making changes such as this requires the following to be run:
 
 ```sql
 SELECT pg_reload_conf();
@@ -180,7 +190,7 @@ SELECT * FROM products limit 2;
           2 | Laptop Stand | Elevated platform for laptops, enhancing ergonomics    | 2023-07-26 17:20:43.639351-05
 ```
 
-#### Sample queries
+#### 4.4. Sample queries
 
 ```sql
 SELECT vectorize.table(
