@@ -49,9 +49,42 @@ make install-pgmq
 make install-pgvector
 ```
 
-#### 2.3. Compile and run `pg_vector`
+#### 2.3. Apply configurations
 
+Prior to compiling and running `pg_vector`, it's essential to update the `postgresql.conf` file.
+`pgrx` uses a specific file path for postgres configurations, which, in the following example, utilizes Postgres version 15.
+If you're using a different version, please alter the file path value `data-<postgres-version>`.
+With your preferred IDE or text editor, run the following:
 
+```bash
+<your-editor> ~/.pgrx/data-15/postgresql.conf
+```
+
+Within this document, add the following:
+
+```text
+shared_preload_libraries = 'pg_cron, vectorize'
+cron.database_name = 'postgres'
+vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
+```
+
+:wrench: Note: If your machine is running a MacOS, you may need to apply the following configurations to Cargo's config file:
+
+```
+<your-editor> ~/.cargo/config
+```
+
+```text
+[target.'cfg(target_os="macos")']
+# Postgres symbols won't be available until runtime
+rustflags = ["-Clink-arg=-Wl,-undefined,dynamic_lookup"]
+```
+
+#### 2.4. Compile and run `pg_vector`
+
+```bash
+make run
+```
 
 
 ### 2. 
