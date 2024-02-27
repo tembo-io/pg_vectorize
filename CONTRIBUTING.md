@@ -106,11 +106,63 @@ make run
 
 ### 4. Confirm successful build
 
+#### 4.1. Check extension presence
+
 Once the above command is run, you will be brought into Postgres via `psql`
 
+```sql
+CREATE EXTENSION vectorize CASCADE;
+```
 
+To list out the enabled extensions, run:
 
-Once you have those pre-requisites, you need to setup `pgrx`.
+```
+\dx
+```
+
+#### 4.2. Load example data
+
+The following can be found within the this project's README, under [Hugging Face Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#hugging-face-example).
+
+Begin by creating a `producs` table with the dataset that comes included with `pg_vectorize`.
+
+```sql
+CREATE TABLE products AS
+SELECT * FROM vectorize.example_products;
+```
+
+You can then confirm everything is correct by running the following:
+
+```sql
+SELECT * FROM products limit 2;
+```
+```text
+ product_id | product_name |                      description                       |        last_updated_at        
+------------+--------------+--------------------------------------------------------+-------------------------------
+          1 | Pencil       | Utensil used for writing and often works best on paper | 2023-07-26 17:20:43.639351-05
+          2 | Laptop Stand | Elevated platform for laptops, enhancing ergonomics    | 2023-07-26 17:20:43.639351-05
+```
+
+#### placeholder
+
+```sql
+SELECT vectorize.table(
+job_name => 'product_search_hf',
+"table" => 'products',
+primary_key => 'product_id',
+columns => ARRAY['product_name', 'description'],
+transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
+);
+```
+
+```sql
+SELECT * FROM vectorize.search(
+job_name => 'product_search_hf',
+query => 'accessories for mobile devices',
+return_columns => ARRAY['product_id', 'product_name'],
+num_results => 3
+);
+```
 
 ### Install against pgrx managed Postgres (Recommended for Development)
 
@@ -129,12 +181,6 @@ and drop you into psql:
 
 ```bash
 cargo pgrx run pg15
-```
-
-Finally, you can create the extension and get started with the example in the [README.md](README.md).
-
-```psql
-CREATE EXTENSION pgmq cascade;
 ```
 
 # Packaging
