@@ -8,6 +8,7 @@
 - [psql](https://www.postgresql.org/docs/current/app-psql.html) - Terminal-based front-end to PostgreSQL
 - [pgmq](https://github.com/tembo-io/pgmq) - PostgreSQL extension for message queues
 - [pg_cron](https://github.com/citusdata/pg_cron) - PostgreSQL extension for cron-based job scheduling
+- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL extension for vector similarity search
 
 ## Building from source
 
@@ -47,7 +48,7 @@ cat ~/.pgrx/15.log
 
 #### 3.1. Apply configurations
 
-Prior to compiling and running `pg_vector`, it's essential to update the `postgresql.conf` file.
+Prior to compiling and running `pg_vectorize`, it's essential to update the `postgresql.conf` file.
 `pgrx` uses a Postgres version-specific data directory, each containing its own `postgresql.conf` file.
 The following example, utilizes Postgres version 15.
 If you're using a different version, please alter the file path value `data-<postgres-version>` and run the following:
@@ -61,7 +62,7 @@ Within this document, add the following:
 ```text
 shared_preload_libraries = 'pg_cron, vectorize'
 cron.database_name = 'postgres'
-vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
+vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
 ```
 
 :wrench: Note: If your machine is running a MacOS, you may need to apply the following configurations to Cargo's config file:
@@ -86,13 +87,13 @@ cd pg_vectorize
 
 #### 3.3. Install dependencies
 
-From within the pg_vectorize directory, run the following, which will install `pg_cron`, `pgmq`, and `pg_vector`:
+From within the pg_vectorize directory, run the following, which will install `pg_cron`, `pgmq`, and `pgvector`:
 
 ```bash
 make setup
 ```
 
-#### 3.4. Compile and run `pg_vector`
+#### 3.4. Compile and run `pg_vectorize`
 
 ```bash
 make run
@@ -114,7 +115,6 @@ To list out the enabled extensions, run:
     Name    | Version |   Schema   |                             Description
 ------------+---------+------------+---------------------------------------------------------------------
  pg_cron    | 1.6     | pg_catalog | Job scheduler for PostgreSQL
- pg_partman | 4.7.3   | public     | Extension to manage partitioned tables by time or ID
  pgmq       | 1.1.1   | pgmq       | A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.
  plpgsql    | 1.0     | pg_catalog | PL/pgSQL procedural language
  vector     | 0.6.0   | public     | vector data type and ivfflat and hnsw access methods
@@ -130,7 +130,7 @@ SHOW vectorize.embedding_service_url;
 ```text
    vectorize.embedding_service_url
 -------------------------------------
- http://vector-serve:3000/v1/embeddings
+ http://localhost:3000/v1/embeddings
 (1 row)
 ```
 
