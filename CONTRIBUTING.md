@@ -19,7 +19,13 @@ This process is more involved, but can easily be distilled down into a handful o
 pgrx init
 ```
 
-### 2. Clone and compile `pg_vectorize` and extension dependencies
+### 2. Set up Docker container
+
+```bash
+docker run -d -p 3000:3000 quay.io/tembo/vector-serve:latest
+```
+
+### 3. Clone and compile `pg_vectorize` and extension dependencies
 
 When progressing through these steps, refer to the following for troubleshooting:
 
@@ -27,7 +33,7 @@ When progressing through these steps, refer to the following for troubleshooting
 cat ~/.pgrx/15.log
 ```
 
-#### 2.1. Clone and enter directory
+#### 3.1. Clone and enter directory
 
 ```bash
 git clone https://github.com/tembo-io/pg_vectorize.git
@@ -35,21 +41,7 @@ git clone https://github.com/tembo-io/pg_vectorize.git
 cd pg_vectorize
 ```
 
-#### 2.2. Install dependencies
-
-From within the pg_vectorize directory, run the following:
-
-```bash
-make install-pg_cron
-```
-```bash
-make install-pgmq
-```
-```bash
-make install-pgvector
-```
-
-#### 2.3. Apply configurations
+#### 3.2. Apply configurations
 
 Prior to compiling and running `pg_vector`, it's essential to update the `postgresql.conf` file.
 `pgrx` uses a specific file path for postgres configurations, which, in the following example, utilizes Postgres version 15.
@@ -78,46 +70,34 @@ vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
 [target.'cfg(target_os="macos")']
 # Postgres symbols won't be available until runtime
 rustflags = ["-Clink-arg=-Wl,-undefined,dynamic_lookup"]
+
+#### 3.3. Install dependencies
+
+From within the pg_vectorize directory, run the following:
+
+```bash
+make install-pg_cron
+```
+```bash
+make install-pgmq
+```
+```bash
+make install-pgvector
 ```
 
-#### 2.4. Compile and run `pg_vector`
+#### 3.4. Compile and run `pg_vector`
 
 ```bash
 make run
 ```
 
+### 4. Confirm successful build
 
-### 2. 
+Once the above command is run, you will be brought into Postgres via `psql`
+
+
+
 Once you have those pre-requisites, you need to setup `pgrx`.
-
-```bash
-cargo install --locked cargo-pgrx --version 0.11.0
-```
-
-Clone the repo and change into the directory.
-
-```bash
-git clone https://github.com/tembo-io/pgmq.git
-cd pgmq
-```
-
-After this point, the steps differ slightly based on if you'd like to build
-and install against an existing Postgres setup or develop against pgrx managed
-development environment (which installs and allows you to test against multiple
-Postgres versions).
-
-### Install to a pre-existing Postgres
-
-Initialize `cargo-pgrx`, and tell it the path to the your `pg_config`. For example,
-if `pg_config` is on your `$PATH` and you have Postgres 15, you can run:
-
-```bash
-cargo pgrx init --pg15=`which pg_config`
-```
-Then, to install the release build, you can simply run:
-```
-cargo pgrx install --release
-```
 
 ### Install against pgrx managed Postgres (Recommended for Development)
 
@@ -130,15 +110,6 @@ cargo pgrx init
 **Note**: Make sure you build and install `pg_partman` against the postgres installation
 you want to build against (`PG_CONFIG` in `~/.pgrx/PG_VERSION/pgrx-install/bin/pg_config`
 and `PGDATA` in `~/.pgrx/data-PG_MAJOR_VERSION`)
-
-Example steps using `pg_partman` 4.7.3 and `PostgreSQL` 15.5:
-
-```bash
-wget https://github.com/pgpartman/pg_partman/archive/refs/tags/v4.7.3.tar.gz
-tar xvfz v4.7.3.tar.gz
-cd pg_partman-4.7.3
-make install PG_CONFIG=~/.pgrx/15.5/pgrx-install/bin/pg_config PG_DATA=~/.pgrx/data-15
-```
 
 Then, you can use the run command, which will build and install the extension
 and drop you into psql:
