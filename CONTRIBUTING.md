@@ -16,7 +16,7 @@ This process is more involved, but can easily be distilled down into a handful o
 ### 1. Set up pgrx
 
 ```bash
-pgrx init
+cargo pgrx init
 ```
 
 ### 2. Set up Docker container
@@ -86,8 +86,13 @@ cd pg_vectorize
 
 #### 3.3. Install dependencies
 
-From within the pg_vectorize directory, run the following:
+From within the pg_vectorize directory, run the following, which will install `pg_cron`, `pgmq`, and `pg_vector`:
 
+```bash
+make setup
+```
+
+Or you can run the commands individually:
 ```bash
 make install-pg_cron
 ```
@@ -108,25 +113,36 @@ make run
 
 #### 4.1. Check extension presence
 
-Once the above command is run, you will be brought into Postgres via `psql`
-
-```sql
-CREATE EXTENSION vectorize CASCADE;
-```
+Once the above command is run, you will be brought into Postgres via `psql`.
 
 To list out the enabled extensions, run:
 
-```
+```sql
 \dx
+```
+```text
+                                      List of installed extensions
+    Name    | Version |   Schema   |                             Description
+------------+---------+------------+---------------------------------------------------------------------
+ pg_cron    | 1.6     | pg_catalog | Job scheduler for PostgreSQL
+ pg_partman | 4.7.3   | public     | Extension to manage partitioned tables by time or ID
+ pgmq       | 1.1.1   | pgmq       | A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.
+ plpgsql    | 1.0     | pg_catalog | PL/pgSQL procedural language
+ vector     | 0.6.0   | public     | vector data type and ivfflat and hnsw access methods
+ vectorize  | 0.10.1  | vectorize  | The simplest way to do vector search on Postgres
+(6 rows)
 ```
 
 #### 4.2
 
 ```sql
-show vectorize.embedding_service_url ;
+SHOW vectorize.embedding_service_url;
 ```
 ```text
-vectorize.embedding_service_url
+   vectorize.embedding_service_url
+-------------------------------------
+http://vector-serve:3000/v1/embeddings
+(1 row)
 ```
 
 We have to use local host
@@ -140,6 +156,16 @@ Upon making this change, run:
 SELECT pg_reload_conf();
 ```
 
+Running the earlier SHOW command should reveal the appropriate change:
+
+```sql
+SHOW vectorize.embedding_service_url;
+```
+```text
+   vectorize.embedding_service_url
+-------------------------------------
+ http://localhost:3000/v1/embeddings
+```
 
 #### 4.3. Load example data
 
