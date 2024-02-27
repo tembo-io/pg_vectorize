@@ -141,7 +141,7 @@ SHOW vectorize.embedding_service_url;
 ```text
    vectorize.embedding_service_url
 -------------------------------------
-http://vector-serve:3000/v1/embeddings
+ http://vector-serve:3000/v1/embeddings
 (1 row)
 ```
 
@@ -165,6 +165,7 @@ SHOW vectorize.embedding_service_url;
    vectorize.embedding_service_url
 -------------------------------------
  http://localhost:3000/v1/embeddings
+(1 row)
 ```
 
 #### 4.3. Load example data
@@ -201,6 +202,12 @@ columns => ARRAY['product_name', 'description'],
 transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
 );
 ```
+```text
+                    table
+---------------------------------------------
+ Successfully created job: product_search_hf
+(1 row)
+```
 
 ```sql
 SELECT * FROM vectorize.search(
@@ -210,6 +217,15 @@ return_columns => ARRAY['product_id', 'product_name'],
 num_results => 3
 );
 ```
+```text
+                                       search_results
+---------------------------------------------------------------------------------------------
+ {"product_id": 13, "product_name": "Phone Charger", "similarity_score": 0.8147812194590133}
+ {"product_id": 6, "product_name": "Backpack", "similarity_score": 0.774306211384604}
+ {"product_id": 11, "product_name": "Stylus Pen", "similarity_score": 0.7709903789778251}
+(3 rows)
+```
+
 
 ### 5. Local URL
 
@@ -226,5 +242,7 @@ Run this script to package into a `.deb` file, which can be installed on Ubuntu.
 # Releases
 
 `pg_vectorize` releases are automated through a [Github workflow](https://github.com/tembo-io/pg_vectorize/blob/main/.github/workflows/extension_ci.yml).
-The compiled binaries are publish to and hosted at [pgt.dev](https://pgt.dev). To create a release, create a new tag follow a valid [semver](https://semver.org/), then create a release with the same name. Auto-generate the release notes and/or add more relevant details as needed. See subdirectories for the [Rust](https://github.com/tembo-io/pgmq/tree/main/core) and [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python) SDK release processes.
+The compiled binaries are publish to and hosted at [pgt.dev](https://pgt.dev).
+To create a release, create a new tag follow a valid [semver](https://semver.org/), then create a release with the same name.
+Auto-generate the release notes and/or add more relevant details as needed.
 
