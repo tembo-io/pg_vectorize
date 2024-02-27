@@ -1,5 +1,5 @@
 SOURCE_OBJECTS=app
-
+POETRY_VERSION:=1.7.1
 
 format:
 	poetry run black ${SOURCE_OBJECTS}
@@ -14,3 +14,14 @@ run: download.models
 run.docker:
 	docker build -t vector-serve .
 	docker run -p 3000:3000 vector-serve
+
+test:
+	poetry run pytest
+
+setup:
+	curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
+	poetry install
+
+check:
+	poetry run ruff check ${SOURCE_OBJECTS}
+	poetry run black --check ${SOURCE_OBJECTS}
