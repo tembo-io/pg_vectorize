@@ -39,7 +39,7 @@ docker logs <your-container-id> -f
 
 ### 3. Clone and compile `pg_vectorize` and extension dependencies
 
-When progressing through these steps, refer to the following for troubleshooting:
+:wrench: When progressing through these steps, refer to the following for troubleshooting:
 
 ```bash
 cat ~/.pgrx/15.log
@@ -92,17 +92,6 @@ From within the pg_vectorize directory, run the following, which will install `p
 make setup
 ```
 
-Or you can run the commands individually:
-```bash
-make install-pg_cron
-```
-```bash
-make install-pgmq
-```
-```bash
-make install-pgvector
-```
-
 #### 3.4. Compile and run `pg_vector`
 
 ```bash
@@ -133,7 +122,7 @@ To list out the enabled extensions, run:
 (6 rows)
 ```
 
-#### 4.2
+#### 4.2 Change embedding service url to localhost
 
 ```sql
 SHOW vectorize.embedding_service_url;
@@ -191,7 +180,7 @@ SELECT * FROM products limit 2;
           2 | Laptop Stand | Elevated platform for laptops, enhancing ergonomics    | 2023-07-26 17:20:43.639351-05
 ```
 
-#### placeholder
+#### Sample queries
 
 ```sql
 SELECT vectorize.table(
@@ -226,10 +215,10 @@ num_results => 3
 (3 rows)
 ```
 
-
 ### 5. Local URL
 
-Once all of the following is complete, you should be able to visit the `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs)
+Once all of the following is complete, you should be able to visit the `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs) and explore.
+This is a platform that allows, for example, the input of [different sentence-transformers models](https://huggingface.co/models?sort=trending&search=sentence-transformers) from Hugging Face.
 
 # Packaging
 
