@@ -230,14 +230,6 @@ num_results => 3
 Once all of the following is complete, you should be able to visit the `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs) and explore.
 This is a platform that allows, for example, the input of [different sentence-transformers models](https://huggingface.co/models?sort=trending&search=sentence-transformers) from Hugging Face.
 
-# Packaging
-
-Run this script to package into a `.deb` file, which can be installed on Ubuntu.
-
-```
-/bin/bash build-extension.sh
-```
-
 # Releases
 
 `pg_vectorize` releases are automated through a [Github workflow](https://github.com/tembo-io/pg_vectorize/blob/main/.github/workflows/extension_ci.yml).
