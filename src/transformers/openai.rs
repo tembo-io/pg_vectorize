@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::{
     executor::VectorizeMeta,
-    guc::OPENAI_KEY,
+    guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY},
     transformers::{
         http_handler::handle_response,
         types::{EmbeddingPayload, EmbeddingRequest, Inputs},
@@ -72,6 +72,7 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
 
 pub fn validate_api_key(key: &str) -> Result<()> {
     let client = reqwest::Client::new();
+    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -82,6 +83,7 @@ pub fn validate_api_key(key: &str) -> Result<()> {
             .get("https://api.openai.com/v1/models")
             .header("Content-Type", "application/json")
             .header("Authorization", format!("Bearer {}", key))
+            .timeout(std::time::Duration::from_secs(timeout as u64))
             .send()
             .await
             .unwrap_or_else(|e| error!("failed to make Open AI key validation call: {}", e));

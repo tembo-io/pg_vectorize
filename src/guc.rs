@@ -6,8 +6,10 @@ use anyhow::Result;
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
+pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
 pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
+pub static EMBEDDING_REQ_TIMEOUT_SEC: GucSetting<i32> = GucSetting::<i32>::new(120);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -44,6 +46,28 @@ pub fn init_guc() {
         "Url to a service with request and response schema consistent with OpenAI's embeddings API.",
         &EMBEDDING_SERVICE_HOST,
         GucContext::Suset, GucFlags::default());
+
+    GucRegistry::define_int_guc(
+        "vectorize.num_bgw_proc",
+        "Number of bgw processes",
+        "Number of parallel background worker processes to run. Default is 1.",
+        &NUM_BGW_PROC,
+        1,
+        10,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_int_guc(
+        "vectorize.embedding_req_timeout_sec",
+        "Timeout, in seconds, for embedding transform requests",
+        "Number of seconds to wait for an embedding http request to complete. Default is 120 seconds.",
+        &EMBEDDING_REQ_TIMEOUT_SEC,
+        1,
+        1800,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone

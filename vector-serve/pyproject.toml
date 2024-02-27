@@ -17,6 +17,8 @@ torch = "^2.1.2"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.13"
 black = "*"
+pytest = "^8.0.2"
+httpx = "^0.27.0"
 
 [build-system]
 requires = ["poetry-core"]
