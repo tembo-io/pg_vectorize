@@ -25,6 +25,18 @@ pgrx init
 docker run -d -p 3000:3000 quay.io/tembo/vector-serve:latest
 ```
 
+Confirm a successful set up by running the following:
+
+```bash
+docker ps
+```
+
+:wrench: Note: Consider running the following to see the container logs real time:
+
+```bash
+docker logs <your-container-id> -f
+```
+
 ### 3. Clone and compile `pg_vectorize` and extension dependencies
 
 When progressing through these steps, refer to the following for troubleshooting:
@@ -33,15 +45,7 @@ When progressing through these steps, refer to the following for troubleshooting
 cat ~/.pgrx/15.log
 ```
 
-#### 3.1. Clone and enter directory
-
-```bash
-git clone https://github.com/tembo-io/pg_vectorize.git
-
-cd pg_vectorize
-```
-
-#### 3.2. Apply configurations
+#### 3.1. Apply configurations
 
 Prior to compiling and running `pg_vector`, it's essential to update the `postgresql.conf` file.
 `pgrx` uses a specific file path for postgres configurations, which, in the following example, utilizes Postgres version 15.
@@ -70,6 +74,15 @@ vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
 [target.'cfg(target_os="macos")']
 # Postgres symbols won't be available until runtime
 rustflags = ["-Clink-arg=-Wl,-undefined,dynamic_lookup"]
+```
+
+#### 3.2. Clone and enter directory
+
+```bash
+git clone https://github.com/tembo-io/pg_vectorize.git
+
+cd pg_vectorize
+```
 
 #### 3.3. Install dependencies
 
