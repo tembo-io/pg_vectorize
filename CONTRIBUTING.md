@@ -92,7 +92,7 @@ From within the pg_vectorize directory, run the following, which will install `p
 make setup
 ```
 
-#### 3.4. Compile and run `pg_vector`
+#### 3.4. Compile and run `pg_vectorize`
 
 ```bash
 make run
