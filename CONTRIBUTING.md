@@ -48,9 +48,9 @@ cat ~/.pgrx/15.log
 #### 3.1. Apply configurations
 
 Prior to compiling and running `pg_vector`, it's essential to update the `postgresql.conf` file.
-`pgrx` uses a specific file path for postgres configurations, which, in the following example, utilizes Postgres version 15.
-If you're using a different version, please alter the file path value `data-<postgres-version>`.
-With your preferred IDE or text editor, run the following:
+`pgrx` uses a Postgres version-specific data directory, each containing its own `postgresql.conf` file.
+The following example, utilizes Postgres version 15.
+If you're using a different version, please alter the file path value `data-<postgres-version>` and run the following:
 
 ```bash
 <your-editor> ~/.pgrx/data-15/postgresql.conf
@@ -120,7 +120,28 @@ To list out the enabled extensions, run:
 \dx
 ```
 
-#### 4.2. Load example data
+#### 4.2
+
+```sql
+show vectorize.embedding_service_url ;
+```
+```text
+vectorize.embedding_service_url
+```
+
+We have to use local host
+```
+ALTER SYSTEM SET vectorize.embedding_service_url TO 'http://localhost:3000/v1/embeddings';
+```
+
+Upon making this change, run:
+
+```sql
+SELECT pg_reload_conf();
+```
+
+
+#### 4.3. Load example data
 
 The following can be found within the this project's README, under [Hugging Face Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#hugging-face-example).
 
@@ -164,24 +185,9 @@ num_results => 3
 );
 ```
 
-### Install against pgrx managed Postgres (Recommended for Development)
+### 5. Local URL
 
-Initialize `cargo-pgrx` development environment:
-
-```bash
-cargo pgrx init
-```
-
-**Note**: Make sure you build and install `pg_partman` against the postgres installation
-you want to build against (`PG_CONFIG` in `~/.pgrx/PG_VERSION/pgrx-install/bin/pg_config`
-and `PGDATA` in `~/.pgrx/data-PG_MAJOR_VERSION`)
-
-Then, you can use the run command, which will build and install the extension
-and drop you into psql:
-
-```bash
-cargo pgrx run pg15
-```
+Once all of the following is complete, you should be able to visit the `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs)
 
 # Packaging
 
@@ -193,5 +199,6 @@ Run this script to package into a `.deb` file, which can be installed on Ubuntu.
 
 # Releases
 
-PGMQ Postgres Extension releases are automated through a [Github workflow](https://github.com/tembo-io/pgmq/blob/main/.github/workflows/extension_ci.yml). The compiled binaries are publish to and hosted at [pgt.dev](https://pgt.dev). To create a release, create a new tag follow a valid [semver](https://semver.org/), then create a release with the same name. Auto-generate the release notes and/or add more relevant details as needed. See subdirectories for the [Rust](https://github.com/tembo-io/pgmq/tree/main/core) and [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python) SDK release processes.
+`pg_vectorize` releases are automated through a [Github workflow](https://github.com/tembo-io/pg_vectorize/blob/main/.github/workflows/extension_ci.yml).
+The compiled binaries are publish to and hosted at [pgt.dev](https://pgt.dev). To create a release, create a new tag follow a valid [semver](https://semver.org/), then create a release with the same name. Auto-generate the release notes and/or add more relevant details as needed. See subdirectories for the [Rust](https://github.com/tembo-io/pgmq/tree/main/core) and [Python](https://github.com/tembo-io/pgmq/tree/main/tembo-pgmq-python) SDK release processes.
 
