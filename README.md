@@ -1,7 +1,7 @@
 <h1 align="center">
- <b>pg_vectorize: Automated Vector Search on Postgres</b>
+ <b>pg_vectorize: a VectorDB for Postgres</b>
 <br>
-   
+
 <br/>
   <a href="https://tembo.io"><img src="https://github.com/tembo-io/pg_vectorize/assets/15756360/34d65cba-065b-485f-84a4-76284e9def19" alt="pg_vectorize" width="368px"></a>
 
@@ -11,31 +11,32 @@
   
 </p>
 
-A Postgres extension that automates the transformation and orchestration of text to embeddings, allowing you to do vector and semantic search on existing data with as little as two function calls.
+A Postgres extension that automates the transformation and orchestration of text to embeddings and provides hooks into the most popular LLMs. This allows you to do vector search and build LLM applications on existing data with as little as two function calls.
 
-One function call to initialize your data. Another function call to search. Automated management of Postgres triggers and background jobs to keep your embeddings up to date.
+This project relies heavily on the work by [pgvector](https://github.com/pgvector/pgvector) for vector similarity search, [pgmq](https://github.com/tembo-io/pgmq) for orchestration in background workers, and [SentenceTransformers](https://huggingface.co/sentence-transformers).
 
 ---
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 
+**API Documentation**: https://tembo-io.github.io/pg_vectorize/
+
+**Source**: https://github.com/tembo-io/pg_vectorize
+
 ## Features
 
-- Integrations with [OpenAI's embeddings](https://platform.openai.com/docs/guides/embeddings) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
+- Workflows for both vector search and RAG
+- Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [chat-completion](https://platform.openai.com/docs/guides/text-generation) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
 - Automated creation of Postgres triggers to keep your embeddings up to date
 - High level API - one function to initialize embeddings transformations, and another function to search
-
+ 
 ## Table of Contents
 - [Features](#features)
 - [Table of Contents](#table-of-contents)
 - [Installation](#installation)
-- [API Overview](#api-overview)
-  - [`vectorize.table()`](#vectorizetable)
-  - [`vectorize.search()`](#vectorizesearch)
-  - [`vectorize.transform_embeddings()`](#vectorizetransform_embeddings)
-- [Hugging Face Example](#hugging-face-example)
-- [OpenAI Example](#openai-example)
+- [Vector Search Example](#vector-search-example)
+- [RAG Example](#rag-example)
 - [Trigger based updates](#trigger-based-updates)
 - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
@@ -84,64 +85,21 @@ alter system set cron.database_name = 'postgres'
 ```
 
 And if you're running the vector-serve container, set the following url as a configuration parameter in Postgres.
+ The host may need to change from `localhost` to something else depending on where you are running the container.
 
 ```sql
-alter system set vectorize.embedding_service_url = 'http://vector-serve:3000/v1/embeddings'
+alter system set vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
 
 SELECT pg_reload_conf();
 ```
 
 </details>
 
-## API Overview
+## Vector Search Example
 
-pg_vectorize is a high level API over pgvector and provides integrations into orcehstrating the transform of text to embeddings through three functions:
+Text-to-embedding transformation can be done with either Hugging Face's Sentence-Transformers or OpenAI's embeddings. The following examples use Hugging Face's Sentence-Transformers. See the project [documentation](https://tembo-io.github.io/pg_vectorize/) for OpenAI examples.
 
-### `vectorize.table()`
-
-Configures a vectorize job which handles transforming existing data into embeddings, and keeping the embeddings updated as new data is inserted or existing rows are updated.
-
-```sql
-SELECT vectorize.table(
-    job_name => 'my_job',
-    "table" => 'my_table',
-    primary_key => 'record_id',
-    columns => ARRAY['some_text_column'],
-    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
-);
-```
-
-### `vectorize.search()`
-
-An abstraction over a text-to-embedding transformation and pgvector's vector similarity search functionality. Used in conjuction with `vectorize.table()`.
-
-Returns `ARRAY[json]`
-
-```sql
-SELECT * FROM vectorize.search(
-    job_name => 'my_job',
-    query => 'my raw text search query',
-    return_columns => ARRAY['record_id', 'some_text_column'],
-    num_results => 3
-);
-```
-
-### `vectorize.transform_embeddings()`
-
-A direct hook to a transformer model of your choice.
-
-Returns `ARRAY[float]` (embeddings)
-
-```sql
-select vectorize.transform_embeddings(
-    input => 'the quick brown fox jumped over the lazy dogs',
-    model_name => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
-);
-
-{-0.2556323707103729,-0.3213586211204529 ..., -0.0951206386089325}
-```
-
-## Hugging Face Example
+Follow the [installation](#installation) steps if you haven't already.
 
 Setup a products table. Copy from the example data provided by the extension.
 
@@ -192,17 +150,16 @@ SELECT * FROM vectorize.search(
  {"product_id": 11, "product_name": "Stylus Pen", "similarity_score": 0.7709902653575383}
 ```
 
-## OpenAI Example
+## RAG Example
 
-pg_vectorize also works with using OpenAI's embeddings, but first you'll need an API key.
+Ask raw text questions of the example  `products` dataset and get chat responses from an OpenAI LLM.
 
-- [openai API key](https://platform.openai.com/docs/guides/embeddings)
+Follow the [installation](#installation) steps if you haven't already.
 
-Set your API key as a Postgres configuration parameter.
+Set the [OpenAI API key](https://platform.openai.com/docs/guides/embeddings), this is required to for use with OpenAI's chat-completion models.
 
 ```sql
 ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
-
 SELECT pg_reload_conf();
 ```
 
@@ -213,36 +170,34 @@ CREATE TABLE products AS
 SELECT * FROM vectorize.example_products;
 ```
 
-Then create the job:
+Initialize a table for RAG. We'll use an open source Sentence Transformer to generate embeddings.
+
+Create a new column that we want to use as the context. In this case, we'll concatenate both `product_name` and `description`.
 
 ```sql
-SELECT vectorize.table(
-    job_name => 'product_search_openai',
-    "table" => 'products',
-    primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
-    transformer => 'text-embedding-ada-002'
+ALTER TABLE products
+ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description) STORED;
+```
+
+```sql
+SELECT vectorize.init_rag(
+    agent_name => 'product_chat',
+    table_name => 'products',
+    "column" => 'context',
+    unique_record_id => 'product_id',
+    transformer => 'sentence-transformers/all-MiniLM-L12-v2'
 );
 ```
 
-It may take some time to generate embeddings, depending on API latency.
-
 ```sql
-SELECT * FROM vectorize.search(
-    job_name => 'product_search_openai',
-    query => 'accessories for mobile devices',
-    return_columns => ARRAY['product_id', 'product_name'],
-    num_results => 3
-);
+SELECT vectorize.rag(
+    agent_name => 'product_chat',
+    query => 'What is a pencil?'
+) -> 'chat_response';
+```
 
-                                         search_results                                     
-    
---------------------------------------------------------------------------------------------
-----
- {"product_id": 13, "product_name": "Phone Charger", "similarity_score": 0.8564681325237845}
- {"product_id": 24, "product_name": "Tablet Holder", "similarity_score": 0.8295988934993099}
- {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8250355616233103}
-(3 rows)
+```text
+"A pencil is an item that is commonly used for writing and is known to be most effective on paper."
 ```
 
 ## Trigger based updates
