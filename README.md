@@ -13,7 +13,7 @@
 
 A Postgres extension that automates the transformation and orchestration of text to embeddings and provides hooks into the most popular LLMs. This allows you to do vector search and build LLM applications on existing data with as little as two function calls.
 
-One function call to initialize your data. Another function call to search. Automated management of Postgres triggers and background jobs to keep your embeddings up to date. This project relies heavily on the work by [pgvector](https://github.com/pgvector/pgvector) and [pgmq](https://github.com/tembo-io/pgmq).
+This project relies heavily on the work by [pgvector](https://github.com/pgvector/pgvector) for vector similarity search, [pgmq](https://github.com/tembo-io/pgmq) for orchestration in background workers, and [SentenceTransformers](https://huggingface.co/sentence-transformers).
 
 ---
 
