@@ -1,17 +1,17 @@
-use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
-use crate::guc::{self, BATCH_SIZE};
-use crate::init::{self, VECTORIZE_QUEUE};
-use crate::job::{create_insert_trigger, create_trigger_handler, create_update_trigger};
+use crate::executor::VectorizeMeta;
+use crate::guc;
+use crate::init;
+use crate::job::{
+    create_insert_trigger, create_trigger_handler, create_update_trigger, initalize_table_job,
+};
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
 use crate::transformers::transform;
-use crate::transformers::types::Inputs;
 use crate::types;
 use crate::util;
 
 use anyhow::Result;
 use pgrx::prelude::*;
-use tiktoken_rs::cl100k_base;
 
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
@@ -146,58 +146,6 @@ pub fn init_table(
                 let _r = c.update(&update_trigger, None, None)?;
                 Ok(())
             });
-
-            // start with initial batch load
-            let rows_need_update_query: String = new_rows_query(job_name, &valid_params);
-            let mut inputs: Vec<Inputs> = Vec::new();
-            let bpe = cl100k_base().unwrap();
-            let _: Result<_, spi::Error> = Spi::connect(|c| {
-                let rows = c.select(&rows_need_update_query, None, None)?;
-                for row in rows {
-                    let ipt = row["input_text"]
-                        .value::<String>()?
-                        .expect("input_text is null");
-                    let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
-                    inputs.push(Inputs {
-                        record_id: row["record_id"]
-                            .value::<String>()?
-                            .expect("record_id is null"),
-                        inputs: ipt,
-                        token_estimate,
-                    });
-                }
-                Ok(())
-            });
-            let max_batch_size = BATCH_SIZE.get();
-            let batches = create_batches(inputs, max_batch_size);
-            let vectorize_meta = VectorizeMeta {
-                name: job_name.to_string(),
-                // TODO: in future, lookup job id once this gets put into use
-                // job_id is currently not used, job_name is unique
-                job_id: 0,
-                job_type: job_type.clone(),
-                params: serde_json::to_value(valid_params.clone()).unwrap(),
-                transformer: transformer.to_string(),
-                search_alg: search_alg.clone(),
-                last_completion: None,
-            };
-            for b in batches {
-                let job_message = JobMessage {
-                    job_name: job_name.to_string(),
-                    job_meta: vectorize_meta.clone(),
-                    inputs: b,
-                };
-                let query = format!(
-                    "select pgmq.send('{VECTORIZE_QUEUE}', '{}');",
-                    serde_json::to_string(&job_message)
-                        .unwrap()
-                        .replace('\'', "''")
-                );
-                let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-                    let _r = c.update(&query, None, None)?;
-                    Ok(())
-                });
-            }
         }
         _ => {
             // initialize cron
@@ -205,6 +153,8 @@ pub fn init_table(
             log!("Initialized cron job");
         }
     }
+    // start with initial batch load
+    initalize_table_job(job_name, &valid_params, &job_type, transformer, search_alg)?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 
