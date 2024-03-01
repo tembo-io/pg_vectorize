@@ -1,11 +1,13 @@
 use anyhow::Result;
 
+use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
+use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
-use pgrx::prelude::*;
-
-use crate::executor::{JobMessage, VectorizeMeta};
 use crate::transformers::types::Inputs;
+use crate::types::{self, JobParams, JobType};
 use crate::util;
+
+use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 
 /// called by the trigger function when a table is updated
@@ -118,6 +120,70 @@ fn generate_input_concat(inputs: &[String]) -> String {
         .map(|item| format!("NEW.{item}"))
         .collect::<Vec<String>>()
         .join(" || ' ' || ")
+}
+
+// creates batches of embedding jobs
+// typically used on table init
+pub fn initalize_table_job(
+    job_name: &str,
+    job_params: &JobParams,
+    job_type: &JobType,
+    transformer: &str,
+    search_alg: types::SimilarityAlg,
+) -> Result<()> {
+    // start with initial batch load
+    let rows_need_update_query: String = new_rows_query(job_name, job_params);
+    let mut inputs: Vec<Inputs> = Vec::new();
+    let bpe = cl100k_base().unwrap();
+    let _: Result<_, spi::Error> = Spi::connect(|c| {
+        let rows = c.select(&rows_need_update_query, None, None)?;
+        for row in rows {
+            let ipt = row["input_text"]
+                .value::<String>()?
+                .expect("input_text is null");
+            let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
+            inputs.push(Inputs {
+                record_id: row["record_id"]
+                    .value::<String>()?
+                    .expect("record_id is null"),
+                inputs: ipt,
+                token_estimate,
+            });
+        }
+        Ok(())
+    });
+
+    let max_batch_size = BATCH_SIZE.get();
+    let batches = create_batches(inputs, max_batch_size);
+    let vectorize_meta = VectorizeMeta {
+        name: job_name.to_string(),
+        // TODO: in future, lookup job id once this gets put into use
+        // job_id is currently not used, job_name is unique
+        job_id: 0,
+        job_type: job_type.clone(),
+        params: serde_json::to_value(job_params.clone()).unwrap(),
+        transformer: transformer.to_string(),
+        search_alg: search_alg.clone(),
+        last_completion: None,
+    };
+    for b in batches {
+        let job_message = JobMessage {
+            job_name: job_name.to_string(),
+            job_meta: vectorize_meta.clone(),
+            inputs: b,
+        };
+        let query = format!(
+            "select pgmq.send('{VECTORIZE_QUEUE}', '{}');",
+            serde_json::to_string(&job_message)
+                .unwrap()
+                .replace('\'', "''")
+        );
+        let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+            let _r = c.update(&query, None, None)?;
+            Ok(())
+        });
+    }
+    Ok(())
 }
 
 #[cfg(test)]

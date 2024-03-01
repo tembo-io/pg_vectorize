@@ -30,13 +30,7 @@ async fn test_scheduled_job() {
     .await
     .expect("failed to init job");
 
-    // manually trigger a job
-    let _ = sqlx::query(&format!("SELECT vectorize.job_execute('{job_name}');"))
-        .execute(&conn)
-        .await
-        .expect("failed to select from test_table");
-
-    // should 1 job in the queue
+    // should be exactly 1 job in the queue
     let rowcount = common::row_count(&format!("pgmq.q_vectorize_jobs"), &conn).await;
     assert!(rowcount >= 1);
 

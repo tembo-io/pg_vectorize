@@ -64,7 +64,7 @@ install-pgmq:
 
 test-integration:
 	echo "\q" | make run
-	cargo test -- --ignored --test-threads=1
+	cargo test -- --ignored --test-threads=1 --nocapture
 
 test-unit:
 	cargo pgrx test
