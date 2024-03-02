@@ -8,6 +8,7 @@ use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::types;
+use crate::types::TableMethod;
 use crate::util;
 
 use anyhow::Result;
@@ -114,14 +115,7 @@ pub fn init_table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q = init::init_embedding_table_query(
-        job_name,
-        schema,
-        table,
-        transformer,
-        &table_method,
-        api_key,
-    );
+    let init_embed_q = init::init_embedding_table_query(job_name, transformer, &valid_params);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
@@ -177,14 +171,11 @@ pub fn search(
     )
     .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
 
-    let schema = proj_params.schema;
-    let table = proj_params.table;
-
     let proj_api_key = match api_key {
         // if api passed in the function call, use that
         Some(k) => Some(k),
         // if not, use the one from the project metadata
-        None => proj_params.api_key,
+        None => proj_params.api_key.clone(),
     };
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
@@ -192,8 +183,7 @@ pub fn search(
     match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
             job_name,
-            &schema,
-            &table,
+            &proj_params,
             &return_columns,
             num_results,
             &embeddings[0],
@@ -203,27 +193,22 @@ pub fn search(
 
 pub fn cosine_similarity_search(
     project: &str,
-    schema: &str,
-    table: &str,
+    job_params: &types::JobParams,
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
 ) -> Result<Vec<pgrx::JsonB>> {
-    let query = format!(
-        "
-    SELECT to_jsonb(t)
-    as results FROM (
-        SELECT 
-        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
-        {cols}
-    FROM {schema}.{table}
-    WHERE {project}_updated_at is NOT NULL
-    ORDER BY similarity_score DESC
-    LIMIT {num_results}
-    ) t
-    ",
-        cols = return_columns.join(", "),
-    );
+    let schema = job_params.schema.clone();
+    let table = job_params.table.clone();
+
+    // switch on table method
+    let query = match job_params.table_method {
+        TableMethod::append => {
+            single_table_cosine_similarity(project, &schema, &table, return_columns, num_results)
+        }
+        _ => error!("yoo"),
+    };
+
     Spi::connect(|client| {
         // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let mut results: Vec<pgrx::JsonB> = Vec::new();
@@ -243,4 +228,54 @@ pub fn cosine_similarity_search(
         }
         Ok(results)
     })
+}
+
+fn single_table_cosine_similarity(
+    project: &str,
+    schema: &str,
+    table: &str,
+    return_columns: &[String],
+    num_results: i32,
+) -> String {
+    format!(
+        "
+    SELECT to_jsonb(t)
+    as results FROM (
+        SELECT 
+        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
+        {cols}
+    FROM {schema}.{table}
+    WHERE {project}_updated_at is NOT NULL
+    ORDER BY similarity_score DESC
+    LIMIT {num_results}
+    ) t
+    ",
+        cols = return_columns.join(", "),
+    )
+}
+
+fn join_table_cosine_similarity(
+    project: &str,
+    schema: &str,
+    table: &str,
+    return_columns: &[String],
+    num_results: i32,
+) -> String {
+    format!(
+        "
+    SELECT {cols}
+    FROM 
+    SELECT to_jsonb(t)
+    as results FROM (
+        SELECT 
+        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
+        {cols}
+    FROM {schema}.{table}
+    WHERE {project}_updated_at is NOT NULL
+    ORDER BY similarity_score DESC
+    LIMIT {num_results}
+    ) t
+    ",
+        cols = return_columns.join(", "),
+    )
 }

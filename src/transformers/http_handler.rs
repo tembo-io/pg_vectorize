@@ -82,7 +82,7 @@ pub fn sync_get_model_info(
     let meta = match runtime.block_on(async { get_model_info(model_name, api_key).await }) {
         Ok(e) => e,
         Err(e) => {
-            error!("error getting embeddings: {}", e);
+            error!("error getting model info: {}", e);
         }
     };
     Ok(meta)

@@ -93,9 +93,15 @@ fn job_execute(job_name: String) {
             Some(t) => t,
             None => Utc.with_ymd_and_hms(970, 1, 1, 0, 0, 0).unwrap(),
         };
-        let new_or_updated_rows = get_new_updates_append(&conn, &job_name, job_params)
-            .await
-            .unwrap_or_else(|e| error!("failed to get new updates: {}", e));
+
+        let new_or_updated_rows = match job_params.table_method {
+            types::TableMethod::append => get_new_updates(&conn, &job_name, job_params)
+                .await
+                .unwrap_or_else(|e| error!("failed to get new updates: {}", e)),
+            types::TableMethod::join => {
+                error!("no implemented")
+            }
+        };
 
         match new_or_updated_rows {
             Some(rows) => {
@@ -145,6 +151,49 @@ pub async fn get_vectorize_meta(
     Ok(row)
 }
 
+pub fn new_rows_query_join(job_name: &str, job_params: &types::JobParams) -> String {
+    let cols = &job_params
+        .columns
+        .iter()
+        .map(|s| format!("t0.{}", s))
+        .collect::<Vec<_>>()
+        .join(",");
+    let schema = job_params.schema.clone();
+    let table = job_params.table.clone();
+
+    let base_query = format!(
+        "
+    SELECT t0.{join_key}::text as record_id, {cols} as input_text
+    FROM {schema}.{table} t0
+    LEFT JOIN vectorize._embeddings_{job_name} t1 ON t0.{join_key} = t1.{join_key}
+    WHERE t1.{join_key} IS NULL",
+        join_key = job_params.primary_key,
+        cols = cols,
+        schema = schema,
+        table = table,
+        job_name = job_name
+    );
+    if let Some(updated_at_col) = &job_params.update_time_col {
+        // updated_at_column is not required when `schedule` is realtime
+        let where_clause = format!(
+            "
+            OR t0.{updated_at_col} > COALESCE
+            (
+                t1.updated_at::timestamp,
+                '0001-01-01 00:00:00'::timestamp
+            )",
+        );
+        format!(
+            "
+            {base_query}
+            {where_clause}
+        "
+        )
+    } else {
+        base_query
+    }
+}
+
 pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
     let cols = collapse_to_csv(&job_params.columns);
 
@@ -184,13 +233,15 @@ pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
 
 // queries a table and returns rows that need new embeddings
 // used for the TableMethod::append, which has source and embedding on the same table
-pub async fn get_new_updates_append(
+pub async fn get_new_updates(
     pool: &Pool<Postgres>,
     job_name: &str,
     job_params: types::JobParams,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
-    let query = new_rows_query(job_name, &job_params);
-
+    let query = match job_params.table_method {
+        types::TableMethod::append => new_rows_query(job_name, &job_params),
+        types::TableMethod::join => new_rows_query_join(job_name, &job_params),
+    };
     let rows: Result<Vec<PgRow>, Error> = sqlx::query(&query).fetch_all(pool).await;
     match rows {
         Ok(rows) => {
