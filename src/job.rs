@@ -58,11 +58,6 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
 
 static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
-#[pg_extern]
-fn _get_trigger_handler(job_name: &str, input_columns: Vec<String>, pkey: &str) -> String {
-    create_trigger_handler(job_name, &input_columns, pkey)
-}
-
 /// creates a function that can be called by trigger
 pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &str) -> String {
     let input_cols = input_columns.join(", ");
@@ -92,39 +87,29 @@ $$ LANGUAGE plpgsql;
     )
 }
 
-#[pg_extern]
-fn _get_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
-    create_update_trigger(job_name, schema, table_name)
-}
-
 // creates the trigger for a row update
-pub fn create_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
+pub fn create_insert_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
     // let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
-AFTER UPDATE ON {schema}.{table_name}
-REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
-FOR EACH STATEMENT
-EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
-    )
-}
-
-#[pg_extern]
-fn _get_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
-    create_insert_trigger(job_name, schema, table_name)
-}
-
-pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
-    format!(
-        "
-CREATE OR REPLACE TRIGGER vectorize_insert_trigger_{job_name}
-AFTER INSERT ON {schema}.{table_name}
+AFTER INSERT OR UPDATE ON {schema}.{table_name}
 REFERENCING NEW TABLE AS new_table
 FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
     )
 }
+
+// pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
+//     format!(
+//         "
+// CREATE OR REPLACE TRIGGER vectorize_insert_trigger_{job_name}
+// AFTER INSERT ON {schema}.{table_name}
+// REFERENCING NEW TABLE AS new_table
+// FOR EACH STATEMENT
+// EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
+//     )
+// }
 
 fn generate_select_cols(inputs: &[String]) -> String {
     inputs
@@ -224,54 +209,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_update_trigger_multi() {
-        let job_name = "example_job";
-        let table_name = "example_table";
-        let input_columns = vec!["column1".to_string(), "column2".to_string()];
-
-        let expected = format!(
-            "
-CREATE OR REPLACE TRIGGER vectorize_update_trigger_example_job
-AFTER UPDATE ON myschema.example_table
-FOR EACH ROW
-WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2 )
-EXECUTE FUNCTION vectorize.handle_update_example_job();"
-        );
-        let result = create_update_trigger(job_name, "myschema", table_name);
-        assert_eq!(expected, result);
-    }
-
-    #[test]
     fn test_create_update_trigger_single() {
         let job_name = "another_job";
         let table_name = "another_table";
-        let input_columns = vec!["column1".to_string()];
 
         let expected = format!(
             "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_another_job
-AFTER UPDATE ON myschema.another_table
-FOR EACH ROW
-WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
+AFTER INSERT OR UPDATE ON myschema.another_table
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
+
         );
-        let result = create_update_trigger(job_name, "myschema", table_name);
+        let result = create_insert_update_trigger(job_name, "myschema", table_name);
         assert_eq!(expected, result);
     }
 
-    #[test]
-    fn test_create_insert_trigger_single() {
-        let job_name = "another_job";
-        let table_name = "another_table";
+//     #[test]
+//     fn test_create_insert_trigger_single() {
+//         let job_name = "another_job";
+//         let table_name = "another_table";
 
-        let expected = format!(
-            "
-CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
-AFTER INSERT ON myschema.another_table
-FOR EACH ROW
-EXECUTE FUNCTION vectorize.handle_update_another_job();"
-        );
-        let result = create_insert_trigger(job_name, "myschema", table_name);
-        assert_eq!(expected, result);
-    }
+//         let expected = format!(
+//             "
+// CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
+// AFTER INSERT ON myschema.another_table
+// REFERENCING NEW TABLE AS new_table
+// FOR EACH STATEMENT
+// EXECUTE FUNCTION vectorize.handle_update_another_job();"
+//         );
+//         let result = create_insert_trigger(job_name, "myschema", table_name);
+//         assert_eq!(expected, result);
+//     }
 }
