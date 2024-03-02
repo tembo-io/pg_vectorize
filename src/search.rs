@@ -281,8 +281,8 @@ fn single_table_cosine_similarity(
 ) -> String {
     format!(
         "
-    SELECT to_jsonb(t)
-    as results FROM (
+    SELECT to_jsonb(t) as results
+    FROM (
         SELECT 
         1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
         {cols}

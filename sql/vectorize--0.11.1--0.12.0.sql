@@ -31,6 +31,7 @@ DECLARE
     src_pkey_type TEXT;
     src_embeddings_col TEXT;
     src_embeddings_updated_at TEXT;
+    src_embeddings_dtype TEXT;
     dest_table TEXT;
     create_query TEXT;
     insert_query TEXT;
@@ -57,9 +58,16 @@ BEGIN
             AND pg_namespace.nspname = src_schema
             AND pg_trigger.tgname ILIKE '%vectorize%'
         ) THEN
+            -- get the data type of the embeddings column
+            EXECUTE format(
+                'SELECT data_type FROM information_schema.columns WHERE table_name = %L AND column_name = %L AND table_schema = %L',
+                src_table, src_embeddings_col, src_schema
+            ) INTO src_embeddings_dtype;
+
+
             create_query := format(
-                'CREATE TABLE vectorize.%I ( %I %s, embeddings TEXT, updated_at TIMESTAMP WITH TIME ZONE )',
-                dest_table, src_pkey, src_pkey_type
+                'CREATE TABLE vectorize.%I ( %I %s, embeddings %s, updated_at TIMESTAMP WITH TIME ZONE )',
+                dest_table, src_pkey, src_pkey_type, src_embeddings_dtype
             );
             EXECUTE create_query;
 
