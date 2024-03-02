@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
+use crate::executor::{
+    create_batches, new_rows_query, new_rows_query_join, JobMessage, VectorizeMeta,
+};
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::transformers::types::Inputs;
@@ -62,14 +64,25 @@ pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &s
     format!(
         "
 CREATE OR REPLACE FUNCTION {TRIGGER_FN_PREFIX}{job_name}()
-RETURNS trigger AS $$
+RETURNS TRIGGER AS $$
+DECLARE
+    product_id_array TEXT[] := ARRAY[]::TEXT[];
+    inputs_array TEXT[] := ARRAY[]::TEXT[];
+    r RECORD;
 BEGIN
-    PERFORM vectorize._handle_table_update(
-        '{job_name}',
-        ARRAY[NEW.{pkey}::text],
-        ARRAY[{input_concat}]
-    );
-    RETURN NEW;
+    IF TG_OP in ('UPDATE', 'INSERT') THEN
+        FOR r IN SELECT product_id, product_name, description FROM new_table LOOP
+            product_id_array := array_append(product_id_array, r.product_id::text);
+            inputs_array := array_append(inputs_array, r.product_name || ' ' || r.description);
+        END LOOP;
+        RAISE NOTICE 'Length of inputs_array: %', array_length(inputs_array, 1);
+        PERFORM vectorize._handle_table_update(
+            '{job_name}',
+            product_id_array::TEXT[],
+            inputs_array
+        );
+    END IF;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;    
 "
@@ -83,13 +96,13 @@ pub fn create_update_trigger(
     table_name: &str,
     input_columns: &[String],
 ) -> String {
-    let trigger_condition = generate_trigger_condition(input_columns);
+    // let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
 AFTER UPDATE ON {schema}.{table_name}
-FOR EACH ROW
-WHEN ( {trigger_condition} )
+REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
+FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
     )
 }
@@ -132,7 +145,10 @@ pub fn initalize_table_job(
     search_alg: types::SimilarityAlg,
 ) -> Result<()> {
     // start with initial batch load
-    let rows_need_update_query: String = new_rows_query(job_name, job_params);
+    let rows_need_update_query: String = match job_params.table_method {
+        types::TableMethod::append => new_rows_query(job_name, job_params),
+        types::TableMethod::join => new_rows_query_join(job_name, job_params),
+    };
     let mut inputs: Vec<Inputs> = Vec::new();
     let bpe = cl100k_base().unwrap();
     let _: Result<_, spi::Error> = Spi::connect(|c| {
