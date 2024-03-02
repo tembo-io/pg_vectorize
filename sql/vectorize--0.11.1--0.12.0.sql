@@ -1,4 +1,6 @@
 -- changed default table method on table()
+
+DROP FUNCTION vectorize."table";
 -- src/api.rs:11
 -- vectorize::api::table
 CREATE  FUNCTION vectorize."table"(
@@ -30,16 +32,21 @@ DECLARE
     src_embeddings_col TEXT;
     src_embeddings_updated_at TEXT;
     dest_table TEXT;
+    create_query TEXT;
+    insert_query TEXT;
+    alter_query TEXT;
 BEGIN
     FOR r IN SELECT * FROM vectorize.job LOOP
         src_table := r.params ->> 'table';
         src_schema := r.params ->> 'schema';
-        src_pkey := r.params ->> 'pkey';
+        src_pkey := r.params ->> 'primary_key';
         src_pkey_type := r.params ->> 'pkey_type';
-        src_embeddings_col = r.name || '_embeddings';
-        src_embeddings_updated_at = r.name || '_updated_at';
+        src_embeddings_col := r.name || '_embeddings';
+        src_embeddings_updated_at := r.name || '_updated_at';
 
-        dest_table = 'vectorize._embeddings_' || r.name;
+        dest_schema = "vectorize";
+        dest_table = "_embeddings_" || r.name;
+
         -- if table has vectorize trigger, its a 'realtime' job
         IF EXISTS (
             SELECT 1
@@ -50,31 +57,25 @@ BEGIN
             AND pg_namespace.nspname = src_schema
             AND pg_trigger.tgname ILIKE '%vectorize%'
         ) THEN
+            create_query := format(
+                'CREATE TABLE %I.I% ( %I %s, embeddings TEXT, updated_at TIMESTAMP WITH TIME ZONE )',
+                dest_schema, dest_table, src_pkey, src_pkey_type
+            );
+            EXECUTE create_query;
 
-            -- Construct the table name and column name dynamically
-            EXECUTE 'CREATE TABLE ' || dest_table || ' ('
-                || quote_ident(src_pkey) || ' ' || src_pkey_type || ',
-                embeddings TEXT,
-                updated_at TIMESTAMP,
-            )';
+            insert_query := format(
+                'INSERT INTO %I.%I ( %I, embeddings, updated_at )
+                 SELECT %I, %I, %I
+                 FROM %s',
+                 dest_schema, dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema || '.' || src_table
+            );
+            EXECUTE insert_query;
 
-            -- Copy data to the new table, adjust the column names as necessary
-            EXECUTE 'INSERT INTO ' || dest_table || '(' || quote_ident(src_pkey) || ', embeddings, updated_at)
-                    SELECT ' || quote_ident(src_pkey) || ', embeddings, updated_at FROM ' || quote_ident(src_schema) || '.' || quote_ident(src_table);
-            -- Delete columns from the source table, adjust column names as necessary
-            EXECUTE 'ALTER TABLE ' || quote_ident(r.table_name) ||
-                ' DROP COLUMN ' || src_embeddings_col || ',
-                DROP COLUMN ' || src_embeddings_updated_at || ';'
+            alter_query = format(
+                'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
+                src_schema, src_table, src_embeddings_col, src_embeddings_updated_at
+            );
+            EXECUTE alter_query;
         END IF;
     END LOOP;
 END $$;
-
-
-
-SELECT *
-FROM pg_trigger
-JOIN pg_class ON pg_class.oid = pg_trigger.tgrelid
-JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
-WHERE pg_class.relname = 'products' -- Use the table name specified in r.params
-AND pg_namespace.nspname = 'public' -- Use the schema name specified in r.params
-AND pg_trigger.tgname ILIKE '%vectorize%'
