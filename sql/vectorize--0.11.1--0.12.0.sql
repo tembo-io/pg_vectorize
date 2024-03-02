@@ -72,7 +72,7 @@ BEGIN
             EXECUTE insert_query;
 
             alter_job_query := format(
-                'UPDATE vectorize.job SET params = jsonb_set(params, ''{schedule}'', ''"join"'') WHERE name = ''%s''', r.name
+                'UPDATE vectorize.job SET params = jsonb_set(params, ''{table_method}'', ''"join"'') WHERE name = ''%s''', r.name
             );
             EXECUTE alter_job_query;
 
