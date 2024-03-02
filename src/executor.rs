@@ -94,14 +94,9 @@ fn job_execute(job_name: String) {
             None => Utc.with_ymd_and_hms(970, 1, 1, 0, 0, 0).unwrap(),
         };
 
-        let new_or_updated_rows = match job_params.table_method {
-            types::TableMethod::append => get_new_updates(&conn, &job_name, job_params)
-                .await
-                .unwrap_or_else(|e| error!("failed to get new updates: {}", e)),
-            types::TableMethod::join => {
-                error!("no implemented")
-            }
-        };
+        let new_or_updated_rows = get_new_updates(&conn, &job_name, job_params)
+            .await
+            .unwrap_or_else(|e| error!("failed to get new updates: {}", e));
 
         match new_or_updated_rows {
             Some(rows) => {
