@@ -92,27 +92,16 @@ $$ LANGUAGE plpgsql;
 // transition tables cannot be specified for triggers with more than one event
 // so we create two triggers instead
 pub fn create_event_trigger(job_name: &str, schema: &str, table_name: &str, event: &str) -> String {
-    // let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
-CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
+CREATE OR REPLACE TRIGGER vectorize_{event_name}_trigger_{job_name}
 AFTER {event} ON {schema}.{table_name}
 REFERENCING NEW TABLE AS new_table
 FOR EACH STATEMENT
-EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
+EXECUTE FUNCTION vectorize.handle_update_{job_name}();",
+        event_name = event.to_lowercase()
     )
 }
-
-// pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
-//     format!(
-//         "
-// CREATE OR REPLACE TRIGGER vectorize_insert_trigger_{job_name}
-// AFTER INSERT ON {schema}.{table_name}
-// REFERENCING NEW TABLE AS new_table
-// FOR EACH STATEMENT
-// EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
-//     )
-// }
 
 fn generate_select_cols(inputs: &[String]) -> String {
     inputs
@@ -120,24 +109,6 @@ fn generate_select_cols(inputs: &[String]) -> String {
         .map(|item| format!("r.{item}"))
         .collect::<Vec<String>>()
         .join("|| ' ' ||")
-}
-
-// takes in arbitrary number of columns to evaluate for changes and returns the trigger condition
-fn generate_trigger_condition(inputs: &[String]) -> String {
-    inputs
-        .iter()
-        .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
-        .collect::<Vec<String>>()
-        .join(" OR ")
-}
-
-// concatenates the input columns into a single string
-fn generate_input_concat(inputs: &[String]) -> String {
-    inputs
-        .iter()
-        .map(|item| format!("NEW.{item}"))
-        .collect::<Vec<String>>()
-        .join(" || ' ' || ")
 }
 
 // creates batches of embedding jobs

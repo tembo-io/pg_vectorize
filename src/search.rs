@@ -138,7 +138,8 @@ pub fn init_table(
             let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
             let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
             let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
-
+            log!("insert trigger: {}", insert_trigger);
+            log!("update trigger: {}", update_trigger);
             let _: Result<_, spi::Error> = Spi::connect(|mut c| {
                 let _r = c.update(&trigger_handler, None, None)?;
                 let _r = c.update(&insert_trigger, None, None)?;

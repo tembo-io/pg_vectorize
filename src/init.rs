@@ -1,10 +1,8 @@
 use crate::{
-    job,
     query::check_input,
     transformers::{http_handler::sync_get_model_info, types::TransformerMetadata},
     types::{self, TableMethod},
 };
-use openai_api_rs::v1::api;
 use pgrx::prelude::*;
 
 use anyhow::{Context, Result};

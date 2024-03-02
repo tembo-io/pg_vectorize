@@ -1,7 +1,6 @@
 use pgrx::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use std::default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
