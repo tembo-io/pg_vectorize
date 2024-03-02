@@ -1,5 +1,4 @@
 -- changed default table method on table()
-
 DROP FUNCTION vectorize."table";
 -- src/api.rs:11
 -- vectorize::api::table
@@ -20,7 +19,9 @@ STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'table_wrapper';
 
--- 'realtime' on 'append' must be moved to 'join' method 
+-- all 'realtime' jobs must be moved to the 'join' method
+-- this moves the embeddings from the source table to a dedicated table
+-- this provides far more efficient insert/update performance
 DO $$
 DECLARE
     r RECORD;
@@ -60,8 +61,7 @@ BEGIN
         ) THEN
             -- get the data type of the embeddings column
             EXECUTE format(
-                'SELECT a.attname AS column_name,
-                    pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type
+                'SELECT pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type
                     FROM pg_catalog.pg_class as cls
                     JOIN pg_catalog.pg_attribute as a ON a.attrelid = cls.oid
                     JOIN pg_catalog.pg_type as t ON a.atttypid = t.oid
