@@ -58,7 +58,6 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
 
 static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
-
 #[pg_extern]
 fn _get_trigger_handler(job_name: &str, input_columns: Vec<String>, pkey: &str) -> String {
     create_trigger_handler(job_name, &input_columns, pkey)
@@ -77,7 +76,7 @@ DECLARE
     inputs_array TEXT[] := ARRAY[]::TEXT[];
     r RECORD;
 BEGIN
-    IF TG_OP ('UPDATE', 'INSERT') THEN
+    IF TG_OP in ('UPDATE', 'INSERT') THEN
         FOR r IN SELECT {pkey} as pkey, {input_cols} FROM new_table LOOP
         record_id_array := array_append(record_id_array, r.pkey::text);
             inputs_array := array_append(inputs_array, {select_cols} );

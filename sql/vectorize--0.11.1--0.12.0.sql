@@ -30,13 +30,14 @@ DECLARE
     src_schema TEXT;
     src_pkey TEXT;
     src_pkey_type TEXT;
+    src_text_cols TEXT[];
     src_embeddings_col TEXT;
     src_embeddings_updated_at TEXT;
     src_embeddings_dtype TEXT;
     dest_table TEXT;
     create_query TEXT;
     insert_query TEXT;
-    alter_query TEXT;
+    drop_col_query TEXT;
     alter_job_query TEXT;
     
     trigger_handler TEXT;
@@ -50,9 +51,7 @@ BEGIN
         src_pkey_type := r.params ->> 'pkey_type';
         src_embeddings_col := r.name || '_embeddings';
         src_embeddings_updated_at := r.name || '_updated_at';
-
         dest_table := '_embeddings_' || r.name;
-
         -- if table has vectorize trigger, its a 'realtime' job
         IF EXISTS (
             SELECT 1
@@ -98,24 +97,28 @@ BEGIN
             );
             EXECUTE alter_job_query;
 
-            alter_query = format(
+            drop_col_query = format(
                 'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
                 src_schema, src_table, src_embeddings_col, src_embeddings_updated_at
             );
+            EXECUTE drop_col_query;
 
-            EXECUTE format(
-                'vectorize._get_trigger_handler(
-                    job_name => %L,
-                    input_columns => %L,
-                    pkey => %L)', r.name, r.params ->> 'columns', src_pkey
-            ) into trigger_handler;
-
-            -- TODO: need to update the triggers
-
+            src_text_cols := ARRAY(SELECT jsonb_array_elements_text(r.params -> 'columns'));
+            -- drop the triggers, then re-init to create new ones
             
+            EXECUTE format('ALTER EXTENSION vectorize ADD FUNCTION vectorize.handle_update_%s();', r.name);
+            EXECUTE format('DROP FUNCTION vectorize.handle_update_%I CASCADE', r.name);
+
+            PERFORM vectorize.table(
+                    job_name => r.name,
+                    "table" => src_table,
+                    "schema" => src_schema,
+                    primary_key => src_pkey,
+                    columns => src_text_cols,
+                    transformer => r.transformer,
+                    table_method => 'join',
+                    schedule => 'realtime'
+                );            
         END IF;
     END LOOP;
 END $$;
-
-
-
