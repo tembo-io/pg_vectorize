@@ -38,6 +38,10 @@ DECLARE
     insert_query TEXT;
     alter_query TEXT;
     alter_job_query TEXT;
+    
+    trigger_handler TEXT;
+    trigger_update TEXT;
+    trigger_insert TEXT;
 BEGIN
     FOR r IN SELECT * FROM vectorize.job LOOP
         src_table := r.params ->> 'table';
@@ -75,7 +79,6 @@ BEGIN
                 src_table, src_embeddings_col, src_schema
             ) INTO src_embeddings_dtype;
 
-
             create_query := format(
                 'CREATE TABLE vectorize.%I ( %I %s, embeddings %s, updated_at TIMESTAMP WITH TIME ZONE )',
                 dest_table, src_pkey, src_pkey_type, src_embeddings_dtype
@@ -99,7 +102,17 @@ BEGIN
                 'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
                 src_schema, src_table, src_embeddings_col, src_embeddings_updated_at
             );
-            EXECUTE alter_query;
+
+            EXECUTE format(
+                'vectorize._get_trigger_handler(
+                    job_name => %L,
+                    input_columns => %L,
+                    pkey => %L)', r.name, r.params ->> 'columns', src_pkey
+            ) into trigger_handler;
+
+            -- TODO: need to update the triggers
+
+            
         END IF;
     END LOOP;
 END $$;

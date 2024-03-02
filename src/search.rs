@@ -139,7 +139,7 @@ pub fn init_table(
             // create the trigger if not exists
             let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
             let insert_trigger = create_insert_trigger(job_name, schema, table);
-            let update_trigger = create_update_trigger(job_name, schema, table, &columns);
+            let update_trigger = create_update_trigger(job_name, schema, table);
 
             let _: Result<_, spi::Error> = Spi::connect(|mut c| {
                 let _r = c.update(&trigger_handler, None, None)?;
@@ -213,9 +213,10 @@ pub fn cosine_similarity_search(
         TableMethod::append => {
             single_table_cosine_similarity(project, &schema, &table, return_columns, num_results)
         }
-        _ => join_table_cosine_similarity(project, &job_params, return_columns, num_results),
+        TableMethod::join => {
+            join_table_cosine_similarity(project, job_params, return_columns, num_results)
+        }
     };
-    warning!("query: {}", query);
     Spi::connect(|client| {
         // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let mut results: Vec<pgrx::JsonB> = Vec::new();

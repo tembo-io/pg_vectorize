@@ -58,27 +58,33 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
 
 static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
+
+#[pg_extern]
+fn _get_trigger_handler(job_name: &str, input_columns: Vec<String>, pkey: &str) -> String {
+    create_trigger_handler(job_name, &input_columns, pkey)
+}
+
 /// creates a function that can be called by trigger
 pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &str) -> String {
-    // let input_concat = generate_input_concat(input_columns);
+    let input_cols = input_columns.join(", ");
+    let select_cols = generate_select_cols(input_columns);
     format!(
         "
 CREATE OR REPLACE FUNCTION {TRIGGER_FN_PREFIX}{job_name}()
 RETURNS TRIGGER AS $$
 DECLARE
-    product_id_array TEXT[] := ARRAY[]::TEXT[];
+    record_id_array TEXT[] := ARRAY[]::TEXT[];
     inputs_array TEXT[] := ARRAY[]::TEXT[];
     r RECORD;
 BEGIN
     IF TG_OP ('UPDATE', 'INSERT') THEN
-        FOR r IN SELECT product_id, product_name, description FROM new_table LOOP
-            product_id_array := array_append(product_id_array, r.product_id::text);
-            inputs_array := array_append(inputs_array, r.product_name || ' ' || r.description);
+        FOR r IN SELECT {pkey} as pkey, {input_cols} FROM new_table LOOP
+        record_id_array := array_append(record_id_array, r.pkey::text);
+            inputs_array := array_append(inputs_array, {select_cols} );
         END LOOP;
-        RAISE NOTICE 'Length of inputs_array: %', array_length(inputs_array, 1);
         PERFORM vectorize._handle_table_update(
             '{job_name}',
-            product_id_array::TEXT[],
+            record_id_array::TEXT[],
             inputs_array
         );
     END IF;
@@ -89,13 +95,13 @@ $$ LANGUAGE plpgsql;
     )
 }
 
+#[pg_extern]
+fn _get_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
+    create_update_trigger(job_name, schema, table_name)
+}
+
 // creates the trigger for a row update
-pub fn create_update_trigger(
-    job_name: &str,
-    schema: &str,
-    table_name: &str,
-    input_columns: &[String],
-) -> String {
+pub fn create_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
     // let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
@@ -105,6 +111,11 @@ REFERENCING OLD TABLE AS old_table NEW TABLE AS new_table
 FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
     )
+}
+
+#[pg_extern]
+fn _get_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
+    create_insert_trigger(job_name, schema, table_name)
 }
 
 pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
@@ -118,23 +129,31 @@ EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
     )
 }
 
-// takes in arbitrary number of columns to evaluate for changes and returns the trigger condition
-// fn generate_trigger_condition(inputs: &[String]) -> String {
-//     inputs
-//         .iter()
-//         .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
-//         .collect::<Vec<String>>()
-//         .join(" OR ")
-// }
+fn generate_select_cols(inputs: &[String]) -> String {
+    inputs
+        .iter()
+        .map(|item| format!("r.{item}"))
+        .collect::<Vec<String>>()
+        .join("|| ' ' ||")
+}
 
-// // concatenates the input columns into a single string
-// fn generate_input_concat(inputs: &[String]) -> String {
-//     inputs
-//         .iter()
-//         .map(|item| format!("NEW.{item}"))
-//         .collect::<Vec<String>>()
-//         .join(" || ' ' || ")
-// }
+// takes in arbitrary number of columns to evaluate for changes and returns the trigger condition
+fn generate_trigger_condition(inputs: &[String]) -> String {
+    inputs
+        .iter()
+        .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
+        .collect::<Vec<String>>()
+        .join(" OR ")
+}
+
+// concatenates the input columns into a single string
+fn generate_input_concat(inputs: &[String]) -> String {
+    inputs
+        .iter()
+        .map(|item| format!("NEW.{item}"))
+        .collect::<Vec<String>>()
+        .join(" || ' ' || ")
+}
 
 // creates batches of embedding jobs
 // typically used on table init
@@ -221,7 +240,7 @@ FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2 )
 EXECUTE FUNCTION vectorize.handle_update_example_job();"
         );
-        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
+        let result = create_update_trigger(job_name, "myschema", table_name);
         assert_eq!(expected, result);
     }
 
@@ -239,7 +258,7 @@ FOR EACH ROW
 WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
         );
-        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
+        let result = create_update_trigger(job_name, "myschema", table_name);
         assert_eq!(expected, result);
     }
 
