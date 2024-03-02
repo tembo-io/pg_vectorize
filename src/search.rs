@@ -206,9 +206,9 @@ pub fn cosine_similarity_search(
         TableMethod::append => {
             single_table_cosine_similarity(project, &schema, &table, return_columns, num_results)
         }
-        _ => error!("yoo"),
+        _ => join_table_cosine_similarity(project, &job_params, return_columns, num_results),
     };
-
+    warning!("query: {}", query);
     Spi::connect(|client| {
         // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let mut results: Vec<pgrx::JsonB> = Vec::new();
@@ -230,6 +230,41 @@ pub fn cosine_similarity_search(
     })
 }
 
+fn join_table_cosine_similarity(
+    project: &str,
+    job_params: &types::JobParams,
+    return_columns: &[String],
+    num_results: i32,
+) -> String {
+    let schema = job_params.schema.clone();
+    let table = job_params.table.clone();
+    let join_key = &job_params.primary_key;
+    let cols = &return_columns
+        .iter()
+        .map(|s| format!("t0.{}", s))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "
+    SELECT to_jsonb(t) as results
+    FROM (
+        SELECT {cols}, t1.similarity_score
+        FROM
+            (
+                SELECT
+                    {join_key},
+                    1 - (embeddings <=> $1::vector) AS similarity_score
+                FROM vectorize._embeddings_{project}
+                ORDER BY similarity_score DESC
+                LIMIT {num_results}
+            ) t1
+        INNER JOIN {schema}.{table} t0 on t0.{join_key} = t1.{join_key}
+    ) t
+    ORDER BY t.similarity_score DESC;
+    "
+    )
+}
+
 fn single_table_cosine_similarity(
     project: &str,
     schema: &str,
@@ -239,32 +274,6 @@ fn single_table_cosine_similarity(
 ) -> String {
     format!(
         "
-    SELECT to_jsonb(t)
-    as results FROM (
-        SELECT 
-        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
-        {cols}
-    FROM {schema}.{table}
-    WHERE {project}_updated_at is NOT NULL
-    ORDER BY similarity_score DESC
-    LIMIT {num_results}
-    ) t
-    ",
-        cols = return_columns.join(", "),
-    )
-}
-
-fn join_table_cosine_similarity(
-    project: &str,
-    schema: &str,
-    table: &str,
-    return_columns: &[String],
-    num_results: i32,
-) -> String {
-    format!(
-        "
-    SELECT {cols}
-    FROM 
     SELECT to_jsonb(t)
     as results FROM (
         SELECT 
