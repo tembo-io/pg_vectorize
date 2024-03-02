@@ -35,6 +35,7 @@ DECLARE
     create_query TEXT;
     insert_query TEXT;
     alter_query TEXT;
+    alter_job_query TEXT;
 BEGIN
     FOR r IN SELECT * FROM vectorize.job LOOP
         src_table := r.params ->> 'table';
@@ -44,8 +45,7 @@ BEGIN
         src_embeddings_col := r.name || '_embeddings';
         src_embeddings_updated_at := r.name || '_updated_at';
 
-        dest_schema = "vectorize";
-        dest_table = "_embeddings_" || r.name;
+        dest_table := '_embeddings_' || r.name;
 
         -- if table has vectorize trigger, its a 'realtime' job
         IF EXISTS (
@@ -58,18 +58,23 @@ BEGIN
             AND pg_trigger.tgname ILIKE '%vectorize%'
         ) THEN
             create_query := format(
-                'CREATE TABLE %I.I% ( %I %s, embeddings TEXT, updated_at TIMESTAMP WITH TIME ZONE )',
-                dest_schema, dest_table, src_pkey, src_pkey_type
+                'CREATE TABLE vectorize.%I ( %I %s, embeddings TEXT, updated_at TIMESTAMP WITH TIME ZONE )',
+                dest_table, src_pkey, src_pkey_type
             );
             EXECUTE create_query;
 
             insert_query := format(
-                'INSERT INTO %I.%I ( %I, embeddings, updated_at )
+                'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
                  FROM %s',
-                 dest_schema, dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema || '.' || src_table
+                 dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema || '.' || src_table
             );
             EXECUTE insert_query;
+
+            alter_job_query := format(
+                'UPDATE vectorize.job SET params = jsonb_set(params, ''{schedule}'', ''"join"'') WHERE name = ''%s''', r.name
+            );
+            EXECUTE alter_job_query;
 
             alter_query = format(
                 'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
