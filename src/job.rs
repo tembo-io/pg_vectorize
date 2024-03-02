@@ -60,7 +60,7 @@ static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
 /// creates a function that can be called by trigger
 pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &str) -> String {
-    let input_concat = generate_input_concat(input_columns);
+    // let input_concat = generate_input_concat(input_columns);
     format!(
         "
 CREATE OR REPLACE FUNCTION {TRIGGER_FN_PREFIX}{job_name}()
@@ -70,7 +70,7 @@ DECLARE
     inputs_array TEXT[] := ARRAY[]::TEXT[];
     r RECORD;
 BEGIN
-    IF TG_OP in ('UPDATE', 'INSERT') THEN
+    IF TG_OP ('UPDATE', 'INSERT') THEN
         FOR r IN SELECT product_id, product_name, description FROM new_table LOOP
             product_id_array := array_append(product_id_array, r.product_id::text);
             inputs_array := array_append(inputs_array, r.product_name || ' ' || r.description);
@@ -112,28 +112,29 @@ pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> 
         "
 CREATE OR REPLACE TRIGGER vectorize_insert_trigger_{job_name}
 AFTER INSERT ON {schema}.{table_name}
-FOR EACH ROW
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
     )
 }
 
 // takes in arbitrary number of columns to evaluate for changes and returns the trigger condition
-fn generate_trigger_condition(inputs: &[String]) -> String {
-    inputs
-        .iter()
-        .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
-        .collect::<Vec<String>>()
-        .join(" OR ")
-}
+// fn generate_trigger_condition(inputs: &[String]) -> String {
+//     inputs
+//         .iter()
+//         .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
+//         .collect::<Vec<String>>()
+//         .join(" OR ")
+// }
 
-// concatenates the input columns into a single string
-fn generate_input_concat(inputs: &[String]) -> String {
-    inputs
-        .iter()
-        .map(|item| format!("NEW.{item}"))
-        .collect::<Vec<String>>()
-        .join(" || ' ' || ")
-}
+// // concatenates the input columns into a single string
+// fn generate_input_concat(inputs: &[String]) -> String {
+//     inputs
+//         .iter()
+//         .map(|item| format!("NEW.{item}"))
+//         .collect::<Vec<String>>()
+//         .join(" || ' ' || ")
+// }
 
 // creates batches of embedding jobs
 // typically used on table init
@@ -205,39 +206,6 @@ pub fn initalize_table_job(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_generate_input_concat_multi() {
-        let input = vec!["column1".to_string(), "column2".to_string()];
-        let result = generate_input_concat(&input);
-        let expected = "NEW.column1 || ' ' || NEW.column2";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_input_concat_single() {
-        let input = vec!["column1".to_string()];
-        let result = generate_input_concat(&input);
-        let expected = "NEW.column1";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_trigger_condition_multi() {
-        let input = vec!["column1".to_string(), "column2".to_string()];
-        let result = generate_trigger_condition(&input);
-        let expected =
-            "OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_trigger_condition_single() {
-        let input = vec!["column1".to_string()];
-        let result = generate_trigger_condition(&input);
-        let expected = "OLD.column1 IS DISTINCT FROM NEW.column1";
-        assert_eq!(result, expected);
-    }
 
     #[test]
     fn test_create_update_trigger_multi() {

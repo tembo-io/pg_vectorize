@@ -31,6 +31,12 @@ pub fn init_table(
 ) -> Result<String> {
     let job_type = types::JobType::Columns;
 
+    // validate table method
+    // realtime is only compatible with the join method
+    if schedule == "realtime" && table_method != TableMethod::join {
+        error!("realtime schedule is only compatible with the join table method");
+    }
+
     let arguments = match serde_json::to_value(args) {
         Ok(a) => a,
         Err(e) => {
@@ -76,6 +82,7 @@ pub fn init_table(
         primary_key: primary_key.to_string(),
         pkey_type,
         api_key: api_key.clone(),
+        schedule: schedule.to_string(),
     };
     let params =
         pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));

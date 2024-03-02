@@ -180,3 +180,67 @@ async fn test_rag_alternate_schema() {
         .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_realtime_tabled() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(0..100000);
+    let test_table_name = common::init_test_table(test_num, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    println!("test_table_name: {}", test_table_name);
+    println!("job_name: {}", job_name);
+    // initialize a job
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime',
+        table_method => 'join'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2)
+        .await
+        .expect("failed to exec search");
+    assert_eq!(search_results.len(), 3);
+
+    let random_product_id = rng.gen_range(0..100000);
+
+    // insert a new row
+    let insert_query = format!(
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
+        VALUES ({random_product_id}, 'car tester', 'a product for testing cars');"
+    );
+    let _result = sqlx::query(&insert_query)
+        .execute(&conn)
+        .await
+        .expect("failed to insert into test_table");
+
+    // index will need to rebuild
+    tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
+    let search_results = common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2)
+        .await
+        .expect("failed to exec search");
+
+    let mut found_it = false;
+    for row in search_results {
+        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
+        if row.product_id == random_product_id {
+            assert_eq!(row.product_name, "car tester");
+            found_it = true;
+        } else {
+            println!("row: {:?}", row);
+        }
+    }
+    assert!(found_it);
+}

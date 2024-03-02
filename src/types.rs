@@ -1,6 +1,7 @@
 use pgrx::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -76,15 +77,16 @@ impl Display for JobType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PostgresEnum, PartialEq, Eq)]
 pub enum TableMethod {
     // append a new column to the existing table
     append,
     // join existing table to a new table with embeddings
+    #[default]
     join,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, FromRow)]
 pub struct JobParams {
     pub schema: String,
     pub table: String,
@@ -94,4 +96,10 @@ pub struct JobParams {
     pub primary_key: String,
     pub pkey_type: String,
     pub api_key: Option<String>,
+    #[serde(default = "default_schedule")]
+    pub schedule: String,
+}
+
+fn default_schedule() -> String {
+    "realtime".to_string()
 }

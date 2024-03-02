@@ -18,7 +18,7 @@ fn table(
     update_col: default!(String, "'last_updated_at'"),
     transformer: default!(&str, "'text-embedding-ada-002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
-    table_method: default!(types::TableMethod, "'append'"),
+    table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'realtime'"),
 ) -> Result<String> {
