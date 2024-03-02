@@ -60,7 +60,18 @@ BEGIN
         ) THEN
             -- get the data type of the embeddings column
             EXECUTE format(
-                'SELECT data_type FROM information_schema.columns WHERE table_name = %L AND column_name = %L AND table_schema = %L',
+                'SELECT a.attname AS column_name,
+                    pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type
+                    FROM pg_catalog.pg_class as cls
+                    JOIN pg_catalog.pg_attribute as a ON a.attrelid = cls.oid
+                    JOIN pg_catalog.pg_type as t ON a.atttypid = t.oid
+                    JOIN pg_catalog.pg_namespace n ON n.oid = cls.relnamespace
+                    WHERE cls.relname = %L
+                    AND a.attname = %L
+                    AND a.attnum > 0
+                    AND NOT a.attisdropped
+                    AND n.nspname = %L;
+                    ',
                 src_table, src_embeddings_col, src_schema
             ) INTO src_embeddings_dtype;
 
@@ -92,3 +103,6 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
+
+
+
