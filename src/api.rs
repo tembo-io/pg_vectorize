@@ -71,7 +71,7 @@ fn init_rag(
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
-    table_method: default!(types::TableMethod, "'append'"),
+    table_method: default!(types::TableMethod, "'join'"),
 ) -> Result<String> {
     // chat only supports single columns transform
     let columns = vec![column.to_string()];

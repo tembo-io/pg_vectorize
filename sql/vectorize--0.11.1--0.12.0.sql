@@ -19,6 +19,23 @@ STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'table_wrapper';
 
+-- changed default table method on init_rag()
+DROP FUNCTION vectorize."init_rag";
+-- vectorize::api::init_rag
+CREATE  FUNCTION vectorize."init_rag"(
+        "agent_name" TEXT, /* &str */
+        "table_name" TEXT, /* &str */
+        "unique_record_id" TEXT, /* &str */
+        "column" TEXT, /* &str */
+        "schema" TEXT DEFAULT 'public', /* &str */
+        "transformer" TEXT DEFAULT 'text-embedding-ada-002', /* &str */
+        "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
+        "table_method" vectorize.TableMethod DEFAULT 'join' /* vectorize::types::TableMethod */
+) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
+STRICT
+LANGUAGE c /* Rust */
+AS 'MODULE_PATHNAME', 'init_rag_wrapper';
+
 -- all 'realtime' jobs must be moved to the 'join' method
 -- this moves the embeddings from the source table to a dedicated table
 -- this provides far more efficient insert/update performance
