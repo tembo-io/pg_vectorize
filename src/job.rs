@@ -88,12 +88,15 @@ $$ LANGUAGE plpgsql;
 }
 
 // creates the trigger for a row update
-pub fn create_insert_update_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
+// these triggers use transition tables
+// transition tables cannot be specified for triggers with more than one event
+// so we create two triggers instead
+pub fn create_event_trigger(job_name: &str, schema: &str, table_name: &str, event: &str) -> String {
     // let trigger_condition = generate_trigger_condition(input_columns);
     format!(
         "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
-AFTER INSERT OR UPDATE ON {schema}.{table_name}
+AFTER {event} ON {schema}.{table_name}
 REFERENCING NEW TABLE AS new_table
 FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
@@ -216,30 +219,29 @@ mod tests {
         let expected = format!(
             "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_another_job
-AFTER INSERT OR UPDATE ON myschema.another_table
+AFTER UPDATE ON myschema.another_table
 REFERENCING NEW TABLE AS new_table
 FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
-
         );
-        let result = create_insert_update_trigger(job_name, "myschema", table_name);
+        let result = create_event_trigger(job_name, "myschema", table_name, "UPDATE");
         assert_eq!(expected, result);
     }
 
-//     #[test]
-//     fn test_create_insert_trigger_single() {
-//         let job_name = "another_job";
-//         let table_name = "another_table";
+    #[test]
+    fn test_create_insert_trigger_single() {
+        let job_name = "another_job";
+        let table_name = "another_table";
 
-//         let expected = format!(
-//             "
-// CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
-// AFTER INSERT ON myschema.another_table
-// REFERENCING NEW TABLE AS new_table
-// FOR EACH STATEMENT
-// EXECUTE FUNCTION vectorize.handle_update_another_job();"
-//         );
-//         let result = create_insert_trigger(job_name, "myschema", table_name);
-//         assert_eq!(expected, result);
-//     }
+        let expected = format!(
+            "
+CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
+AFTER INSERT ON myschema.another_table
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
+EXECUTE FUNCTION vectorize.handle_update_another_job();"
+        );
+        let result = create_event_trigger(job_name, "myschema", table_name, "INSERT");
+        assert_eq!(expected, result);
+    }
 }
