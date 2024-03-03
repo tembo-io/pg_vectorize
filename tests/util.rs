@@ -1,6 +1,7 @@
 pub mod common {
     use anyhow::Result;
     use log::LevelFilter;
+    use serde::Serialize;
     use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
     use sqlx::{ConnectOptions, FromRow};
     use sqlx::{Pool, Postgres, Row};
@@ -11,11 +12,12 @@ pub mod common {
     pub struct SearchResult {
         pub product_id: i32,
         pub product_name: String,
+        pub description: String,
         pub similarity_score: f64,
     }
 
     #[allow(dead_code)]
-    #[derive(FromRow, Debug)]
+    #[derive(FromRow, Debug, Serialize)]
     pub struct SearchJSON {
         pub search_results: serde_json::Value,
     }
@@ -123,6 +125,7 @@ pub mod common {
         job_name: &str,
         retries: usize,
         delay_seconds: usize,
+        num_results: i32,
     ) -> Result<Vec<SearchJSON>> {
         let mut results: Vec<SearchJSON> = vec![];
         for i in 0..retries {
@@ -130,20 +133,27 @@ pub mod common {
                 "SELECT * from vectorize.search(
                 job_name => '{job_name}',
                 query => '{query}',
-                return_columns => ARRAY['product_id', 'product_name'],
-                num_results => 3
+                return_columns => ARRAY['product_id', 'product_name', 'description'],
+                num_results => {num_results}
             ) as search_results;"
             ))
             .fetch_all(conn)
             .await?;
-            if results.len() != 3 {
-                println!("retrying search query: {}/{}", i + 1, retries);
+            let num_returned = results.len();
+            if num_returned != num_results as usize {
+                println!(
+                    "num_results: {}, retrying search query: {}/{}",
+                    num_returned,
+                    i + 1,
+                    retries
+                );
                 tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds as u64)).await;
             } else {
                 return Ok(results);
             }
         }
-        println!("results: {:?}", results);
+        let js_results = serde_json::to_value(&results).unwrap();
+        println!("results: {:?}", js_results);
         Err(anyhow::anyhow!("timed out waiting for search query"))
     }
 }

@@ -96,7 +96,7 @@ BEGIN
             ) INTO src_embeddings_dtype;
 
             create_query := format(
-                'CREATE TABLE vectorize.%I ( %I %s UNIQUE, embeddings %s, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL )',
+                'CREATE TABLE IF NOT EXISTS vectorize.%I ( %I %s UNIQUE, embeddings %s, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL )',
                 dest_table, src_pkey, src_pkey_type, src_embeddings_dtype
             );
             EXECUTE create_query;
