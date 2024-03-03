@@ -8,7 +8,7 @@ use util::common;
 async fn test_scheduled_job() {
     let conn = common::init_database().await;
     let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(0..100000);
+    let test_num = rng.gen_range(1..100000);
     let test_table_name = common::init_test_table(test_num, &conn).await;
     let job_name = format!("job_{}", test_num);
 
@@ -58,7 +58,7 @@ async fn test_realtime_job() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
     let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(0..100000);
+    let test_num = rng.gen_range(1..100000);
     let test_table_name = common::init_test_table(test_num, &conn).await;
     let job_name = format!("job_{}", test_num);
 
@@ -121,9 +121,9 @@ async fn test_rag() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
     let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(0..100000);
+    let test_num = rng.gen_range(1..100000);
     let test_table_name = common::init_test_table(test_num, &conn).await;
-    let agent_name = format!("agnet_{}", test_num);
+    let agent_name = format!("agent_{}", test_num);
 
     println!("test_table_name: {}", test_table_name);
     println!("agent_name: {}", agent_name);
@@ -154,9 +154,9 @@ async fn test_rag_alternate_schema() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
     let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(0..100000);
+    let test_num = rng.gen_range(1..100000);
     let test_table_name = common::init_test_table(test_num, &conn).await;
-    let agent_name = format!("agnet_{}", test_num);
+    let agent_name = format!("agent_{}", test_num);
     println!("test_table_name: {}", test_table_name);
     println!("agent_name: {}", agent_name);
     // initialize
@@ -240,7 +240,6 @@ async fn test_static() {
             .expect("failed to exec search");
 
     let mut found_it = false;
-    println!("Searching inserted row: {}", random_product_id);
     for row in search_results {
         let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
         if row.product_id == random_product_id {
