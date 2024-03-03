@@ -63,6 +63,22 @@ pub fn init_job_query() -> String {
     )
 }
 
+/// creates a project view over a source table and the embeddings table
+fn create_project_view(job_name: &str, job_params: &types::JobParams) -> String {
+    format!(
+        "CREATE VIEW vectorize.{job_name} as 
+        SELECT t0.*, t1.embeddings, t1.updated_at as embeddings_updated_at
+        FROM {schema}.{table} t0
+        INNER JOIN vectorize._embeddings_{job_name} t1
+            ON t0.{primary_key} = t1.{primary_key};
+        ",
+        job_name = job_name,
+        schema = job_params.schema,
+        table = job_params.table,
+        primary_key = job_params.primary_key,
+    )
+}
+
 pub fn init_embedding_table_query(
     job_name: &str,
     transformer: &str,
@@ -102,6 +118,8 @@ pub fn init_embedding_table_query(
                     &col_type,
                 ),
                 create_hnsw_cosine_index(job_name, "vectorize", &table_name, "embeddings"),
+                // also create a view over the source table and the embedding table, for this project
+                create_project_view(job_name, &job_params),
             ]
         }
     }
