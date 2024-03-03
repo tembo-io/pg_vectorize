@@ -11,6 +11,7 @@ pub mod common {
     pub struct SearchResult {
         pub product_id: i32,
         pub product_name: String,
+        pub description: String,
         pub similarity_score: f64,
     }
 
@@ -123,6 +124,7 @@ pub mod common {
         job_name: &str,
         retries: usize,
         delay_seconds: usize,
+        num_results: i32,
     ) -> Result<Vec<SearchJSON>> {
         let mut results: Vec<SearchJSON> = vec![];
         for i in 0..retries {
@@ -130,8 +132,8 @@ pub mod common {
                 "SELECT * from vectorize.search(
                 job_name => '{job_name}',
                 query => '{query}',
-                return_columns => ARRAY['product_id', 'product_name'],
-                num_results => 3
+                return_columns => ARRAY['product_id', 'product_name', 'description'],
+                num_results => {num_results}
             ) as search_results;"
             ))
             .fetch_all(conn)
