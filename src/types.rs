@@ -94,6 +94,7 @@ pub struct JobParams {
     pub table_method: TableMethod,
     pub primary_key: String,
     pub pkey_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
     #[serde(default = "default_schedule")]
     pub schedule: String,
