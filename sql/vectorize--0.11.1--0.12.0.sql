@@ -92,10 +92,10 @@ BEGIN
             -- create the new table in vectorize schema using appropriate types
             EXECUTE format(
                 'CREATE TABLE IF NOT EXISTS vectorize.%I (
-                    %I %s UNIQUE,
-                    embeddings %s,
+                    %I %s UNIQUE NOT NULL,
+                    embeddings %s NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-                    FOREIGN KEY (%I) REFERENCES %I.%I (%I)
+                    FOREIGN KEY (%I) REFERENCES %I.%I (%I) ON DELETE CASCADE
                 )',
                 dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
             );
