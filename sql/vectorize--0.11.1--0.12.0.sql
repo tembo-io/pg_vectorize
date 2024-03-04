@@ -52,13 +52,7 @@ DECLARE
     src_embeddings_updated_at TEXT;
     src_embeddings_dtype TEXT;
     dest_table TEXT;
-    create_query TEXT;
-    insert_query TEXT;
-    drop_col_query TEXT;
     
-    trigger_handler TEXT;
-    trigger_update TEXT;
-    trigger_insert TEXT;
 BEGIN
     FOR r IN SELECT * FROM vectorize.job LOOP
         src_table := r.params ->> 'table';
@@ -96,7 +90,7 @@ BEGIN
             ) INTO src_embeddings_dtype;
 
             -- create the new table in vectorize schema using appropriate types
-            create_query := format(
+            EXECUTE format(
                 'CREATE TABLE IF NOT EXISTS vectorize.%I (
                     %I %s UNIQUE,
                     embeddings %s,
@@ -105,23 +99,20 @@ BEGIN
                 )',
                 dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
             );
-            EXECUTE create_query;
 
             -- insert the data from the source table into the new table
-            insert_query := format(
+            EXECUTE format(
                 'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
                  FROM %I.%I',
                  dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
             );
-            EXECUTE insert_query;
 
             -- drop the two columns that were previously added to the source table
-            drop_col_query = format(
+            EXECUTE format(
                 'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
                 src_schema, src_table, src_embeddings_col, src_embeddings_updated_at
             );
-            EXECUTE drop_col_query;
 
             -- re-initialize the triggers and update project metadata
             -- drop the triggers, then re-init to create new ones
