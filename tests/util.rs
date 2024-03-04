@@ -85,14 +85,26 @@ pub mod common {
         Ok(options)
     }
 
-    pub async fn init_test_table(test_num: i32, conn: &Pool<Postgres>) -> String {
-        let table = format!("product_{test_num}");
-        let q = format!("CREATE TABLE {table} AS TABLE vectorize.example_products WITH DATA");
-        let _ = sqlx::query(&q)
-            .execute(conn)
-            .await
-            .expect("failed to create test table");
-        table
+    pub async fn init_test_table(table: &str, conn: &Pool<Postgres>) {
+        let create = format!(
+            "CREATE TABLE IF NOT EXISTS {table} (LIKE vectorize.example_products INCLUDING ALL);"
+        );
+        let insert = format!(
+            "
+        DO $$
+        BEGIN
+            IF (SELECT COUNT(*) FROM {table}) = 0 THEN
+                INSERT INTO {table} SELECT * FROM vectorize.example_products;
+            END IF;
+        END $$;
+       "
+        );
+        for q in vec![create, insert] {
+            sqlx::query(&q)
+                .execute(conn)
+                .await
+                .expect("failed to create test table");
+        }
     }
 
     pub async fn row_count(fq_table_name: &str, conn: &Pool<Postgres>) -> i64 {
