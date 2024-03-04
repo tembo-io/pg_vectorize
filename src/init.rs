@@ -138,10 +138,10 @@ fn create_embedding_table(
 ) -> String {
     format!(
         "CREATE TABLE IF NOT EXISTS {schema}._embeddings_{job_name} (
-            {join_key} {join_key_type} UNIQUE,
-            embeddings {col_type},
+            {join_key} {join_key_type} UNIQUE NOT NULL,
+            embeddings {col_type} NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-            FOREIGN KEY ({join_key}) REFERENCES {src_schema}.{src_table} ({join_key})
+            FOREIGN KEY ({join_key}) REFERENCES {src_schema}.{src_table} ({join_key}) ON DELETE CASCADE
         );
         ",
         schema = types::VECTORIZE_SCHEMA,
