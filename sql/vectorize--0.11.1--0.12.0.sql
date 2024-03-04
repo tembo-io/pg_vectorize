@@ -96,16 +96,21 @@ BEGIN
             ) INTO src_embeddings_dtype;
 
             create_query := format(
-                'CREATE TABLE IF NOT EXISTS vectorize.%I ( %I %s UNIQUE, embeddings %s, updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL )',
-                dest_table, src_pkey, src_pkey_type, src_embeddings_dtype
+                'CREATE TABLE IF NOT EXISTS vectorize.%I (
+                    %I %s UNIQUE,
+                    embeddings %s,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+                    FOREIGN KEY (%I) REFERENCES %I.%I (%I)
+                )',
+                dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
             );
             EXECUTE create_query;
 
             insert_query := format(
                 'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
-                 FROM %s',
-                 dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema || '.' || src_table
+                 FROM %I.%I',
+                 dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
             );
             EXECUTE insert_query;
 

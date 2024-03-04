@@ -116,6 +116,8 @@ pub fn init_embedding_table_query(
                     &job_params.primary_key,
                     &job_params.pkey_type,
                     &col_type,
+                    schema,
+                    table,
                 ),
                 create_hnsw_cosine_index(job_name, "vectorize", &table_name, "embeddings"),
                 // also create a view over the source table and the embedding table, for this project
@@ -130,18 +132,24 @@ fn create_embedding_table(
     join_key: &str,
     join_key_type: &str,
     col_type: &str,
+    src_schema: &str,
+    src_table: &str,
 ) -> String {
     format!(
         "CREATE TABLE IF NOT EXISTS {schema}._embeddings_{job_name} (
             {join_key} {join_key_type} UNIQUE,
             embeddings {col_type},
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+            FOREIGN KEY ({join_key}) REFERENCES {src_schema}.{src_table} ({join_key})
         );
         ",
         schema = types::VECTORIZE_SCHEMA,
         job_name = job_name,
         join_key = join_key,
         join_key_type = join_key_type,
+        col_type = col_type,
+        src_schema = src_schema,
+        src_table = src_table,
     )
 }
 
