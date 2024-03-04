@@ -86,7 +86,7 @@ pub mod common {
 
     pub async fn init_test_table(test_num: i32, conn: &Pool<Postgres>) -> String {
         let table = format!("product_{test_num}");
-        let q = format!("CREATE TABLE {table} as SELECT * from vectorize.example_products;");
+        let q = format!("CREATE TABLE {table} AS TABLE vectorize.example_products WITH DATA");
         let _ = sqlx::query(&q)
             .execute(conn)
             .await
