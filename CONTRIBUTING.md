@@ -175,8 +175,8 @@ The following can be found within the this project's README, under [Hugging Face
 Begin by creating a `producs` table with the dataset that comes included with `pg_vectorize`.
 
 ```sql
-CREATE TABLE products AS
-TABLE vectorize.example_products WITH DATA;
+CREATE TABLE products (LIKE vectorize.example_products INCLUDING ALL);
+INSERT INTO products SELECT * FROM vectorize.example_products;
 ```
 
 You can then confirm everything is correct by running the following:
