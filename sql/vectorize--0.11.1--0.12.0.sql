@@ -55,7 +55,6 @@ DECLARE
     create_query TEXT;
     insert_query TEXT;
     drop_col_query TEXT;
-    alter_job_query TEXT;
     
     trigger_handler TEXT;
     trigger_update TEXT;
@@ -80,6 +79,7 @@ BEGIN
             AND pg_trigger.tgname ILIKE '%vectorize%'
         ) THEN
             -- get the data type of the embeddings column
+            -- depending on the transformer, this could be vector(384) or vector(768), etc
             EXECUTE format(
                 'SELECT pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type
                     FROM pg_catalog.pg_class as cls
@@ -95,6 +95,7 @@ BEGIN
                 src_table, src_embeddings_col, src_schema
             ) INTO src_embeddings_dtype;
 
+            -- create the new table in vectorize schema using appropriate types
             create_query := format(
                 'CREATE TABLE IF NOT EXISTS vectorize.%I (
                     %I %s UNIQUE,
@@ -106,6 +107,7 @@ BEGIN
             );
             EXECUTE create_query;
 
+            -- insert the data from the source table into the new table
             insert_query := format(
                 'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
@@ -114,23 +116,19 @@ BEGIN
             );
             EXECUTE insert_query;
 
-            alter_job_query := format(
-                'UPDATE vectorize.job SET params = jsonb_set(params, ''{table_method}'', ''"join"'') WHERE name = ''%s''', r.name
-            );
-            EXECUTE alter_job_query;
-
+            -- drop the two columns that were previously added to the source table
             drop_col_query = format(
                 'ALTER TABLE %I.%I DROP COLUMN %I, DROP COLUMN %I',
                 src_schema, src_table, src_embeddings_col, src_embeddings_updated_at
             );
             EXECUTE drop_col_query;
 
-            src_text_cols := ARRAY(SELECT jsonb_array_elements_text(r.params -> 'columns'));
+            -- re-initialize the triggers and update project metadata
             -- drop the triggers, then re-init to create new ones
-            
             EXECUTE format('ALTER EXTENSION vectorize ADD FUNCTION vectorize.handle_update_%s();', r.name);
             EXECUTE format('DROP FUNCTION vectorize.handle_update_%I CASCADE', r.name);
 
+            src_text_cols := ARRAY(SELECT jsonb_array_elements_text(r.params -> 'columns'));
             PERFORM vectorize.table(
                     job_name => r.name,
                     "table" => src_table,
