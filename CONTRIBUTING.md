@@ -160,6 +160,7 @@ Running the earlier SHOW command should reveal the appropriate change:
 ```sql
 SHOW vectorize.embedding_service_url;
 ```
+
 ```text
    vectorize.embedding_service_url
 -------------------------------------
@@ -175,7 +176,7 @@ Begin by creating a `producs` table with the dataset that comes included with `p
 
 ```sql
 CREATE TABLE products AS
-SELECT * FROM vectorize.example_products;
+TABLE vectorize.example_products WITH DATA;
 ```
 
 You can then confirm everything is correct by running the following:
@@ -183,6 +184,7 @@ You can then confirm everything is correct by running the following:
 ```sql
 SELECT * FROM products limit 2;
 ```
+
 ```text
  product_id | product_name |                      description                       |        last_updated_at        
 ------------+--------------+--------------------------------------------------------+-------------------------------
@@ -201,6 +203,7 @@ columns => ARRAY['product_name', 'description'],
 transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
 );
 ```
+
 ```text
                     table
 ---------------------------------------------
