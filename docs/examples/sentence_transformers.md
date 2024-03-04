@@ -34,8 +34,8 @@ SELECT pg_reload_conf();
 Create an example table if it does not already exist.
 
 ```sql
-CREATE TABLE products AS 
-TABLE vectorize.example_products WITH DATA;
+CREATE TABLE products (LIKE vectorize.example_products INCLUDING ALL);
+INSERT INTO products SELECT * FROM vectorize.example_products;
 ```
 
 ```sql

@@ -85,9 +85,19 @@ pub mod common {
     }
 
     pub async fn init_test_table(table: &str, conn: &Pool<Postgres>) {
-        let create =
-            format!("CREATE TABLE {table} (LIKE vectorize.example_products INCLUDING ALL);");
-        let insert = format!("INSERT INTO {table} SELECT * FROM vectorize.example_products;");
+        let create = format!(
+            "CREATE TABLE IF NOT EXISTS {table} (LIKE vectorize.example_products INCLUDING ALL);"
+        );
+        let insert = format!(
+            "
+        DO $$
+        BEGIN
+            IF (SELECT COUNT(*) FROM {table}) = 0 THEN
+                INSERT INTO {table} SELECT * FROM vectorize.example_products;
+            END IF;
+        END $$;
+       "
+        );
         for q in vec![create, insert] {
             sqlx::query(&q)
                 .execute(conn)
