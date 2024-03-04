@@ -193,7 +193,7 @@ async fn test_static() {
     let test_table_name = "products_test_static";
     let job_name = "static_test_job";
     let query = format!(
-        "CREATE TABLE IF NOT EXISTS {test_table_name} as SELECT * from vectorize.example_products;"
+        "CREATE TABLE IF NOT EXISTS {test_table_name} AS TABLE vectorize.example_products WITH DATA;"
     );
     let _ = sqlx::query(&query)
         .execute(&conn)
