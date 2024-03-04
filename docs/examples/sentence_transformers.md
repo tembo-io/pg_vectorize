@@ -35,7 +35,7 @@ Create an example table if it does not already exist.
 
 ```sql
 CREATE TABLE products AS 
-SELECT * FROM vectorize.example_products;
+TABLE vectorize.example_products WITH DATA;
 ```
 
 ```sql

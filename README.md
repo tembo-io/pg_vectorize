@@ -105,7 +105,7 @@ Setup a products table. Copy from the example data provided by the extension.
 
 ```sql
 CREATE TABLE products AS 
-SELECT * FROM vectorize.example_products;
+TABLE vectorize.example_products WITH DATA;
 ```
 
 ```sql
@@ -167,7 +167,7 @@ Create an example table if it does not already exist.
 
 ```sql
 CREATE TABLE products AS 
-SELECT * FROM vectorize.example_products;
+TABLE vectorize.example_products WITH DATA;
 ```
 
 Initialize a table for RAG. We'll use an open source Sentence Transformer to generate embeddings.
