@@ -1,5 +1,6 @@
 mod util;
 use rand::Rng;
+use sqlx::{FromRow, Row};
 use util::common;
 
 // Integration tests are ignored by default
@@ -335,4 +336,16 @@ async fn test_realtime_tabled() {
         }
     }
     assert!(found_it);
+
+    // `join` method must have a view created
+    let select = format!(
+        "SELECT product_id, product_name, description, embeddings, embeddings_updated_at FROM vectorize.{job_name}"
+    );
+    let result = sqlx::query(&select)
+        .fetch_all(&conn)
+        .await
+        .expect("failed to query project view");
+
+    // 41 rows should be returned
+    assert!(result.len() == 41);
 }
