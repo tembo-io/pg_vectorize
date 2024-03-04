@@ -118,7 +118,6 @@ BEGIN
             -- drop the triggers, then re-init to create new ones
             EXECUTE format('ALTER EXTENSION vectorize ADD FUNCTION vectorize.handle_update_%s();', r.name);
             EXECUTE format('DROP FUNCTION vectorize.handle_update_%I CASCADE', r.name);
-
             src_text_cols := ARRAY(SELECT jsonb_array_elements_text(r.params -> 'columns'));
             PERFORM vectorize.table(
                     job_name => r.name,
@@ -129,7 +128,8 @@ BEGIN
                     transformer => r.transformer,
                     table_method => 'join',
                     schedule => 'realtime'
-                );            
+                );
+            EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
         END IF;
     END LOOP;
 END $$;
