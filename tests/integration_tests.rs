@@ -14,8 +14,7 @@ async fn test_scheduled_job() {
     let job_name = format!("job_{}", test_num);
 
     common::init_embedding_svc_url(&conn).await;
-    println!("test_table_name: {}", test_table_name);
-    println!("job_name: {}", job_name);
+
     // initialize a job
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -64,8 +63,7 @@ async fn test_scheduled_single_table() {
     let job_name = format!("job_{}", test_num);
 
     common::init_embedding_svc_url(&conn).await;
-    println!("test_table_name: {}", test_table_name);
-    println!("job_name: {}", job_name);
+
     // initialize a job
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -144,8 +142,6 @@ async fn test_realtime_job() {
     common::init_test_table(&test_table_name, &conn).await;
     let job_name = format!("job_{}", test_num);
 
-    println!("test_table_name: {}", test_table_name);
-    println!("job_name: {}", job_name);
     // initialize a job
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -208,8 +204,6 @@ async fn test_rag() {
     common::init_test_table(&test_table_name, &conn).await;
     let agent_name = format!("agent_{}", test_num);
 
-    println!("test_table_name: {}", test_table_name);
-    println!("agent_name: {}", agent_name);
     // initialize
     let _ = sqlx::query(&format!(
         "SELECT vectorize.init_rag(
@@ -241,8 +235,7 @@ async fn test_rag_alternate_schema() {
     let test_table_name = format!("products_test_{}", test_num);
     common::init_test_table(&test_table_name, &conn).await;
     let agent_name = format!("agent_{}", test_num);
-    println!("test_table_name: {}", test_table_name);
-    println!("agent_name: {}", agent_name);
+
     // initialize
     let _ = sqlx::query(&format!(
         "SELECT vectorize.init_rag(
