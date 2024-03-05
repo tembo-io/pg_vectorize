@@ -203,7 +203,9 @@ async fn test_static() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name', 'description'],
-        transformer => 'all-MiniLM-L12-v2'
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime',
+        table_method => 'join'
     );"
     ))
     .execute(&conn)

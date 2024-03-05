@@ -56,7 +56,6 @@ pub fn init_job_query() -> String {
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,
-            transformer = EXCLUDED.transformer,
             search_alg = EXCLUDED.search_alg,
             params = job.params || EXCLUDED.params;
         ",

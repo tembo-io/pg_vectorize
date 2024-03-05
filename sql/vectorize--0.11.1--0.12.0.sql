@@ -131,7 +131,7 @@ BEGIN
                 );
             -- the vectorize extension should not own any of these objects
             EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
-            EXECUTE format('ALTER EXTENSION vectorize DROP TABLE %I.%I;', src_schema, dest_table);
+            EXECUTE format('ALTER EXTENSION vectorize DROP TABLE vectorize.%I;', dest_table);
         END IF;
     END LOOP;
 END $$;

@@ -1,5 +1,5 @@
 CREATE TABLE example_products (
-    product_id GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id SERIAL PRIMARY KEY,
     product_name TEXT NOT NULL,
     description TEXT,
     last_updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
