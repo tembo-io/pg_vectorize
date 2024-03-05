@@ -13,7 +13,7 @@ CREATE  FUNCTION vectorize."table"(
         "transformer" TEXT DEFAULT 'text-embedding-ada-002', /* &str */
         "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
         "table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
-        "schedule" TEXT DEFAULT 'realtime' /* &str */
+        "schedule" TEXT DEFAULT '* * * * *' /* &str */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
 STRICT
 LANGUAGE c /* Rust */
@@ -30,7 +30,8 @@ CREATE  FUNCTION vectorize."init_rag"(
         "schema" TEXT DEFAULT 'public', /* &str */
         "transformer" TEXT DEFAULT 'text-embedding-ada-002', /* &str */
         "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
-        "table_method" vectorize.TableMethod DEFAULT 'join' /* vectorize::types::TableMethod */
+        "table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
+        "schedule" TEXT DEFAULT '* * * * *' /* &str */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
 STRICT
 LANGUAGE c /* Rust */

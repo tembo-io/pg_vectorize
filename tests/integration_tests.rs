@@ -14,8 +14,7 @@ async fn test_scheduled_job() {
     let job_name = format!("job_{}", test_num);
 
     common::init_embedding_svc_url(&conn).await;
-    println!("test_table_name: {}", test_table_name);
-    println!("job_name: {}", job_name);
+
     // initialize a job
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -55,6 +54,85 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_scheduled_single_table() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    common::init_embedding_svc_url(&conn).await;
+
+    // initialize a job
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        table_method => 'append',
+        schedule => '* * * * *'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // should be exactly 1 job in the queue
+    let rowcount = common::row_count(&format!("pgmq.q_vectorize_jobs"), &conn).await;
+    assert!(rowcount >= 1);
+
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.search(
+        job_name => '{job_name}',
+        query => 'mobile devices',
+        return_columns => ARRAY['product_name'],
+        num_results => 3
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to select from test_table");
+    // 3 rows returned
+    assert_eq!(result.rows_affected(), 3);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_realtime_append_fail() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    common::init_embedding_svc_url(&conn).await;
+    // initialize a job
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        table_method => 'append',
+        schedule => 'realtime'
+    );"
+    ))
+    .execute(&conn)
+    .await;
+    // realtime + append is not supported
+    assert!(result.is_err());
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_realtime_job() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
@@ -64,8 +142,6 @@ async fn test_realtime_job() {
     common::init_test_table(&test_table_name, &conn).await;
     let job_name = format!("job_{}", test_num);
 
-    println!("test_table_name: {}", test_table_name);
-    println!("job_name: {}", job_name);
     // initialize a job
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -128,8 +204,6 @@ async fn test_rag() {
     common::init_test_table(&test_table_name, &conn).await;
     let agent_name = format!("agent_{}", test_num);
 
-    println!("test_table_name: {}", test_table_name);
-    println!("agent_name: {}", agent_name);
     // initialize
     let _ = sqlx::query(&format!(
         "SELECT vectorize.init_rag(
@@ -161,8 +235,7 @@ async fn test_rag_alternate_schema() {
     let test_table_name = format!("products_test_{}", test_num);
     common::init_test_table(&test_table_name, &conn).await;
     let agent_name = format!("agent_{}", test_num);
-    println!("test_table_name: {}", test_table_name);
-    println!("agent_name: {}", agent_name);
+
     // initialize
     let _ = sqlx::query(&format!(
         "SELECT vectorize.init_rag(

@@ -20,7 +20,7 @@ fn table(
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
-    schedule: default!(&str, "'realtime'"),
+    schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     init_table(
         job_name,
@@ -72,6 +72,7 @@ fn init_rag(
     // similarity algorithm to use in vector-search
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
+    schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     // chat only supports single columns transform
     let columns = vec![column.to_string()];
@@ -86,7 +87,7 @@ fn init_rag(
         transformer,
         search_alg,
         table_method,
-        "realtime",
+        schedule,
     )
 }
 
