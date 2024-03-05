@@ -70,7 +70,7 @@ fn create_project_view(job_name: &str, job_params: &types::JobParams) -> String 
         "CREATE OR REPLACE VIEW vectorize.{job_name} as 
         SELECT t0.*, t1.embeddings, t1.updated_at as embeddings_updated_at
         FROM {schema}.{table} t0
-        INNER JOIN {schema}._embeddings_{job_name} t1
+        INNER JOIN vectorize._embeddings_{job_name} t1
             ON t0.{primary_key} = t1.{primary_key};
         ",
         job_name = job_name,
@@ -120,7 +120,7 @@ pub fn init_embedding_table_query(
                     schema,
                     table,
                 ),
-                create_hnsw_cosine_index(job_name, schema, &table_name, "embeddings"),
+                create_hnsw_cosine_index(job_name, "vectorize", &table_name, "embeddings"),
                 // also create a view over the source table and the embedding table, for this project
                 create_project_view(job_name, job_params),
             ]
@@ -137,7 +137,7 @@ fn create_embedding_table(
     src_table: &str,
 ) -> String {
     format!(
-        "CREATE TABLE IF NOT EXISTS {src_schema}._embeddings_{job_name} (
+        "CREATE TABLE IF NOT EXISTS vectorize._embeddings_{job_name} (
             {join_key} {join_key_type} UNIQUE NOT NULL,
             embeddings {col_type} NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,

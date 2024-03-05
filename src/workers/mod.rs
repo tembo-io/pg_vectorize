@@ -90,11 +90,14 @@ fn build_upsert_query(
     embeddings: Vec<PairedEmbeddings>,
 ) -> (String, Vec<(String, String)>) {
     let join_key = &job_params.primary_key;
-    let src_schema = &job_params.schema;
+    let schema = match &job_params.table_method {
+        types::TableMethod::append => job_params.schema.clone(),
+        types::TableMethod::join => "vectorize".to_string(),
+    };
     let mut query = format!(
         "
         INSERT INTO {schema}._embeddings_{project} ({join_key}, embeddings) VALUES",
-        schema = src_schema,
+        schema = schema,
         join_key = join_key,
     );
     let mut bindings: Vec<(String, String)> = Vec::new();

@@ -91,21 +91,21 @@ BEGIN
 
             -- create the new table in vectorize schema using appropriate types
             EXECUTE format(
-                'CREATE TABLE IF NOT EXISTS %I.%I (
+                'CREATE TABLE IF NOT EXISTS vectorize.%I (
                     %I %s UNIQUE NOT NULL,
                     embeddings %s NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
                     FOREIGN KEY (%I) REFERENCES %I.%I (%I) ON DELETE CASCADE
                 )',
-                src_schema, dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
+                dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
             );
 
             -- insert the data from the source table into the new table
             EXECUTE format(
-                'INSERT INTO %I.%I ( %I, embeddings, updated_at )
+                'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
                  FROM %I.%I',
-                 src_schema, dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
+                 dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
             );
 
             -- drop the two columns that were previously added to the source table
@@ -132,8 +132,6 @@ BEGIN
             -- the vectorize extension should not own any of these objects
             EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
             EXECUTE format('ALTER EXTENSION vectorize DROP TABLE %I.%I;', src_schema, dest_table);
-            EXECUTE format('ALTER EXTENSION vectorize DROP EVENT TRIGGER vectorize_insert_trigger_%s;', r.name, src_schema, src_table);
-            EXECUTE format('ALTER EXTENSION vectorize DROP EVENT TRIGGER vectorize_update_trigger_%s;', r.name, src_schema, src_table);
         END IF;
     END LOOP;
 END $$;
