@@ -261,7 +261,7 @@ fn join_table_cosine_similarity(
                 SELECT
                     {join_key},
                     1 - (embeddings <=> $1::vector) AS similarity_score
-                FROM vectorize._embeddings_{project}
+                FROM {schema}._embeddings_{project}
                 ORDER BY similarity_score DESC
                 LIMIT {num_results}
             ) t1

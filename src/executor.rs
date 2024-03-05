@@ -160,7 +160,7 @@ pub fn new_rows_query_join(job_name: &str, job_params: &types::JobParams) -> Str
         "
     SELECT t0.{join_key}::text as record_id, {cols} as input_text
     FROM {schema}.{table} t0
-    LEFT JOIN vectorize._embeddings_{job_name} t1 ON t0.{join_key} = t1.{join_key}
+    LEFT JOIN {schema}._embeddings_{job_name} t1 ON t0.{join_key} = t1.{join_key}
     WHERE t1.{join_key} IS NULL",
         join_key = job_params.primary_key,
         cols = cols,

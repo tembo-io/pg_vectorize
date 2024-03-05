@@ -91,13 +91,13 @@ BEGIN
 
             -- create the new table in vectorize schema using appropriate types
             EXECUTE format(
-                'CREATE TABLE IF NOT EXISTS vectorize.%I (
+                'CREATE TABLE IF NOT EXISTS %I.%I (
                     %I %s UNIQUE NOT NULL,
                     embeddings %s NOT NULL,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
                     FOREIGN KEY (%I) REFERENCES %I.%I (%I) ON DELETE CASCADE
                 )',
-                dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
+                src_schema, dest_table, src_pkey, src_pkey_type, src_embeddings_dtype, src_pkey, src_schema, src_table, src_pkey
             );
 
             -- insert the data from the source table into the new table
@@ -130,6 +130,7 @@ BEGIN
                     schedule => 'realtime'
                 );
             EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
+            EXECUTE format('ALTER EXTENSION vectorize DROP TABLE vectorize.handle_update_%s();', r.name);
         END IF;
     END LOOP;
 END $$;
