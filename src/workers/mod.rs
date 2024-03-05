@@ -48,7 +48,7 @@ pub async fn run_worker(
 
     // delete message from queue
     if delete_it {
-        match queue.delete(queue_name, msg_id).await {
+        match queue.archive(queue_name, msg_id).await {
             Ok(_) => {
                 info!("pg-vectorize: deleted message: {}", msg_id);
             }
@@ -64,11 +64,11 @@ pub async fn run_worker(
 
 async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
-    schema: &str,
     project: &str,
+    job_params: &types::JobParams,
     embeddings: Vec<PairedEmbeddings>,
 ) -> Result<()> {
-    let (query, bindings) = build_upsert_query(schema, project, embeddings);
+    let (query, bindings) = build_upsert_query(project, job_params, embeddings);
     let mut q = sqlx::query(&query);
     for (record_id, embeddings) in bindings {
         q = q.bind(record_id).bind(embeddings);
@@ -85,13 +85,20 @@ async fn upsert_embedding_table(
 // returns query and bindings
 // only compatible with pg-vector data types
 fn build_upsert_query(
-    schema: &str,
     project: &str,
+    job_params: &types::JobParams,
     embeddings: Vec<PairedEmbeddings>,
 ) -> (String, Vec<(String, String)>) {
+    let join_key = &job_params.primary_key;
+    let schema = match &job_params.table_method {
+        types::TableMethod::append => job_params.schema.clone(),
+        types::TableMethod::join => "vectorize".to_string(),
+    };
     let mut query = format!(
         "
-        INSERT INTO {schema}.{project}_embeddings (record_id, embeddings) VALUES"
+        INSERT INTO {schema}._embeddings_{project} ({join_key}, embeddings) VALUES",
+        schema = schema,
+        join_key = join_key,
     );
     let mut bindings: Vec<(String, String)> = Vec::new();
 
@@ -100,8 +107,9 @@ fn build_upsert_query(
             query.push(',');
         }
         query.push_str(&format!(
-            " (${}, ${}::vector)",
+            " (${}::{}, ${}::vector)",
             2 * index + 1,
+            job_params.pkey_type,
             2 * index + 2
         ));
 
@@ -109,8 +117,12 @@ fn build_upsert_query(
             serde_json::to_string(&pair.embeddings).expect("failed to serialize embedding");
         bindings.push((pair.primary_key, embedding));
     }
-
-    query.push_str(" ON CONFLICT (record_id) DO UPDATE SET embeddings = EXCLUDED.embeddings");
+    let upsert = format!(
+        " ON CONFLICT ({join_key})
+        DO UPDATE SET embeddings = EXCLUDED.embeddings, updated_at = NOW();",
+        join_key = join_key
+    );
+    query.push_str(&upsert);
     (query, bindings)
 }
 
@@ -212,7 +224,6 @@ async fn update_append_table(
         // Serialize the Vec<f64> to a JSON string
         let embedding = to_string(&embed.embeddings).expect("failed to serialize embedding");
 
-        // TODO: pkey might not always be integer type
         let update_query = format!(
             "
             UPDATE {schema}.{table}
@@ -265,13 +276,8 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Resu
             .await?;
         }
         types::TableMethod::join => {
-            upsert_embedding_table(
-                &dbclient,
-                &job_params.schema,
-                &job_meta.name,
-                paired_embeddings,
-            )
-            .await?
+            upsert_embedding_table(&dbclient, &job_meta.name, &job_params, paired_embeddings)
+                .await?
         }
     };
     Ok(())

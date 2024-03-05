@@ -76,15 +76,16 @@ impl Display for JobType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PostgresEnum, PartialEq, Eq)]
 pub enum TableMethod {
     // append a new column to the existing table
     append,
     // join existing table to a new table with embeddings
+    #[default]
     join,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, FromRow)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, FromRow)]
 pub struct JobParams {
     pub schema: String,
     pub table: String,
@@ -93,5 +94,12 @@ pub struct JobParams {
     pub table_method: TableMethod,
     pub primary_key: String,
     pub pkey_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+    #[serde(default = "default_schedule")]
+    pub schedule: String,
+}
+
+fn default_schedule() -> String {
+    "realtime".to_string()
 }

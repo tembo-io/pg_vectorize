@@ -1,6 +1,8 @@
 use anyhow::Result;
 
-use crate::executor::{create_batches, new_rows_query, JobMessage, VectorizeMeta};
+use crate::executor::{
+    create_batches, new_rows_query, new_rows_query_join, JobMessage, VectorizeMeta,
+};
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::transformers::types::Inputs;
@@ -58,18 +60,27 @@ static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
 /// creates a function that can be called by trigger
 pub fn create_trigger_handler(job_name: &str, input_columns: &[String], pkey: &str) -> String {
-    let input_concat = generate_input_concat(input_columns);
+    let input_cols = input_columns.join(", ");
+    let select_cols = generate_select_cols(input_columns);
     format!(
         "
 CREATE OR REPLACE FUNCTION {TRIGGER_FN_PREFIX}{job_name}()
-RETURNS trigger AS $$
+RETURNS TRIGGER AS $$
+DECLARE
+    record_id_array TEXT[] := ARRAY[]::TEXT[];
+    inputs_array TEXT[] := ARRAY[]::TEXT[];
+    r RECORD;
 BEGIN
+    FOR r IN SELECT {pkey} as pkey, {input_cols} FROM new_table LOOP
+    record_id_array := array_append(record_id_array, r.pkey::text);
+        inputs_array := array_append(inputs_array, {select_cols} );
+    END LOOP;
     PERFORM vectorize._handle_table_update(
         '{job_name}',
-        ARRAY[NEW.{pkey}::text],
-        ARRAY[{input_concat}]
+        record_id_array::TEXT[],
+        inputs_array
     );
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;    
 "
@@ -77,49 +88,27 @@ $$ LANGUAGE plpgsql;
 }
 
 // creates the trigger for a row update
-pub fn create_update_trigger(
-    job_name: &str,
-    schema: &str,
-    table_name: &str,
-    input_columns: &[String],
-) -> String {
-    let trigger_condition = generate_trigger_condition(input_columns);
+// these triggers use transition tables
+// transition tables cannot be specified for triggers with more than one event
+// so we create two triggers instead
+pub fn create_event_trigger(job_name: &str, schema: &str, table_name: &str, event: &str) -> String {
     format!(
         "
-CREATE OR REPLACE TRIGGER vectorize_update_trigger_{job_name}
-AFTER UPDATE ON {schema}.{table_name}
-FOR EACH ROW
-WHEN ( {trigger_condition} )
-EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
+CREATE OR REPLACE TRIGGER vectorize_{event_name}_trigger_{job_name}
+AFTER {event} ON {schema}.{table_name}
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
+EXECUTE FUNCTION vectorize.handle_update_{job_name}();",
+        event_name = event.to_lowercase()
     )
 }
 
-pub fn create_insert_trigger(job_name: &str, schema: &str, table_name: &str) -> String {
-    format!(
-        "
-CREATE OR REPLACE TRIGGER vectorize_insert_trigger_{job_name}
-AFTER INSERT ON {schema}.{table_name}
-FOR EACH ROW
-EXECUTE FUNCTION vectorize.handle_update_{job_name}();"
-    )
-}
-
-// takes in arbitrary number of columns to evaluate for changes and returns the trigger condition
-fn generate_trigger_condition(inputs: &[String]) -> String {
+fn generate_select_cols(inputs: &[String]) -> String {
     inputs
         .iter()
-        .map(|item| format!("OLD.{item} IS DISTINCT FROM NEW.{item}"))
+        .map(|item| format!("r.{item}"))
         .collect::<Vec<String>>()
-        .join(" OR ")
-}
-
-// concatenates the input columns into a single string
-fn generate_input_concat(inputs: &[String]) -> String {
-    inputs
-        .iter()
-        .map(|item| format!("NEW.{item}"))
-        .collect::<Vec<String>>()
-        .join(" || ' ' || ")
+        .join("|| ' ' ||")
 }
 
 // creates batches of embedding jobs
@@ -132,7 +121,10 @@ pub fn initalize_table_job(
     search_alg: types::SimilarityAlg,
 ) -> Result<()> {
     // start with initial batch load
-    let rows_need_update_query: String = new_rows_query(job_name, job_params);
+    let rows_need_update_query: String = match job_params.table_method {
+        types::TableMethod::append => new_rows_query(job_name, job_params),
+        types::TableMethod::join => new_rows_query_join(job_name, job_params),
+    };
     let mut inputs: Vec<Inputs> = Vec::new();
     let bpe = cl100k_base().unwrap();
     let _: Result<_, spi::Error> = Spi::connect(|c| {
@@ -191,71 +183,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_input_concat_multi() {
-        let input = vec!["column1".to_string(), "column2".to_string()];
-        let result = generate_input_concat(&input);
-        let expected = "NEW.column1 || ' ' || NEW.column2";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_input_concat_single() {
-        let input = vec!["column1".to_string()];
-        let result = generate_input_concat(&input);
-        let expected = "NEW.column1";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_trigger_condition_multi() {
-        let input = vec!["column1".to_string(), "column2".to_string()];
-        let result = generate_trigger_condition(&input);
-        let expected =
-            "OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_generate_trigger_condition_single() {
-        let input = vec!["column1".to_string()];
-        let result = generate_trigger_condition(&input);
-        let expected = "OLD.column1 IS DISTINCT FROM NEW.column1";
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_create_update_trigger_multi() {
-        let job_name = "example_job";
-        let table_name = "example_table";
-        let input_columns = vec!["column1".to_string(), "column2".to_string()];
-
-        let expected = format!(
-            "
-CREATE OR REPLACE TRIGGER vectorize_update_trigger_example_job
-AFTER UPDATE ON myschema.example_table
-FOR EACH ROW
-WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 OR OLD.column2 IS DISTINCT FROM NEW.column2 )
-EXECUTE FUNCTION vectorize.handle_update_example_job();"
-        );
-        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
-        assert_eq!(expected, result);
-    }
-
-    #[test]
     fn test_create_update_trigger_single() {
         let job_name = "another_job";
         let table_name = "another_table";
-        let input_columns = vec!["column1".to_string()];
 
         let expected = format!(
             "
 CREATE OR REPLACE TRIGGER vectorize_update_trigger_another_job
 AFTER UPDATE ON myschema.another_table
-FOR EACH ROW
-WHEN ( OLD.column1 IS DISTINCT FROM NEW.column1 )
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
         );
-        let result = create_update_trigger(job_name, "myschema", table_name, &input_columns);
+        let result = create_event_trigger(job_name, "myschema", table_name, "UPDATE");
         assert_eq!(expected, result);
     }
 
@@ -268,10 +208,11 @@ EXECUTE FUNCTION vectorize.handle_update_another_job();"
             "
 CREATE OR REPLACE TRIGGER vectorize_insert_trigger_another_job
 AFTER INSERT ON myschema.another_table
-FOR EACH ROW
+REFERENCING NEW TABLE AS new_table
+FOR EACH STATEMENT
 EXECUTE FUNCTION vectorize.handle_update_another_job();"
         );
-        let result = create_insert_trigger(job_name, "myschema", table_name);
+        let result = create_event_trigger(job_name, "myschema", table_name, "INSERT");
         assert_eq!(expected, result);
     }
 }

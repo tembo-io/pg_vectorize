@@ -1,13 +1,12 @@
 use crate::executor::VectorizeMeta;
 use crate::guc;
 use crate::init;
-use crate::job::{
-    create_insert_trigger, create_trigger_handler, create_update_trigger, initalize_table_job,
-};
+use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_job};
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::types;
+use crate::types::TableMethod;
 use crate::util;
 
 use anyhow::Result;
@@ -29,6 +28,12 @@ pub fn init_table(
     schedule: &str,
 ) -> Result<String> {
     let job_type = types::JobType::Columns;
+
+    // validate table method
+    // realtime is only compatible with the join method
+    if schedule == "realtime" && table_method != TableMethod::join {
+        error!("realtime schedule is only compatible with the join table method");
+    }
 
     let arguments = match serde_json::to_value(args) {
         Ok(a) => a,
@@ -75,6 +80,7 @@ pub fn init_table(
         primary_key: primary_key.to_string(),
         pkey_type,
         api_key: api_key.clone(),
+        schedule: schedule.to_string(),
     };
     let params =
         pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
@@ -114,14 +120,7 @@ pub fn init_table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q = init::init_embedding_table_query(
-        job_name,
-        schema,
-        table,
-        transformer,
-        &table_method,
-        api_key,
-    );
+    let init_embed_q = init::init_embedding_table_query(job_name, transformer, &valid_params);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
@@ -137,9 +136,10 @@ pub fn init_table(
             // setup triggers
             // create the trigger if not exists
             let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
-            let insert_trigger = create_insert_trigger(job_name, schema, table);
-            let update_trigger = create_update_trigger(job_name, schema, table, &columns);
-
+            let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
+            let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
+            log!("insert trigger: {}", insert_trigger);
+            log!("update trigger: {}", update_trigger);
             let _: Result<_, spi::Error> = Spi::connect(|mut c| {
                 let _r = c.update(&trigger_handler, None, None)?;
                 let _r = c.update(&insert_trigger, None, None)?;
@@ -177,14 +177,11 @@ pub fn search(
     )
     .unwrap_or_else(|e| error!("failed to deserialize metadata: {}", e));
 
-    let schema = proj_params.schema;
-    let table = proj_params.table;
-
     let proj_api_key = match api_key {
         // if api passed in the function call, use that
         Some(k) => Some(k),
         // if not, use the one from the project metadata
-        None => proj_params.api_key,
+        None => proj_params.api_key.clone(),
     };
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
@@ -192,8 +189,7 @@ pub fn search(
     match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
             job_name,
-            &schema,
-            &table,
+            &proj_params,
             &return_columns,
             num_results,
             &embeddings[0],
@@ -203,27 +199,23 @@ pub fn search(
 
 pub fn cosine_similarity_search(
     project: &str,
-    schema: &str,
-    table: &str,
+    job_params: &types::JobParams,
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
 ) -> Result<Vec<pgrx::JsonB>> {
-    let query = format!(
-        "
-    SELECT to_jsonb(t)
-    as results FROM (
-        SELECT 
-        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
-        {cols}
-    FROM {schema}.{table}
-    WHERE {project}_updated_at is NOT NULL
-    ORDER BY similarity_score DESC
-    LIMIT {num_results}
-    ) t
-    ",
-        cols = return_columns.join(", "),
-    );
+    let schema = job_params.schema.clone();
+    let table = job_params.table.clone();
+
+    // switch on table method
+    let query = match job_params.table_method {
+        TableMethod::append => {
+            single_table_cosine_similarity(project, &schema, &table, return_columns, num_results)
+        }
+        TableMethod::join => {
+            join_table_cosine_similarity(project, job_params, return_columns, num_results)
+        }
+    };
     Spi::connect(|client| {
         // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let mut results: Vec<pgrx::JsonB> = Vec::new();
@@ -243,4 +235,63 @@ pub fn cosine_similarity_search(
         }
         Ok(results)
     })
+}
+
+fn join_table_cosine_similarity(
+    project: &str,
+    job_params: &types::JobParams,
+    return_columns: &[String],
+    num_results: i32,
+) -> String {
+    let schema = job_params.schema.clone();
+    let table = job_params.table.clone();
+    let join_key = &job_params.primary_key;
+    let cols = &return_columns
+        .iter()
+        .map(|s| format!("t0.{}", s))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "
+    SELECT to_jsonb(t) as results
+    FROM (
+        SELECT {cols}, t1.similarity_score
+        FROM
+            (
+                SELECT
+                    {join_key},
+                    1 - (embeddings <=> $1::vector) AS similarity_score
+                FROM vectorize._embeddings_{project}
+                ORDER BY similarity_score DESC
+                LIMIT {num_results}
+            ) t1
+        INNER JOIN {schema}.{table} t0 on t0.{join_key} = t1.{join_key}
+    ) t
+    ORDER BY t.similarity_score DESC;
+    "
+    )
+}
+
+fn single_table_cosine_similarity(
+    project: &str,
+    schema: &str,
+    table: &str,
+    return_columns: &[String],
+    num_results: i32,
+) -> String {
+    format!(
+        "
+    SELECT to_jsonb(t) as results
+    FROM (
+        SELECT 
+        1 - ({project}_embeddings <=> $1::vector) AS similarity_score,
+        {cols}
+    FROM {schema}.{table}
+    WHERE {project}_updated_at is NOT NULL
+    ORDER BY similarity_score DESC
+    LIMIT {num_results}
+    ) t
+    ",
+        cols = return_columns.join(", "),
+    )
 }

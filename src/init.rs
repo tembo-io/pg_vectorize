@@ -1,8 +1,7 @@
 use crate::{
     query::check_input,
     transformers::{http_handler::sync_get_model_info, types::TransformerMetadata},
-    types,
-    types::TableMethod,
+    types::{self, TableMethod},
 };
 use pgrx::prelude::*;
 
@@ -50,29 +49,46 @@ pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> 
 }
 
 pub fn init_job_query() -> String {
+    // params is jsonb. conduct a merge on conflict instead of a overwrite
     format!(
         "
         INSERT INTO {schema}.job (name, job_type, transformer, search_alg, params)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,
-            transformer = EXCLUDED.transformer,
             search_alg = EXCLUDED.search_alg,
-            params = EXCLUDED.params;
+            params = job.params || EXCLUDED.params;
         ",
         schema = types::VECTORIZE_SCHEMA
     )
 }
 
+/// creates a project view over a source table and the embeddings table
+fn create_project_view(job_name: &str, job_params: &types::JobParams) -> String {
+    format!(
+        "CREATE OR REPLACE VIEW vectorize.{job_name} as 
+        SELECT t0.*, t1.embeddings, t1.updated_at as embeddings_updated_at
+        FROM {schema}.{table} t0
+        INNER JOIN vectorize._embeddings_{job_name} t1
+            ON t0.{primary_key} = t1.{primary_key};
+        ",
+        job_name = job_name,
+        schema = job_params.schema,
+        table = job_params.table,
+        primary_key = job_params.primary_key,
+    )
+}
+
 pub fn init_embedding_table_query(
     job_name: &str,
-    schema: &str,
-    table: &str,
     transformer: &str,
-    transform_method: &TableMethod,
-    api_key: Option<String>,
+    job_params: &types::JobParams,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
+    let schema = &job_params.schema;
+    let table = &job_params.table;
+    let api_key = job_params.api_key.clone();
+
     let col_type = match transformer {
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
         // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
@@ -84,34 +100,66 @@ pub fn init_embedding_table_query(
             format!("vector({dim})")
         }
     };
-    match transform_method {
+    match job_params.table_method {
         TableMethod::append => {
+            let embeddings_col: String = format!("{job_name}_embeddings");
             vec![
                 append_embedding_column(job_name, schema, table, &col_type),
-                create_hnsw_cosine_index(job_name, schema, table),
+                create_hnsw_cosine_index(job_name, schema, table, &embeddings_col),
             ]
         }
         TableMethod::join => {
-            vec![create_embedding_table(job_name, &col_type)]
+            let table_name = format!("_embeddings_{}", job_name);
+            vec![
+                create_embedding_table(
+                    job_name,
+                    &job_params.primary_key,
+                    &job_params.pkey_type,
+                    &col_type,
+                    schema,
+                    table,
+                ),
+                create_hnsw_cosine_index(job_name, "vectorize", &table_name, "embeddings"),
+                // also create a view over the source table and the embedding table, for this project
+                create_project_view(job_name, job_params),
+            ]
         }
     }
 }
 
-fn create_embedding_table(job_name: &str, col_type: &str) -> String {
+fn create_embedding_table(
+    job_name: &str,
+    join_key: &str,
+    join_key_type: &str,
+    col_type: &str,
+    src_schema: &str,
+    src_table: &str,
+) -> String {
     format!(
-        "CREATE TABLE IF NOT EXISTS {schema}.{job_name}_embeddings (
-            record_id text unique,
-            embeddings {col_type},
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT (now() at time zone 'utc') not null
+        "CREATE TABLE IF NOT EXISTS vectorize._embeddings_{job_name} (
+            {join_key} {join_key_type} UNIQUE NOT NULL,
+            embeddings {col_type} NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+            FOREIGN KEY ({join_key}) REFERENCES {src_schema}.{src_table} ({join_key}) ON DELETE CASCADE
         );
         ",
-        schema = types::VECTORIZE_SCHEMA
+        job_name = job_name,
+        join_key = join_key,
+        join_key_type = join_key_type,
+        col_type = col_type,
+        src_schema = src_schema,
+        src_table = src_table,
     )
 }
 
-fn create_hnsw_cosine_index(job_name: &str, schema: &str, table: &str) -> String {
+fn create_hnsw_cosine_index(
+    job_name: &str,
+    schema: &str,
+    table: &str,
+    embedding_col: &str,
+) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_idx ON {schema}.{table} USING hnsw ({job_name}_embeddings vector_cosine_ops);
+        "CREATE INDEX IF NOT EXISTS {job_name}_idx ON {schema}.{table} USING hnsw ({embedding_col} vector_cosine_ops);
         ",
     )
 }

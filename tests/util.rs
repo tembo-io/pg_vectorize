@@ -1,6 +1,7 @@
 pub mod common {
     use anyhow::Result;
     use log::LevelFilter;
+    use serde::Serialize;
     use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
     use sqlx::{ConnectOptions, FromRow};
     use sqlx::{Pool, Postgres, Row};
@@ -16,7 +17,7 @@ pub mod common {
     }
 
     #[allow(dead_code)]
-    #[derive(FromRow, Debug)]
+    #[derive(FromRow, Debug, Serialize)]
     pub struct SearchJSON {
         pub search_results: serde_json::Value,
     }
@@ -150,14 +151,21 @@ pub mod common {
             ))
             .fetch_all(conn)
             .await?;
-            if results.len() != 3 {
-                println!("retrying search query: {}/{}", i + 1, retries);
+            let num_returned = results.len();
+            if num_returned != num_results as usize {
+                println!(
+                    "num_results: {}, retrying search query: {}/{}",
+                    num_returned,
+                    i + 1,
+                    retries
+                );
                 tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds as u64)).await;
             } else {
                 return Ok(results);
             }
         }
-        println!("results: {:?}", results);
+        let js_results = serde_json::to_value(&results).unwrap();
+        println!("results: {:?}", js_results);
         Err(anyhow::anyhow!("timed out waiting for search query"))
     }
 }

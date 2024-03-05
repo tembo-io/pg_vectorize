@@ -112,8 +112,6 @@ async fn test_realtime_job() {
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "car tester");
             found_it = true;
-        } else {
-            println!("row: {:?}", row);
         }
     }
     assert!(found_it);
@@ -204,8 +202,10 @@ async fn test_static() {
         job_name => '{job_name}',
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
-        columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2'
+        columns => ARRAY['product_name', 'description'],
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime',
+        table_method => 'join'
     );"
     ))
     .execute(&conn)
@@ -245,8 +245,6 @@ async fn test_static() {
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "car tester");
             found_it = true;
-        } else {
-            println!("row: {:?}", row);
         }
     }
     assert!(found_it);
@@ -263,7 +261,7 @@ async fn test_static() {
         .expect("failed to insert into test_table");
     // index will need to rebuild
     tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
-    let search_results = common::search_with_retry(&conn, "cat food", &job_name, 10, 2, 3)
+    let search_results = common::search_with_retry(&conn, "cat food", &job_name, 10, 2, 20)
         .await
         .expect("failed to exec search");
 
@@ -274,9 +272,81 @@ async fn test_static() {
             assert_eq!(row.product_name, "cat food");
             assert_eq!(row.description, "a product for feeding cats");
             found_it = true;
-        } else {
-            println!("row: {:?}", row);
         }
     }
     assert!(found_it);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_realtime_tabled() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    // initialize a job
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime',
+        table_method => 'join'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3)
+        .await
+        .expect("failed to exec search");
+    assert_eq!(search_results.len(), 3);
+
+    let random_product_id = rng.gen_range(0..100000);
+
+    // insert a new row
+    let insert_query = format!(
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
+        VALUES ({random_product_id}, 'car tester', 'a product for testing cars');"
+    );
+    let _result = sqlx::query(&insert_query)
+        .execute(&conn)
+        .await
+        .expect("failed to insert into test_table");
+
+    // index will need to rebuild
+    tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
+    let search_results =
+        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3)
+            .await
+            .expect("failed to exec search");
+
+    let mut found_it = false;
+    for row in search_results {
+        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
+        if row.product_id == random_product_id {
+            assert_eq!(row.product_name, "car tester");
+            found_it = true;
+        }
+    }
+    assert!(found_it);
+
+    // `join` method must have a view created
+    let select = format!(
+        "SELECT product_id, product_name, description, embeddings, embeddings_updated_at FROM vectorize.{job_name}"
+    );
+    let result = sqlx::query(&select)
+        .fetch_all(&conn)
+        .await
+        .expect("failed to query project view");
+
+    // 41 rows should be returned
+    assert!(result.len() == 41);
 }
