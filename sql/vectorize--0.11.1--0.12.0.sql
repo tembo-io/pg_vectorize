@@ -132,10 +132,8 @@ BEGIN
             -- the vectorize extension should not own any of these objects
             EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
             EXECUTE format('ALTER EXTENSION vectorize DROP TABLE %I.%I;', src_schema, dest_table);
-            EXECUTE format('ALTER EXTENSION vectorize DROP TRIGGER vectorize_insert_trigger_%s ON %I.%I;', r.name, src_schema, src_table);
-            EXECUTE format('ALTER EXTENSION vectorize DROP TRIGGER vectorize_update_trigger_%s ON %I.%I;', r.name, src_schema, src_table);
-
-            vectorize_insert_trigger_product_search_hf
+            EXECUTE format('ALTER EXTENSION vectorize DROP EVENT TRIGGER vectorize_insert_trigger_%s;', r.name, src_schema, src_table);
+            EXECUTE format('ALTER EXTENSION vectorize DROP EVENT TRIGGER vectorize_update_trigger_%s;', r.name, src_schema, src_table);
         END IF;
     END LOOP;
 END $$;
