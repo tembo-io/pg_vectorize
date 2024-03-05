@@ -102,10 +102,10 @@ BEGIN
 
             -- insert the data from the source table into the new table
             EXECUTE format(
-                'INSERT INTO vectorize.%I ( %I, embeddings, updated_at )
+                'INSERT INTO %I.%I ( %I, embeddings, updated_at )
                  SELECT %I, %I, %I
                  FROM %I.%I',
-                 dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
+                 src_schema, dest_table, src_pkey, src_pkey, src_embeddings_col, src_embeddings_updated_at, src_schema, src_table
             );
 
             -- drop the two columns that were previously added to the source table
@@ -129,8 +129,13 @@ BEGIN
                     table_method => 'join',
                     schedule => 'realtime'
                 );
+            -- the vectorize extension should not own any of these objects
             EXECUTE format('ALTER EXTENSION vectorize DROP FUNCTION vectorize.handle_update_%s();', r.name);
-            EXECUTE format('ALTER EXTENSION vectorize DROP TABLE vectorize.handle_update_%s();', r.name);
+            EXECUTE format('ALTER EXTENSION vectorize DROP TABLE %I.%I;', src_schema, dest_table);
+            EXECUTE format('ALTER EXTENSION vectorize DROP TRIGGER vectorize_insert_trigger_%s ON %I.%I;', r.name, src_schema, src_table);
+            EXECUTE format('ALTER EXTENSION vectorize DROP TRIGGER vectorize_update_trigger_%s ON %I.%I;', r.name, src_schema, src_table);
+
+            vectorize_insert_trigger_product_search_hf
         END IF;
     END LOOP;
 END $$;

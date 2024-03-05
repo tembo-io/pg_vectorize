@@ -90,10 +90,11 @@ fn build_upsert_query(
     embeddings: Vec<PairedEmbeddings>,
 ) -> (String, Vec<(String, String)>) {
     let join_key = &job_params.primary_key;
+    let src_schema = &job_params.schema;
     let mut query = format!(
         "
         INSERT INTO {schema}._embeddings_{project} ({join_key}, embeddings) VALUES",
-        schema = types::VECTORIZE_SCHEMA,
+        schema = src_schema,
         join_key = join_key,
     );
     let mut bindings: Vec<(String, String)> = Vec::new();
@@ -220,7 +221,6 @@ async fn update_append_table(
         // Serialize the Vec<f64> to a JSON string
         let embedding = to_string(&embed.embeddings).expect("failed to serialize embedding");
 
-        // TODO: pkey might not always be integer type
         let update_query = format!(
             "
             UPDATE {schema}.{table}
