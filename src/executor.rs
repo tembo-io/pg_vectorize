@@ -248,7 +248,7 @@ pub async fn get_new_updates(
                     let token_estimate = bpe.encode_with_special_tokens(&ipt).len() as i32;
                     new_inputs.push(Inputs {
                         record_id: r.get("record_id"),
-                        inputs: ipt,
+                        inputs: ipt.trim().to_owned(),
                         token_estimate,
                     })
                 }
