@@ -33,7 +33,7 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
         let token_estimate = bpe.encode_with_special_tokens(&input).len() as i32;
         new_inputs.push(Inputs {
             record_id,
-            inputs: input,
+            inputs: input.trim().to_owned(),
             token_estimate,
         })
     }
@@ -138,7 +138,7 @@ pub fn initalize_table_job(
                 record_id: row["record_id"]
                     .value::<String>()?
                     .expect("record_id is null"),
-                inputs: ipt,
+                inputs: ipt.trim().to_owned(),
                 token_estimate,
             });
         }
