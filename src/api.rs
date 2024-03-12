@@ -1,4 +1,4 @@
-use crate::chat::call_chat;
+use crate::chat::ops::call_chat;
 use crate::search::{self, init_table};
 use crate::transformers::transform;
 use crate::types;

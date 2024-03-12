@@ -7,28 +7,12 @@ use crate::query::check_input;
 use crate::transformers::types::Inputs;
 use crate::types;
 use crate::util::get_pg_conn;
-use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use chrono::TimeZone;
-use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::{Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
-
-// schema for every job
-// also schema for the vectorize.vectorize_meta table
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
-pub struct VectorizeMeta {
-    pub job_id: i64,
-    pub name: String,
-    pub job_type: types::JobType,
-    pub transformer: String,
-    pub search_alg: types::SimilarityAlg,
-    pub params: serde_json::Value,
-    #[serde(deserialize_with = "from_tsopt")]
-    pub last_completion: Option<chrono::DateTime<Utc>>,
-}
 
 // creates batches based on total token count
 // batch_size is the max token count per batch
@@ -53,14 +37,6 @@ pub fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
         groups.push(current_group);
     }
     groups
-}
-
-// schema for all messages that hit pgmq
-#[derive(Clone, Deserialize, Debug, Serialize)]
-pub struct JobMessage {
-    pub job_name: String,
-    pub job_meta: VectorizeMeta,
-    pub inputs: Vec<Inputs>,
 }
 
 // called by pg_cron on schedule
@@ -108,7 +84,7 @@ fn job_execute(job_name: String) {
                     max_batch_size
                 );
                 for b in batches {
-                    let msg = JobMessage {
+                    let msg = types::JobMessage {
                         job_name: job_name.clone(),
                         job_meta: meta.clone(),
                         inputs: b,
@@ -131,9 +107,9 @@ fn job_execute(job_name: String) {
 pub async fn get_vectorize_meta(
     job_name: &str,
     conn: &Pool<Postgres>,
-) -> Result<VectorizeMeta, DatabaseError> {
+) -> Result<types::VectorizeMeta, DatabaseError> {
     let row = sqlx::query_as!(
-        VectorizeMeta,
+        types::VectorizeMeta,
         "
         SELECT *
         FROM vectorize.job

@@ -1,4 +1,3 @@
-use crate::executor::VectorizeMeta;
 use crate::guc;
 use crate::init;
 use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_job};
@@ -7,6 +6,7 @@ use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::types;
 use crate::types::TableMethod;
+use crate::types::VectorizeMeta;
 use crate::util;
 
 use anyhow::Result;

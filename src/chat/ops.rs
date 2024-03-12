@@ -1,7 +1,7 @@
-use crate::executor::VectorizeMeta;
 use crate::guc;
 use crate::search;
 use crate::types;
+use crate::types::VectorizeMeta;
 use crate::util::get_vectorize_meta_spi;
 
 use anyhow::{anyhow, Result};
@@ -9,31 +9,9 @@ use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
-use serde::Serialize;
+
+use crate::chat::types::{ChatResponse, ContextualSearch, PromptTemplate, RenderedPrompt};
 use tiktoken_rs::{get_bpe_from_model, model::get_context_size, CoreBPE};
-
-struct PromptTemplate {
-    pub sys_prompt: String,
-    pub user_prompt: String,
-}
-
-struct RenderedPrompt {
-    pub sys_rendered: String,
-    pub user_rendered: String,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct ContextualSearch {
-    pub record_id: String,
-    pub content: String,
-    pub token_ct: i32,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ChatResponse {
-    pub context: Vec<ContextualSearch>,
-    pub chat_response: String,
-}
 
 pub fn call_chat(
     agent_name: &str,

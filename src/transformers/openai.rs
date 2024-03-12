@@ -3,13 +3,12 @@ use pgrx::prelude::*;
 use anyhow::Result;
 
 use crate::{
-    executor::VectorizeMeta,
     guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY},
     transformers::{
         http_handler::handle_response,
         types::{EmbeddingPayload, EmbeddingRequest, Inputs},
     },
-    types::JobParams,
+    types::{JobParams, VectorizeMeta},
 };
 
 // max token length is 8192

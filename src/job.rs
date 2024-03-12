@@ -1,12 +1,10 @@
 use anyhow::Result;
 
-use crate::executor::{
-    create_batches, new_rows_query, new_rows_query_join, JobMessage, VectorizeMeta,
-};
+use crate::executor::{create_batches, new_rows_query, new_rows_query_join};
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::transformers::types::Inputs;
-use crate::types::{self, JobParams, JobType};
+use crate::types::{self, JobMessage, JobParams, JobType, VectorizeMeta};
 use crate::util;
 
 use pgrx::prelude::*;

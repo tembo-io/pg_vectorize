@@ -3,10 +3,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
-    executor::VectorizeMeta,
     guc,
     transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs},
     types,
+    types::VectorizeMeta,
 };
 
 use super::openai::trim_inputs;

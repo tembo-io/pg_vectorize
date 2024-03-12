@@ -1,6 +1,5 @@
 pub mod pg_bgw;
 
-use crate::executor::JobMessage;
 use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
 use crate::types;
 
@@ -16,17 +15,18 @@ pub async fn run_worker(
     conn: &Pool<Postgres>,
     queue_name: &str,
 ) -> Result<Option<()>> {
-    let msg: Message<JobMessage> = match queue.read::<JobMessage>(queue_name, 180_i32).await {
-        Ok(Some(msg)) => msg,
-        Ok(None) => {
-            info!("pg-vectorize: No messages in queue");
-            return Ok(None);
-        }
-        Err(e) => {
-            warning!("pg-vectorize: Error reading message: {e}");
-            return Err(anyhow::anyhow!("failed to read message"));
-        }
-    };
+    let msg: Message<types::JobMessage> =
+        match queue.read::<types::JobMessage>(queue_name, 180_i32).await {
+            Ok(Some(msg)) => msg,
+            Ok(None) => {
+                info!("pg-vectorize: No messages in queue");
+                return Ok(None);
+            }
+            Err(e) => {
+                warning!("pg-vectorize: Error reading message: {e}");
+                return Err(anyhow::anyhow!("failed to read message"));
+            }
+        };
 
     let msg_id: i64 = msg.msg_id;
     let read_ct: i32 = msg.read_ct;
@@ -243,7 +243,7 @@ async fn update_append_table(
     Ok(())
 }
 
-async fn execute_job(dbclient: Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
+async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
     let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
