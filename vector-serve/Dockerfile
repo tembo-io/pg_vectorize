@@ -11,7 +11,7 @@ RUN pip install \
     sentence-transformers==2.2.2
 
 # Download models, save to image cache
-COPY vector-serve/app/models.py .
+COPY app/models.py .
 RUN python models.py
 
 COPY . .
