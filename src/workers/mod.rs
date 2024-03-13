@@ -1,5 +1,7 @@
+pub mod base;
 pub mod pg_bgw;
 
+use crate::guc::EMBEDDING_REQ_TIMEOUT_SEC;
 use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
 use crate::types;
 
@@ -75,10 +77,7 @@ async fn upsert_embedding_table(
     }
     match q.execute(conn).await {
         Ok(_) => Ok(()),
-        Err(e) => {
-            log!("Error: {}", e);
-            Err(anyhow::anyhow!("failed to execute query"))
-        }
+        Err(e) => Err(anyhow::anyhow!("failed to execute query: {}", e)),
     }
 }
 
@@ -255,7 +254,8 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
         _ => generic::prepare_generic_embedding_request(job_meta.clone(), &msg.message.inputs),
     }?;
 
-    let embeddings = http_handler::openai_embedding_request(embedding_request).await?;
+    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
+    let embeddings = http_handler::openai_embedding_request(embedding_request, timeout).await?;
     // TODO: validate returned embeddings order is same as the input order
     let paired_embeddings: Vec<PairedEmbeddings> =
         http_handler::merge_input_output(msg.message.inputs, embeddings);

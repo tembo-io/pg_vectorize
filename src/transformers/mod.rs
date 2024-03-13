@@ -4,7 +4,7 @@ pub mod openai;
 pub mod tembo;
 pub mod types;
 
-use crate::guc;
+use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
 use generic::get_generic_svc_url;
 use http_handler::openai_embedding_request;
 use openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
@@ -53,7 +53,9 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
             }
         }
     };
-    match runtime.block_on(async { openai_embedding_request(embedding_request).await }) {
+    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
+
+    match runtime.block_on(async { openai_embedding_request(embedding_request, timeout).await }) {
         Ok(e) => e,
         Err(e) => {
             error!("error getting embeddings: {}", e);

@@ -21,6 +21,7 @@ pub fn prepare_openai_request(
     vect_meta: VectorizeMeta,
     inputs: &[Inputs],
 ) -> Result<EmbeddingRequest> {
+    // TODO: replace this fn with the noguc below
     let text_inputs = trim_inputs(inputs);
     let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
     let payload = EmbeddingPayload {
@@ -40,6 +41,34 @@ pub fn prepare_openai_request(
             };
             key
         }
+    };
+    Ok(EmbeddingRequest {
+        url: OPENAI_EMBEDDING_URL.to_owned(),
+        payload,
+        api_key: Some(apikey),
+    })
+}
+
+pub fn prepare_openai_request_no_guc(
+    vect_meta: VectorizeMeta,
+    inputs: &[Inputs],
+    api_key: Option<String>,
+) -> Result<EmbeddingRequest> {
+    let text_inputs = trim_inputs(inputs);
+    let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
+    let payload = EmbeddingPayload {
+        input: text_inputs,
+        model: OPENAI_EMBEDDING_MODEL.to_owned(),
+    };
+
+    let apikey = match job_params.api_key {
+        Some(k) => k,
+        None => match api_key {
+            Some(k) => k.to_owned(),
+            None => {
+                return Err(anyhow::anyhow!("failed to get API key"));
+            }
+        },
     };
     Ok(EmbeddingRequest {
         url: OPENAI_EMBEDDING_URL.to_owned(),

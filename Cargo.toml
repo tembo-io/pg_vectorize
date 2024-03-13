@@ -5,7 +5,12 @@ edition = "2021"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
+
+[[bin]]
+name = "worker"
+path = "src/bin/worker.rs"
+
 
 [features]
 default = ["pg15"]

@@ -12,7 +12,7 @@ mod search;
 mod transformers;
 mod types;
 mod util;
-mod workers;
+pub mod workers;
 
 pgrx::pg_module_magic!();
 

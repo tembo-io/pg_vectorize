@@ -33,6 +33,7 @@ pub struct Inputs {
     pub token_estimate: i32, // estimated token count
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PairedEmbeddings {
     pub primary_key: String,
     pub embeddings: Vec<f64>,

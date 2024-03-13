@@ -84,3 +84,6 @@ test-update:
 docs:
 	poetry install --no-directory --no-root
 	poetry run mkdocs serve
+
+run-worker:
+	cargo run --bin worker

@@ -19,7 +19,6 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
             resp.status(),
             resp.text().await?
         );
-        warning!("pg-vectorize: error handling response: {}", errmsg);
         return Err(anyhow::anyhow!(errmsg));
     }
     let value = resp.json::<T>().await?;
@@ -27,13 +26,11 @@ pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
 }
 
 // handle an OpenAI compatible embedding transform request
-pub async fn openai_embedding_request(request: EmbeddingRequest) -> Result<Vec<Vec<f64>>> {
-    log!(
-        "pg-vectorize: embedding request size: {}",
-        request.payload.input.len()
-    );
+pub async fn openai_embedding_request(
+    request: EmbeddingRequest,
+    timeout: i32,
+) -> Result<Vec<Vec<f64>>> {
     let client = reqwest::Client::new();
-    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
     let mut req = client
         .post(request.url)
         .timeout(std::time::Duration::from_secs(timeout as u64))

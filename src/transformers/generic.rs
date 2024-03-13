@@ -75,6 +75,26 @@ pub fn prepare_generic_embedding_request(
     })
 }
 
+pub fn prepare_generic_embedding_request_no_guc(
+    job_meta: VectorizeMeta,
+    inputs: &[Inputs],
+    url: String,
+) -> Result<EmbeddingRequest> {
+    let text_inputs = trim_inputs(inputs);
+    let payload = EmbeddingPayload {
+        input: text_inputs,
+        model: job_meta.transformer.to_string(),
+    };
+
+    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
+
+    Ok(EmbeddingRequest {
+        url,
+        payload,
+        api_key: job_params.api_key,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
