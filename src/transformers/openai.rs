@@ -3,7 +3,7 @@ use pgrx::prelude::*;
 use anyhow::Result;
 
 use crate::{
-    guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY},
+    guc::EMBEDDING_REQ_TIMEOUT_SEC,
     transformers::{
         http_handler::handle_response,
         types::{EmbeddingPayload, EmbeddingRequest, Inputs},
@@ -18,38 +18,6 @@ pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
 pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
 
 pub fn prepare_openai_request(
-    vect_meta: VectorizeMeta,
-    inputs: &[Inputs],
-) -> Result<EmbeddingRequest> {
-    // TODO: replace this fn with the noguc below
-    let text_inputs = trim_inputs(inputs);
-    let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
-    let payload = EmbeddingPayload {
-        input: text_inputs,
-        model: OPENAI_EMBEDDING_MODEL.to_owned(),
-    };
-
-    let apikey = match job_params.api_key {
-        Some(k) => k,
-        None => {
-            let key = match OPENAI_KEY.get() {
-                Some(k) => k.to_str()?.to_owned(),
-                None => {
-                    warning!("pg-vectorize: Error getting API key from GUC");
-                    return Err(anyhow::anyhow!("failed to get API key"));
-                }
-            };
-            key
-        }
-    };
-    Ok(EmbeddingRequest {
-        url: OPENAI_EMBEDDING_URL.to_owned(),
-        payload,
-        api_key: Some(apikey),
-    })
-}
-
-pub fn prepare_openai_request_no_guc(
     vect_meta: VectorizeMeta,
     inputs: &[Inputs],
     api_key: Option<String>,

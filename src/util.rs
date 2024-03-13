@@ -1,3 +1,4 @@
+use log::info;
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};

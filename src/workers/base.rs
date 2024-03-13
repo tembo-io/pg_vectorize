@@ -84,20 +84,16 @@ async fn execute_job(
     let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
 
     let embedding_request = match job_meta.transformer.as_ref() {
-        "text-embedding-ada-002" => openai::prepare_openai_request_no_guc(
+        "text-embedding-ada-002" => openai::prepare_openai_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         ),
-        _ => {
-            println!("other req");
-
-            generic::prepare_generic_embedding_request_no_guc(
-                job_meta.clone(),
-                &msg.message.inputs,
-                cfg.embedding_svc_url.clone(),
-            )
-        }
+        _ => generic::prepare_generic_embedding_request(
+            job_meta.clone(),
+            &msg.message.inputs,
+            cfg.embedding_svc_url.clone(),
+        ),
     };
     let embeddings =
         http_handler::openai_embedding_request(embedding_request?, cfg.embedding_request_timeout)
@@ -106,7 +102,7 @@ async fn execute_job(
 
     match job_params.clone().table_method {
         crate::types::TableMethod::append => {
-            crate::workers::update_embeddings(
+            crate::workers::ops::update_embeddings(
                 dbclient,
                 &job_params.schema,
                 &job_params.table,
@@ -118,7 +114,7 @@ async fn execute_job(
             .await?;
         }
         crate::types::TableMethod::join => {
-            crate::workers::upsert_embedding_table(
+            crate::workers::ops::upsert_embedding_table(
                 dbclient,
                 &job_meta.name,
                 &job_params,
