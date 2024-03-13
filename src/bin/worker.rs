@@ -1,8 +1,9 @@
 use log::{error, info};
-use vectorize::workers::base::{work, Config};
+use vectorize::workers::base::{poll_job, Config};
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     info!("starting pg-vectorize remote-worker");
 
     let conn = sqlx::postgres::PgPoolOptions::new()
@@ -17,7 +18,7 @@ async fn main() {
     let cfg = Config::from_env();
 
     loop {
-        match work(&conn, &queue, &cfg).await {
+        match poll_job(&conn, &queue, &cfg).await {
             Ok(Some(_)) => {
                 // continue processing
             }

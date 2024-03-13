@@ -6,6 +6,7 @@ PG_VERSION:=15
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.9.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
+RUST_LOG:=debug
 
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs docs
 
@@ -86,4 +87,4 @@ docs:
 	poetry run mkdocs serve
 
 run-worker:
-	DATABASE_URL=${DATABASE_URL} cargo run --bin worker
+	cargo run --bin worker

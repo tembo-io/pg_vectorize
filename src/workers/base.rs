@@ -1,11 +1,12 @@
 use crate::transformers::{generic, http_handler, openai};
 use crate::types::{JobMessage, JobParams};
 use anyhow::Result;
+use log::{error, info};
 use pgmq::{Message, PGMQueueExt};
 use sqlx::{Pool, Postgres};
 use std::env;
 
-pub async fn work(
+pub async fn poll_job(
     conn: &Pool<Postgres>,
     queue: &PGMQueueExt,
     config: &Config,
@@ -22,10 +23,13 @@ pub async fn work(
 
     let read_ct: i32 = msg.read_ct;
     let msg_id: i64 = msg.msg_id;
-    if read_ct <= 9999 {
+    if read_ct <= config.max_retries {
         execute_job(conn, msg, config).await?;
     } else {
-        println!("message exceed read count")
+        error!(
+            "message exceeds max retry of {}, archiving msg_id: {}",
+            config.max_retries, msg_id
+        );
     }
 
     queue.archive(&config.queue_name, msg_id).await?;
@@ -41,6 +45,7 @@ pub struct Config {
     pub embedding_request_timeout: i32,
     pub poll_interval: u64,
     pub poll_interval_error: u64,
+    pub max_retries: i32,
 }
 
 impl Config {
@@ -65,6 +70,7 @@ impl Config {
             poll_interval_error: from_env_default("POLL_INTERVAL_ERROR", "10")
                 .parse()
                 .unwrap(),
+            max_retries: from_env_default("MAX_RETRIES", "2").parse().unwrap(),
         }
     }
 }
@@ -88,18 +94,21 @@ async fn execute_job(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
-        ),
+        )?,
         _ => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.embedding_svc_url.clone(),
-        ),
+        )?,
     };
+    info!(
+        "pg-vectorize: embeddings request length: {}",
+        embedding_request.payload.input.len()
+    );
     let embeddings =
-        http_handler::openai_embedding_request(embedding_request?, cfg.embedding_request_timeout)
+        http_handler::openai_embedding_request(embedding_request, cfg.embedding_request_timeout)
             .await?;
     let paired_embeddings = http_handler::merge_input_output(msg.message.inputs, embeddings);
-
     match job_params.clone().table_method {
         crate::types::TableMethod::append => {
             crate::workers::ops::update_embeddings(
