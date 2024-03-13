@@ -86,4 +86,4 @@ docs:
 	poetry run mkdocs serve
 
 run-worker:
-	cargo run --bin worker
+	DATABASE_URL=${DATABASE_URL} cargo run --bin worker

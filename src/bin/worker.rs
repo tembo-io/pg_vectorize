@@ -1,9 +1,9 @@
-use log::error;
+use log::{error, info};
 use vectorize::workers::base::{work, Config};
 
 #[tokio::main]
 async fn main() {
-    println!("Starting worker");
+    info!("starting pg-vectorize remote-worker");
 
     let conn = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
@@ -14,12 +14,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let cfg = Config {
-        queue_name: "vectorize_jobs".to_string(),
-        embedding_svc_url: "http://0.0.0.0:3000/v1/embeddings".to_string(),
-        openai_api_key: Some("".to_owned()),
-        embedding_request_timeout: 6,
-    };
+    let cfg = Config::from_env();
 
     loop {
         match work(&conn, &queue, &cfg).await {
@@ -28,12 +23,16 @@ async fn main() {
             }
             Ok(None) => {
                 // no messages, small wait
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                info!(
+                    "No messages in queue, waiting for {} seconds",
+                    cfg.poll_interval
+                );
+                tokio::time::sleep(tokio::time::Duration::from_secs(cfg.poll_interval)).await;
             }
             Err(e) => {
                 // error, long wait
                 error!("Error processing job: {:?}", e);
-                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(cfg.poll_interval)).await;
             }
         }
     }

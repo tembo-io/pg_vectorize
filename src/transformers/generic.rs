@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashSet;
+use std::env;
 
 use crate::{
     guc,
@@ -9,13 +11,11 @@ use crate::{
     types::VectorizeMeta,
 };
 
-use super::openai::trim_inputs;
+use crate::transformers::openai::trim_inputs;
 
 lazy_static! {
     static ref REGEX: Regex = Regex::new(r"\$\{([^}]+)\}").expect("Invalid regex");
 }
-use std::collections::HashSet;
-use std::env;
 
 // finds all placeholders in a string
 fn find_placeholders(var: &str) -> Option<Vec<String>> {

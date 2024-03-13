@@ -3,6 +3,7 @@ use crate::types::{JobMessage, JobParams};
 use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
 use sqlx::{Pool, Postgres};
+use std::env;
 
 pub async fn work(
     conn: &Pool<Postgres>,
@@ -33,10 +34,44 @@ pub async fn work(
 }
 
 pub struct Config {
+    pub database_url: String,
     pub queue_name: String,
     pub embedding_svc_url: String,
     pub openai_api_key: Option<String>,
     pub embedding_request_timeout: i32,
+    pub poll_interval: u64,
+    pub poll_interval_error: u64,
+}
+
+impl Config {
+    pub fn from_env() -> Config {
+        Config {
+            database_url: from_env_default(
+                "DATABASE_URL",
+                "postgres://postgres:postgres@localhost:5432/postgres",
+            ),
+            queue_name: from_env_default("VECTORIZE_QUEUE", "vectorize_jobs"),
+            embedding_svc_url: from_env_default(
+                "EMBEDDING_SVC_URL",
+                "http://localhost:3000/v1/embeddings",
+            ),
+            openai_api_key: env::var("OPENAI_API_KEY").ok(),
+            embedding_request_timeout: from_env_default("EMBEDDING_REQUEST_TIMEOUT", "6")
+                .parse()
+                .unwrap(),
+            // time to wait between polling for job when there are no messages in queue
+            poll_interval: from_env_default("POLL_INTERVAL", "2").parse().unwrap(),
+            // time to wait between polling for job when there has been an error in processing
+            poll_interval_error: from_env_default("POLL_INTERVAL_ERROR", "10")
+                .parse()
+                .unwrap(),
+        }
+    }
+}
+
+/// source a variable from environment - use default if not exists
+fn from_env_default(key: &str, default: &str) -> String {
+    env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
 /// processes a single job from the queue
