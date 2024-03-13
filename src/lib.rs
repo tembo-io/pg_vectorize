@@ -17,6 +17,7 @@ pub mod workers;
 pgrx::pg_module_magic!();
 
 extension_sql_file!("../sql/meta.sql");
+
 // example dataset
 extension_sql_file!("../sql/example.sql");
 
