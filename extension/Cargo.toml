@@ -5,12 +5,7 @@ edition = "2021"
 publish = false
 
 [lib]
-crate-type = ["cdylib", "lib"]
-
-[[bin]]
-name = "worker"
-path = "src/bin/worker.rs"
-
+crate-type = ["cdylib"]
 
 [features]
 default = ["pg15"]
@@ -44,6 +39,7 @@ thiserror = "1.0.44"
 tiktoken-rs = "0.5.7"
 tokio = {version = "1.29.1", features = ["rt-multi-thread"] }
 url = "2.4.0"
+vectorize_core = { path = "../core", package = "vectorize-core" }
 
 [dev-dependencies]
 pgrx-tests = "0.11.3"

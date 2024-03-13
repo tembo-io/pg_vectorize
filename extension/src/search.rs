@@ -4,13 +4,11 @@ use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_j
 use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
 use crate::transformers::transform;
-use crate::types;
-use crate::types::TableMethod;
-use crate::types::VectorizeMeta;
 use crate::util;
 
 use anyhow::Result;
 use pgrx::prelude::*;
+use vectorize_core::types::{self, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(

@@ -1,8 +1,8 @@
 use crate::chat::ops::call_chat;
 use crate::search::{self, init_table};
 use crate::transformers::transform;
-use crate::types;
 
+use crate::types;
 use anyhow::Result;
 use pgrx::prelude::*;
 
@@ -31,8 +31,8 @@ fn table(
         Some(serde_json::to_value(args).expect("failed to parse args")),
         Some(update_col),
         transformer,
-        search_alg,
-        table_method,
+        search_alg.into(),
+        table_method.into(),
         schedule,
     )
 }
@@ -85,8 +85,8 @@ fn init_rag(
         None,
         None,
         transformer,
-        search_alg,
-        table_method,
+        search_alg.into(),
+        table_method.into(),
         schedule,
     )
 }

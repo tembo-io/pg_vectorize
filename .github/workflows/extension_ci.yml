@@ -3,7 +3,7 @@ name: PG Vectorize Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./extension
 
 on:
   pull_request:

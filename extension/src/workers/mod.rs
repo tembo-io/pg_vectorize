@@ -1,11 +1,12 @@
-pub mod base;
-pub mod ops;
 pub mod pg_bgw;
 
 use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
 use crate::transformers::generic::get_generic_svc_url;
-use crate::transformers::{generic, http_handler, openai, types::PairedEmbeddings};
-use crate::types;
+
+use vectorize_core::transformers::types::PairedEmbeddings;
+use vectorize_core::transformers::{generic, http_handler, openai};
+use vectorize_core::types;
+use vectorize_core::worker::ops;
 
 use anyhow::{Context, Result};
 use pgmq::{Message, PGMQueueExt};

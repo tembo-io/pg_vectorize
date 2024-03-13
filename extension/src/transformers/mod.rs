@@ -6,10 +6,11 @@ pub mod types;
 
 use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
 use generic::get_generic_svc_url;
-use http_handler::openai_embedding_request;
-use openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
 use pgrx::prelude::*;
-use types::{EmbeddingPayload, EmbeddingRequest};
+
+use vectorize_core::transformers::http_handler::openai_embedding_request;
+use vectorize_core::transformers::openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
+use vectorize_core::transformers::types::{EmbeddingPayload, EmbeddingRequest};
 
 pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()

@@ -1,11 +1,13 @@
 use crate::{
     query::check_input,
-    transformers::{http_handler::sync_get_model_info, types::TransformerMetadata},
-    types::{self, TableMethod},
+    transformers::http_handler::sync_get_model_info,
+    types::{self},
 };
 use pgrx::prelude::*;
 
 use anyhow::{Context, Result};
+use vectorize_core::transformers::types::TransformerMetadata;
+use vectorize_core::types::{JobParams, TableMethod};
 
 pub static VECTORIZE_QUEUE: &str = "vectorize_jobs";
 
@@ -64,7 +66,7 @@ pub fn init_job_query() -> String {
 }
 
 /// creates a project view over a source table and the embeddings table
-fn create_project_view(job_name: &str, job_params: &types::JobParams) -> String {
+fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     format!(
         "CREATE OR REPLACE VIEW vectorize.{job_name} as 
         SELECT t0.*, t1.embeddings, t1.updated_at as embeddings_updated_at
@@ -82,7 +84,7 @@ fn create_project_view(job_name: &str, job_params: &types::JobParams) -> String 
 pub fn init_embedding_table_query(
     job_name: &str,
     transformer: &str,
-    job_params: &types::JobParams,
+    job_params: &JobParams,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let schema = &job_params.schema;

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use log::info;
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
@@ -6,10 +7,8 @@ use sqlx::{Pool, Postgres};
 use std::env;
 use url::{ParseError, Url};
 
-use anyhow::Result;
-
 use crate::guc;
-use crate::types;
+use vectorize_core::types;
 
 #[derive(Clone, Debug)]
 pub struct Config {
