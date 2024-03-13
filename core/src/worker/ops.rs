@@ -1,5 +1,5 @@
+use crate::transformers::types::PairedEmbeddings;
 use crate::types;
-use crate::transformers::types::{PairedEmbeddings};
 use anyhow::Result;
 use serde_json::to_string;
 use sqlx::{Pool, Postgres};

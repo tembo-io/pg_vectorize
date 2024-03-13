@@ -39,8 +39,6 @@ pub fn interpolate(base_str: &str, env_vars: Vec<String>) -> Result<String> {
     Ok(interpolated_str)
 }
 
-
-
 pub fn prepare_generic_embedding_request(
     job_meta: types::VectorizeMeta,
     inputs: &[Inputs],

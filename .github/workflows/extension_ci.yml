@@ -73,7 +73,7 @@ jobs:
           cache-directories: /home/runner/.pgrx
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: ./
+          working-directory: ./extension
       - name: Cargo format
         run: cargo fmt --all --check
       - name: Clippy

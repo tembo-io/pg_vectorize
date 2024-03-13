@@ -1,6 +1,6 @@
 use crate::transformers::{generic, http_handler, openai};
-use crate::worker::ops;
 use crate::types::{JobMessage, JobParams};
+use crate::worker::ops;
 use anyhow::Result;
 use log::{error, info};
 use pgmq::{Message, PGMQueueExt};
@@ -124,13 +124,8 @@ async fn execute_job(
             .await?;
         }
         crate::types::TableMethod::join => {
-            ops::upsert_embedding_table(
-                dbclient,
-                &job_meta.name,
-                &job_params,
-                paired_embeddings,
-            )
-            .await?
+            ops::upsert_embedding_table(dbclient, &job_meta.name, &job_params, paired_embeddings)
+                .await?
         }
     }
     Ok(())

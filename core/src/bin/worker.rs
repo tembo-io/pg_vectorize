@@ -2,7 +2,6 @@ use log::{error, info};
 
 use vectorize_core::worker::base::{poll_job, Config};
 
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
