@@ -1,5 +1,4 @@
 use anyhow::Result;
-use log::info;
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
@@ -150,7 +149,7 @@ fn get_pgc_tcp_opt(url: Url) -> Result<PgConnectOptions> {
         .username(url.username())
         .password(url.password().ok_or(ParseError::IdnaError)?)
         .database(url.path().trim_start_matches('/'));
-    log::info!("tcp options: {:?}", options);
+    info!("tcp options: {:?}", options);
     Ok(options)
 }
 
