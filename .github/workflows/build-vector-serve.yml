@@ -77,7 +77,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           file: ./vector-serve/Dockerfile
-          context: ./vector-serve
+          context: ./
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
@@ -89,7 +89,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           file: ./vector-serve/Dockerfile
-          context: ./vector-serve
+          context: ./
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
