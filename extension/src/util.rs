@@ -80,6 +80,9 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeM
             Some(1),
             Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
         )?;
+        if tup_table.is_empty() {
+            return Err(anyhow::anyhow!("agent_name '{}' not yet initialized. Please run `vectorize.init_rag` before `vectorize.rag`.", job_name));
+        }
 
         let result_row = tup_table.first();
         let job_id: i64 = result_row.get_by_name("job_id").unwrap().unwrap();

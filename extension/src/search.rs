@@ -6,7 +6,7 @@ use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use pgrx::prelude::*;
 use vectorize_core::types::{self, TableMethod, VectorizeMeta};
 
@@ -25,6 +25,26 @@ pub fn init_table(
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: &str,
 ) -> Result<String> {
+    let table_exists_query = format!(
+        "SELECT EXISTS (SELECT * FROM information_schema.tables WHERE table_schema = '{}' AND table_name = '{}')",
+        schema, table
+    );
+
+    let table_exists = Spi::connect(|client| {
+        let tup_table = client.select(&table_exists_query, None, None)?.first(); // Directly use first() since select() was successful
+
+        // Directly handle the Result<Option<_>, SpiError> from get_by_name
+        match tup_table.get_by_name("exists") {
+            Ok(Some(true)) => Ok(true), // Table exists
+            Ok(Some(false)) | Ok(None) => Err(anyhow!("Table {}.{} does not exist. Please ensure the table is created before running vectorize.init_rag.", schema, table)),
+            Err(e) => Err(anyhow!("Error checking existence of table {}.{}: {}", schema, table, e)),
+        }
+    })?;
+
+    if !table_exists {
+        return Err(anyhow!("Table {}.{} does not exist.", schema, table));
+    }
+
     let job_type = types::JobType::Columns;
 
     // validate table method
