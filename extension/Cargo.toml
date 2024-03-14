@@ -19,6 +19,7 @@ anyhow = "1.0.72"
 chrono = {version = "0.4.26", features = ["serde"] }
 handlebars = "5.1.0"
 lazy_static = "1.4.0"
+log = "0.4.21"
 openai-api-rs = "4.0.6"
 pgmq = "0.26.1"
 pgrx = "0.11.3"
