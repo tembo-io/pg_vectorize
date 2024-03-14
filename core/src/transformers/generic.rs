@@ -1,24 +1,22 @@
 use anyhow::{Context, Result};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashSet;
+use std::env;
 
 use crate::{
-    executor::VectorizeMeta,
-    guc,
     transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs},
     types,
 };
 
-use super::openai::trim_inputs;
+use crate::transformers::openai::trim_inputs;
 
 lazy_static! {
     static ref REGEX: Regex = Regex::new(r"\$\{([^}]+)\}").expect("Invalid regex");
 }
-use std::collections::HashSet;
-use std::env;
 
 // finds all placeholders in a string
-fn find_placeholders(var: &str) -> Option<Vec<String>> {
+pub fn find_placeholders(var: &str) -> Option<Vec<String>> {
     let placeholders: HashSet<String> = REGEX
         .captures_iter(var)
         .filter_map(|cap| cap.get(1))
@@ -41,22 +39,10 @@ pub fn interpolate(base_str: &str, env_vars: Vec<String>) -> Result<String> {
     Ok(interpolated_str)
 }
 
-pub fn get_generic_svc_url() -> Result<String> {
-    if let Some(url) = guc::get_guc(guc::VectorizeGuc::EmbeddingServiceUrl) {
-        if let Some(phs) = find_placeholders(&url) {
-            let interpolated = interpolate(&url, phs)?;
-            Ok(interpolated)
-        } else {
-            Ok(url)
-        }
-    } else {
-        Err(anyhow::anyhow!("vectorize.embedding_service_url not set"))
-    }
-}
-
 pub fn prepare_generic_embedding_request(
-    job_meta: VectorizeMeta,
+    job_meta: types::VectorizeMeta,
     inputs: &[Inputs],
+    url: String,
 ) -> Result<EmbeddingRequest> {
     let text_inputs = trim_inputs(inputs);
     let payload = EmbeddingPayload {
@@ -66,10 +52,8 @@ pub fn prepare_generic_embedding_request(
 
     let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
 
-    let svc_host = get_generic_svc_url().context("failed to get embedding service url from GUC")?;
-
     Ok(EmbeddingRequest {
-        url: svc_host,
+        url,
         payload,
         api_key: job_params.api_key,
     })

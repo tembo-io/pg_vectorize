@@ -1,5 +1,6 @@
-use pgrx::prelude::*;
+use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use serde::{Deserialize, Serialize};
+use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -7,7 +8,7 @@ use std::str::FromStr;
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SimilarityAlg {
     pgv_cosine_similarity,
 }
@@ -40,7 +41,7 @@ impl From<String> for SimilarityAlg {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum JobType {
     Columns,
     // row,
@@ -76,7 +77,7 @@ impl Display for JobType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PostgresEnum, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TableMethod {
     // append a new column to the existing table
     append,
@@ -102,4 +103,26 @@ pub struct JobParams {
 
 fn default_schedule() -> String {
     "realtime".to_string()
+}
+
+// schema for all messages that hit pgmq
+#[derive(Clone, Deserialize, Debug, Serialize)]
+pub struct JobMessage {
+    pub job_name: String,
+    pub job_meta: VectorizeMeta,
+    pub inputs: Vec<crate::transformers::types::Inputs>,
+}
+
+// schema for every job
+// also schema for the vectorize.vectorize_meta table
+#[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
+pub struct VectorizeMeta {
+    pub job_id: i64,
+    pub name: String,
+    pub job_type: JobType,
+    pub transformer: String,
+    pub search_alg: SimilarityAlg,
+    pub params: serde_json::Value,
+    #[serde(deserialize_with = "from_tsopt")]
+    pub last_completion: Option<chrono::DateTime<Utc>>,
 }

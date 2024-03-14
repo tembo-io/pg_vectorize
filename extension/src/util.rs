@@ -1,4 +1,5 @@
-use crate::executor::VectorizeMeta;
+use anyhow::Result;
+use log::info;
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
@@ -6,9 +7,8 @@ use sqlx::{Pool, Postgres};
 use std::env;
 use url::{ParseError, Url};
 
-use anyhow::Result;
-
 use crate::guc;
+use vectorize_core::types;
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -62,7 +62,7 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
-pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
+pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeMeta>> {
     let query: &str = "
         SELECT 
             job_id,
@@ -74,7 +74,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
         FROM vectorize.job
         WHERE name = $1
     ";
-    let result: Result<Option<VectorizeMeta>> = Spi::connect(|client| {
+    let result: Result<Option<types::VectorizeMeta>> = Spi::connect(|client| {
         let tup_table: SpiTupleTable = client.select(
             query,
             Some(1),
@@ -89,7 +89,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<VectorizeMeta>> {
         let search_alg: String = result_row.get_by_name("search_alg").unwrap().unwrap();
         let params: pgrx::JsonB = result_row.get_by_name("params").unwrap().unwrap();
 
-        Ok(Some(VectorizeMeta {
+        Ok(Some(types::VectorizeMeta {
             job_id,
             name,
             job_type: job_type.into(),

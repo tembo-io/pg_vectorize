@@ -1,16 +1,7 @@
-use pgrx::prelude::*;
-
 use anyhow::Result;
 
-use crate::{
-    executor::VectorizeMeta,
-    guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY},
-    transformers::{
-        http_handler::handle_response,
-        types::{EmbeddingPayload, EmbeddingRequest, Inputs},
-    },
-    types::JobParams,
-};
+use crate::transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs};
+use crate::types::{JobParams, VectorizeMeta};
 
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
@@ -21,6 +12,7 @@ pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
 pub fn prepare_openai_request(
     vect_meta: VectorizeMeta,
     inputs: &[Inputs],
+    api_key: Option<String>,
 ) -> Result<EmbeddingRequest> {
     let text_inputs = trim_inputs(inputs);
     let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
@@ -31,16 +23,12 @@ pub fn prepare_openai_request(
 
     let apikey = match job_params.api_key {
         Some(k) => k,
-        None => {
-            let key = match OPENAI_KEY.get() {
-                Some(k) => k.to_str()?.to_owned(),
-                None => {
-                    warning!("pg-vectorize: Error getting API key from GUC");
-                    return Err(anyhow::anyhow!("failed to get API key"));
-                }
-            };
-            key
-        }
+        None => match api_key {
+            Some(k) => k.to_owned(),
+            None => {
+                return Err(anyhow::anyhow!("failed to get API key"));
+            }
+        },
     };
     Ok(EmbeddingRequest {
         url: OPENAI_EMBEDDING_URL.to_owned(),
@@ -68,30 +56,6 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
             }
         })
         .collect()
-}
-
-pub fn validate_api_key(key: &str) -> Result<()> {
-    let client = reqwest::Client::new();
-    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-    runtime.block_on(async {
-        let resp = client
-            .get("https://api.openai.com/v1/models")
-            .header("Content-Type", "application/json")
-            .header("Authorization", format!("Bearer {}", key))
-            .timeout(std::time::Duration::from_secs(timeout as u64))
-            .send()
-            .await
-            .unwrap_or_else(|e| error!("failed to make Open AI key validation call: {}", e));
-        let _ = handle_response::<serde_json::Value>(resp, "models")
-            .await
-            .unwrap_or_else(|e| error!("failed validate API key: {}", e));
-    });
-    Ok(())
 }
 
 #[cfg(test)]

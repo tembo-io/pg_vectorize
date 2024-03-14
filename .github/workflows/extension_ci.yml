@@ -3,7 +3,7 @@ name: PG Vectorize Extension
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./extension
 
 on:
   pull_request:
@@ -73,7 +73,7 @@ jobs:
           cache-directories: /home/runner/.pgrx
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: ./
+          working-directory: ./extension
       - name: Cargo format
         run: cargo fmt --all --check
       - name: Clippy
@@ -103,7 +103,7 @@ jobs:
           cache-directories: /home/runner/.pgrx
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: ./
+          working-directory: ./extension
       - name: Restore cached binaries
         uses: actions/cache@v2
         with:
@@ -160,10 +160,10 @@ jobs:
          sudo mv stoml /usr/local/bin/
          cargo install pg-trunk
       - name: trunk build
-        working-directory: ./
+        working-directory: ./extension
         run: ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
-        working-directory: ./
+        working-directory: ./extension
         env:
           TRUNK_API_TOKEN: ${{ secrets.TRUNK_AUTH_TOKEN }}
         run: ~/.cargo/bin/trunk publish

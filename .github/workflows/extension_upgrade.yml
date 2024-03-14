@@ -3,7 +3,7 @@ name: Extension Upgrade
 defaults:
   run:
     shell: bash
-    working-directory: ./
+    working-directory: ./extension
 
 on:
   pull_request:
@@ -46,17 +46,17 @@ jobs:
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
       - uses: ./.github/actions/pgx-init
         with:
-          working-directory: ./
+          working-directory: ./extension
       - name: Install sys dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           make setup
-      - name: Test previous version (main))
-        run: |
-          git fetch --tags
-          git checkout main
-          echo "\q" | make run
-          cargo test -- --ignored --test-threads=1
+      # - name: Test previous version (main))
+      #   run: |
+      #     git fetch --tags
+      #     git checkout main
+      #     echo "\q" | make run
+      #     cargo test -- --ignored --test-threads=1
       - name: Test branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}

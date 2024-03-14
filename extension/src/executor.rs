@@ -4,31 +4,15 @@ use crate::errors::DatabaseError;
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
-use crate::transformers::types::Inputs;
-use crate::types;
 use crate::util::get_pg_conn;
-use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use chrono::TimeZone;
-use serde::{Deserialize, Serialize};
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::{Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
-
-// schema for every job
-// also schema for the vectorize.vectorize_meta table
-#[derive(Clone, Debug, Deserialize, FromRow, Serialize)]
-pub struct VectorizeMeta {
-    pub job_id: i64,
-    pub name: String,
-    pub job_type: types::JobType,
-    pub transformer: String,
-    pub search_alg: types::SimilarityAlg,
-    pub params: serde_json::Value,
-    #[serde(deserialize_with = "from_tsopt")]
-    pub last_completion: Option<chrono::DateTime<Utc>>,
-}
+use vectorize_core::transformers::types::Inputs;
+use vectorize_core::types::{JobMessage, JobParams, TableMethod, VectorizeMeta};
 
 // creates batches based on total token count
 // batch_size is the max token count per batch
@@ -55,14 +39,6 @@ pub fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
     groups
 }
 
-// schema for all messages that hit pgmq
-#[derive(Clone, Deserialize, Debug, Serialize)]
-pub struct JobMessage {
-    pub job_name: String,
-    pub job_meta: VectorizeMeta,
-    pub inputs: Vec<Inputs>,
-}
-
 // called by pg_cron on schedule
 // identifiers new inputs and enqueues them
 #[pg_extern]
@@ -87,7 +63,7 @@ fn job_execute(job_name: String) {
         let meta = get_vectorize_meta(&job_name, &conn)
             .await
             .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));
-        let job_params = serde_json::from_value::<types::JobParams>(meta.params.clone())
+        let job_params = serde_json::from_value::<JobParams>(meta.params.clone())
             .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
         let _last_completion = match meta.last_completion {
             Some(t) => t,
@@ -146,7 +122,7 @@ pub async fn get_vectorize_meta(
     Ok(row)
 }
 
-pub fn new_rows_query_join(job_name: &str, job_params: &types::JobParams) -> String {
+pub fn new_rows_query_join(job_name: &str, job_params: &JobParams) -> String {
     let cols = &job_params
         .columns
         .iter()
@@ -189,7 +165,7 @@ pub fn new_rows_query_join(job_name: &str, job_params: &types::JobParams) -> Str
     }
 }
 
-pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
+pub fn new_rows_query(job_name: &str, job_params: &JobParams) -> String {
     let cols = collapse_to_csv(&job_params.columns);
 
     // query source and return any new rows that need transformation
@@ -231,11 +207,11 @@ pub fn new_rows_query(job_name: &str, job_params: &types::JobParams) -> String {
 pub async fn get_new_updates(
     pool: &Pool<Postgres>,
     job_name: &str,
-    job_params: types::JobParams,
+    job_params: JobParams,
 ) -> Result<Option<Vec<Inputs>>, DatabaseError> {
     let query = match job_params.table_method {
-        types::TableMethod::append => new_rows_query(job_name, &job_params),
-        types::TableMethod::join => new_rows_query_join(job_name, &job_params),
+        TableMethod::append => new_rows_query(job_name, &job_params),
+        TableMethod::join => new_rows_query_join(job_name, &job_params),
     };
     let rows: Result<Vec<PgRow>, Error> = sqlx::query(&query).fetch_all(pool).await;
     match rows {

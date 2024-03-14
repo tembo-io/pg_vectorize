@@ -1,16 +1,16 @@
 use anyhow::Result;
 
-use crate::executor::{
-    create_batches, new_rows_query, new_rows_query_join, JobMessage, VectorizeMeta,
-};
+use crate::executor::{create_batches, new_rows_query, new_rows_query_join};
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
-use crate::transformers::types::Inputs;
-use crate::types::{self, JobParams, JobType};
 use crate::util;
 
 use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
+use vectorize_core::transformers::types::Inputs;
+use vectorize_core::types::{
+    JobMessage, JobParams, JobType, SimilarityAlg, TableMethod, VectorizeMeta,
+};
 
 /// called by the trigger function when a table is updated
 /// handles enqueueing the embedding transform jobs
@@ -118,12 +118,12 @@ pub fn initalize_table_job(
     job_params: &JobParams,
     job_type: &JobType,
     transformer: &str,
-    search_alg: types::SimilarityAlg,
+    search_alg: SimilarityAlg,
 ) -> Result<()> {
     // start with initial batch load
     let rows_need_update_query: String = match job_params.table_method {
-        types::TableMethod::append => new_rows_query(job_name, job_params),
-        types::TableMethod::join => new_rows_query_join(job_name, job_params),
+        TableMethod::append => new_rows_query(job_name, job_params),
+        TableMethod::join => new_rows_query_join(job_name, job_params),
     };
     let mut inputs: Vec<Inputs> = Vec::new();
     let bpe = cl100k_base().unwrap();
