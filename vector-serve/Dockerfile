@@ -28,8 +28,8 @@ RUN pip install \
 # Download models, save to image cache
 COPY vector-serve /vector-serve
 
-RUN python /vector-serve/app/models.py
-
 WORKDIR /vector-serve
+
+RUN python app/models.py
 
 CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
