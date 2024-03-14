@@ -104,6 +104,9 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
+      - name: Test Core
+        run: |
+          cd core && cargo test
       - name: Restore cached binaries
         uses: actions/cache@v2
         with:
