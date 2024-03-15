@@ -23,6 +23,7 @@ nav:
     - Search:
       - 'examples/sentence_transformers.md'
       - 'examples/openai_embeddings.md'
+      - 'examples/scheduling.md'
 markdown_extensions:
 - toc:
     permalink: true

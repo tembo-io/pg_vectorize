@@ -57,7 +57,8 @@ SELECT vectorize.table(
     "table" => 'products',
     primary_key => 'product_id',
     columns => ARRAY['product_name', 'description'],
-    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
+    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',
+    scheduler => 'realtime'
 );
 ```
 
