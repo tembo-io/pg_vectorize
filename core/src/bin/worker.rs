@@ -1,22 +1,28 @@
 use log::{error, info};
 
 use vectorize_core::worker::base::{poll_job, Config};
+use vectorize_core::worker::ops::init_extension;
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
     info!("starting pg-vectorize remote-worker");
 
+    let cfg = Config::from_env();
+
     let conn = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://postgres:password@localhost:28815/postgres")
+        .connect(&cfg.database_url)
         .await
-        .unwrap();
+        .expect("unable to connect to postgres");
+
+    init_extension(&conn)
+        .await
+        .expect("unable to initialize extension");
+
     let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
         .await
         .unwrap();
-
-    let cfg = Config::from_env();
 
     loop {
         match poll_job(&conn, &queue, &cfg).await {
