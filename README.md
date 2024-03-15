@@ -38,7 +38,7 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 - [Installation](#installation)
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
-- [Trigger based updates](#trigger-based-updates)
+- [Updating Embeddings](#updating-embeddings)
 - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
@@ -128,7 +128,8 @@ SELECT vectorize.table(
     "table" => 'products',
     primary_key => 'product_id',
     columns => ARRAY['product_name', 'description'],
-    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
+    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',
+    schedule => 'realtime'
 );
 ```
 
@@ -201,7 +202,9 @@ SELECT vectorize.rag(
 "A pencil is an item that is commonly used for writing and is known to be most effective on paper."
 ```
 
-## Trigger based updates
+## Updating Embeddings
+
+
 
 When vectorize job is set up as `realtime` (the default behavior, via `vectorize.table(..., schedule => 'realtime')`), vectorize will create triggers on your table that will keep your embeddings up to date. When the text inputs are updated or if new rows are inserted, the triggers handle creating a background job that updates the embeddings. Since the transformation is executed in a background job and the transformer model is invoked in a separate container, there is minimal impact on the performance of the update or insert statement.
 

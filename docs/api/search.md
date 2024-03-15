@@ -17,8 +17,8 @@ vectorize."table"(
     "update_col" TEXT DEFAULT 'last_updated_at',
     "transformer" TEXT DEFAULT 'text-embedding-ada-002',
     "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity',
-    "table_method" vectorize.TableMethod DEFAULT 'append',
-    "schedule" TEXT DEFAULT 'realtime'
+    "table_method" vectorize.TableMethod DEFAULT 'join',
+    "schedule" TEXT DEFAULT '* * * * *'
 ) RETURNS TEXT
 ```
 
@@ -33,8 +33,8 @@ vectorize."table"(
 | update_col | text | Column specifying the last time the record was updated. Required for cron-like schedule. Defaults to `last_updated_at` |
 | transformer | text | The name of the transformer to use for the embeddings. Defaults to 'text-embedding-ada-002'. |
 | search_alg | SimilarityAlg | The name of the search algorithm to use. Defaults to 'pgv_cosine_similarity'. |
-| table_method | TableMethod | The method to use for the table. Defaults to 'append', which adds a column to the existing table. |
-| schedule | text | 'realtime' by default for trigger based updates. accepts a cron-like input for a cron based updates. |
+| table_method | TableMethod | `join` to store embeddings in a new table in the vectorize schema. `append` to create columns for embeddings on the source table. Defaults to `join`. |
+| schedule | text | Accepts a cron-like input for a cron based updates. Or `realtime` to set up a trigger. |
 
 ### Sentence-Transformer Examples
 
