@@ -21,6 +21,9 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3815)](https://ossrank.com/p/3815)
 
+
+pg_vectorize powers the VectorDB Stack on Tembo Cloud. 
+
 **API Documentation**: https://tembo-io.github.io/pg_vectorize/
 
 **Source**: https://github.com/tembo-io/pg_vectorize
@@ -204,9 +207,13 @@ SELECT vectorize.rag(
 
 ## Updating Embeddings
 
+When the source text data is updated, how and when the embeddings are updated is determined by the value set to the `schedule` parameter in `vectorize.table` and `vectorize.init_rag`.
 
+The default behavior is `schedule => '* * * * *'`, which means the background worker process checks for changes every minute, and updates the embeddings accordingly. This method requires setting the `updated_at_col` value to point to a colum on the table indicating the time that the input text columns were last changed. `schedule` can be set to any cron-like value.
 
-When vectorize job is set up as `realtime` (the default behavior, via `vectorize.table(..., schedule => 'realtime')`), vectorize will create triggers on your table that will keep your embeddings up to date. When the text inputs are updated or if new rows are inserted, the triggers handle creating a background job that updates the embeddings. Since the transformation is executed in a background job and the transformer model is invoked in a separate container, there is minimal impact on the performance of the update or insert statement.
+Alternatively, `schedule => 'realtime` creates triggers on the source table and updates embeddings anytime new records are inserted to the source table or existing records are updated.
+
+Statements below would will result in new embeddings being generated either immediately (`schedule => 'realtime'`) or within the cron schedule set in the `schedule` parameter.
 
 ```sql
 INSERT INTO products (product_id, product_name, description)
@@ -216,7 +223,3 @@ UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
 WHERE product_name = 'Hammock';
 ```
-
-## Try it on Tembo Cloud
-
-Try it for yourself! Install with a single click on a Vector DB Stack (or any other instance) in [Tembo Cloud](https://cloud.tembo.io/) today.
