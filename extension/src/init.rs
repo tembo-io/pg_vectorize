@@ -205,10 +205,20 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
             (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
         ],
     )
-    .map_err(|_|{
-        anyhow!("One of schema:`{}`, table:`{}`, column:`{}` does not exist", schema, table, column)
+    .map_err(|_| {
+        anyhow!(
+            "One of schema:`{}`, table:`{}`, column:`{}` does not exist.",
+            schema,
+            table,
+            column
+        )
     })?
-       .ok_or_else(|| {
-           anyhow!("Table `{schema}.{table}` is empty, does not exist, or column `{column}` does not exist.")
-       })
+    .ok_or_else(|| {
+        anyhow!(
+            "Table `{}.{}` is empty, does not exist, or column `{}` does not exist.",
+            schema,
+            table,
+            column
+        )
+    })
 }
