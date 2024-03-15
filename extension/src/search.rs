@@ -6,7 +6,7 @@ use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use pgrx::prelude::*;
 use vectorize_core::types::{self, TableMethod, VectorizeMeta};
 
