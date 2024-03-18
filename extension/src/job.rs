@@ -20,7 +20,7 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
     if record_ids.len() != inputs.len() {
         error!("record_ids and inputs must be the same length");
     }
-    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
+    let project_meta: VectorizeMeta = if let Ok(js) = util::get_vectorize_meta_spi(job_name) {
         js
     } else {
         error!("failed to get project metadata");
