@@ -5,7 +5,7 @@ use crate::{
 };
 use pgrx::prelude::*;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use vectorize_core::transformers::types::TransformerMetadata;
 use vectorize_core::types::{JobParams, TableMethod};
 
@@ -198,15 +198,27 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
             table_schema = $1
             AND table_name = $2
             AND column_name = $3    
-    ",
+        ",
         vec![
             (PgBuiltInOids::TEXTOID.oid(), schema.into_datum()),
             (PgBuiltInOids::TEXTOID.oid(), table.into_datum()),
             (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
         ],
-    )?
-    .context(format!(
-        "could not determine data type of column `{column}` on relation: `{schema}.{table}`"
-    ))
-    .context("no resultset for column datatype")
+    )
+    .map_err(|_| {
+        anyhow!(
+            "One of schema:`{}`, table:`{}`, column:`{}` does not exist.",
+            schema,
+            table,
+            column
+        )
+    })?
+    .ok_or_else(|| {
+        anyhow!(
+            "An unknown error occurred while fetching the data type for column `{}` in `{}.{}`.",
+            schema,
+            table,
+            column
+        )
+    })
 }
