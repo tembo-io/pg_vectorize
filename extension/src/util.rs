@@ -61,7 +61,7 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
-pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeMeta>> {
+pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
     let query: &str = "
         SELECT 
             job_id,
@@ -73,14 +73,17 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeM
         FROM vectorize.job
         WHERE name = $1
     ";
-    let result: Result<Option<types::VectorizeMeta>> = Spi::connect(|client| {
+    let result: Result<types::VectorizeMeta> = Spi::connect(|client| {
         let tup_table: SpiTupleTable = client.select(
             query,
             Some(1),
             Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
         )?;
         if tup_table.is_empty() {
-            return Err(anyhow::anyhow!("agent_name '{}' not yet initialized. Please run `vectorize.init_rag` before `vectorize.rag`.", job_name));
+            return Err(anyhow::anyhow!(
+                "project '{}' not yet initialized. Please initialize the project.",
+                job_name
+            ));
         }
 
         let result_row = tup_table.first();
@@ -91,7 +94,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeM
         let search_alg: String = result_row.get_by_name("search_alg").unwrap().unwrap();
         let params: pgrx::JsonB = result_row.get_by_name("params").unwrap().unwrap();
 
-        Ok(Some(types::VectorizeMeta {
+        Ok(types::VectorizeMeta {
             job_id,
             name,
             job_type: job_type.into(),
@@ -99,9 +102,9 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<Option<types::VectorizeM
             search_alg: search_alg.into(),
             params: serde_json::to_value(params).unwrap(),
             last_completion: None,
-        }))
+        })
     });
-    result
+    Ok(result?)
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
