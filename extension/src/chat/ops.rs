@@ -22,11 +22,8 @@ pub fn call_chat(
     force_trim: bool,
 ) -> Result<ChatResponse> {
     // get job metadata
-    let project_meta: VectorizeMeta = if let Ok(Some(js)) = get_vectorize_meta_spi(agent_name) {
-        js
-    } else {
-        error!("failed to get project metadata");
-    };
+    let project_meta: VectorizeMeta =
+        get_vectorize_meta_spi(agent_name)?.expect("project not found");
 
     let job_params = serde_json::from_value::<JobParams>(project_meta.params.clone())
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
