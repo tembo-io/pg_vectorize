@@ -215,7 +215,7 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
     })?
     .ok_or_else(|| {
         anyhow!(
-            "Table `{}.{}` is empty, does not exist, or column `{}` does not exist.",
+            "An unknown error occurred while fetching the data type for column `{}` in `{}.{}`.",
             schema,
             table,
             column
