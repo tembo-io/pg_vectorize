@@ -87,12 +87,30 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
         }
 
         let result_row = tup_table.first();
-        let job_id: i64 = result_row.get_by_name("job_id").unwrap().unwrap();
-        let name: String = result_row.get_by_name("name").unwrap().unwrap();
-        let job_type: String = result_row.get_by_name("job_type").unwrap().unwrap();
-        let transformer: String = result_row.get_by_name("transformer").unwrap().unwrap();
-        let search_alg: String = result_row.get_by_name("search_alg").unwrap().unwrap();
-        let params: pgrx::JsonB = result_row.get_by_name("params").unwrap().unwrap();
+        let job_id: i64 = result_row
+            .get_by_name("job_id")
+            .expect("job_id column does not exist.")
+            .expect("job_id column was null.");
+        let name: String = result_row
+            .get_by_name("name")
+            .expect("name column does not exist.")
+            .expect("name column was null.");
+        let job_type: String = result_row
+            .get_by_name("job_type")
+            .expect("job_type column does not exist.")
+            .expect("job_type column was null.");
+        let transformer: String = result_row
+            .get_by_name("transformer")
+            .expect("transformer column does not exist.")
+            .expect("transformer column was null.");
+        let search_alg: String = result_row
+            .get_by_name("search_alg")
+            .expect("search_alg column does not exist.")
+            .expect("search_alg column was null.");
+        let params: pgrx::JsonB = result_row
+            .get_by_name("params")
+            .expect("params column does not exist.")
+            .expect("params column was null.");
 
         Ok(types::VectorizeMeta {
             job_id,
