@@ -126,14 +126,12 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
-    let mut cfg = Config::default();
+    let host = guc::get_guc(guc::VectorizeGuc::Host).unwrap_or_else(|| "localhost".to_string());
+    let database_name =
+        guc::get_guc(guc::VectorizeGuc::DatabaseName).unwrap_or_else(|| "postgres".to_string());
 
-    if let Some(host) = guc::get_guc(guc::VectorizeGuc::Host) {
-        info!("Using socket url from GUC: {:?}", host);
-        cfg.vectorize_socket_url = Some(host);
-    };
+    let opts = PgConnectOptions::new().host(&host).database(&database_name);
 
-    let opts = get_pg_options(cfg)?;
     let pgp = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(4))
         .max_connections(4)
