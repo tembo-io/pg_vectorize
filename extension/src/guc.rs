@@ -4,6 +4,8 @@ use pgrx::*;
 use anyhow::Result;
 
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
+    GucSetting::<Option<&CStr>>::new(None);
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
 pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
@@ -18,7 +20,17 @@ pub fn init_guc() {
         "unix socket url for Postgres",
         "unix socket path to the Postgres instance. Optional. Can also be set in environment variable.",
         &VECTORIZE_HOST,
-        GucContext::Suset, GucFlags::default());
+        GucContext::Suset, GucFlags::default()
+    );
+
+    GucRegistry::define_string_guc(
+        "vectorize.database_name",
+        "Target database for vectorize operations",
+        "Specifies the target database for vectorize operations.",
+        &VECTORIZE_DATABASE_NAME,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 
     GucRegistry::define_string_guc(
         "vectorize.openai_key",
@@ -74,6 +86,7 @@ pub fn init_guc() {
 #[derive(Debug)]
 pub enum VectorizeGuc {
     Host,
+    DatabaseName,
     OpenAIKey,
     EmbeddingServiceUrl,
 }
@@ -82,6 +95,7 @@ pub enum VectorizeGuc {
 pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
     let val = match guc {
         VectorizeGuc::Host => VECTORIZE_HOST.get(),
+        VectorizeGuc::DatabaseName => VECTORIZE_DATABASE_NAME.get(),
         VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
         VectorizeGuc::EmbeddingServiceUrl => EMBEDDING_SERVICE_HOST.get(),
     };
