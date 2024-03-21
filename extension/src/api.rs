@@ -44,7 +44,7 @@ fn search(
     api_key: default!(Option<String>, "NULL"),
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
-    where_clause: default!(Option<Vec<String>>, "NULL"),
+    filter: default!(Option<Vec<String>>, "NULL"),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
     let search_results = search::search(
         &job_name,
@@ -52,7 +52,7 @@ fn search(
         api_key,
         return_columns,
         num_results,
-        where_clause,
+        filter,
     )?;
     Ok(TableIterator::new(search_results.into_iter().map(|r| (r,))))
 }
