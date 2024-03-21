@@ -13,6 +13,7 @@ use vectorize_core::types;
 pub struct Config {
     pub pg_conn_str: String,
     pub vectorize_socket_url: Option<String>,
+    pub database_name: Option<String>,
 }
 
 impl Default for Config {
@@ -23,6 +24,7 @@ impl Default for Config {
                 "postgresql://postgres:postgres@localhost:5432/postgres",
             ),
             vectorize_socket_url: env::var("VECTORIZE_SOCKET_URL").ok(),
+            database_name: None,
         }
     }
 }
@@ -126,11 +128,18 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
-    let host = guc::get_guc(guc::VectorizeGuc::Host).unwrap_or_else(|| "localhost".to_string());
-    let database_name =
-        guc::get_guc(guc::VectorizeGuc::DatabaseName).unwrap_or_else(|| "postgres".to_string());
+    let mut cfg = Config::default();
 
-    let opts = PgConnectOptions::new().host(&host).database(&database_name);
+    if let Some(host) = guc::get_guc(guc::VectorizeGuc::Host) {
+        info!("Using socket url from GUC: {:?}", host);
+        cfg.vectorize_socket_url = Some(host);
+    };
+
+    let mut opts = get_pg_options(cfg)?;
+
+    if let Some(dbname) = guc::get_guc(guc::VectorizeGuc::DatabaseName) {
+        opts = opts.database(&dbname)
+    };
 
     let pgp = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(4))
