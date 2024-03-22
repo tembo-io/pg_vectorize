@@ -157,9 +157,10 @@ async fn test_realtime_job() {
     .await
     .expect("failed to init job");
 
-    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3)
-        .await
-        .expect("failed to exec search");
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 
     let random_product_id = rng.gen_range(0..100000);
@@ -178,7 +179,7 @@ async fn test_realtime_job() {
     // index will need to rebuild
     tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
     let search_results =
-        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3)
+        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3, None)
             .await
             .expect("failed to exec search");
 
@@ -219,9 +220,10 @@ async fn test_rag() {
     .expect("failed to init job");
 
     // must be able to conduct vector search on agent tables
-    let search_results = common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2, 3)
-        .await
-        .expect("failed to exec search");
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 }
 
@@ -251,9 +253,10 @@ async fn test_rag_alternate_schema() {
     .expect("failed to init job");
 
     // must be able to conduct vector search on agent tables
-    let search_results = common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2, 3)
-        .await
-        .expect("failed to exec search");
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &agent_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 }
 
@@ -286,9 +289,10 @@ async fn test_static() {
     .expect("failed to init job");
 
     // TEST BASIC SEARCH FUNCTIONALITY
-    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3)
-        .await
-        .expect("failed to exec search");
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 
     // TEST INSERT TRIGGER
@@ -308,19 +312,19 @@ async fn test_static() {
     // index will need to rebuild
     tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
     let search_results =
-        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3)
+        common::search_with_retry(&conn, "car testing products", &job_name, 10, 2, 3, None)
             .await
             .expect("failed to exec search");
 
     let mut found_it = false;
-    for row in search_results {
-        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
+    for row in search_results.iter() {
+        let row: common::SearchResult = serde_json::from_value(row.search_results.clone()).unwrap();
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "car tester");
             found_it = true;
         }
     }
-    assert!(found_it);
+    assert!(found_it, "resulting records: {:?}", search_results);
 
     // TEST UPDATE TRIGGER
     let update_query = format!(
@@ -334,20 +338,20 @@ async fn test_static() {
         .expect("failed to insert into test_table");
     // index will need to rebuild
     tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
-    let search_results = common::search_with_retry(&conn, "cat food", &job_name, 10, 2, 20)
+    let search_results = common::search_with_retry(&conn, "cat food", &job_name, 10, 2, 20, None)
         .await
         .expect("failed to exec search");
 
     let mut found_it = false;
-    for row in search_results {
-        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
+    for row in search_results.iter() {
+        let row: common::SearchResult = serde_json::from_value(row.search_results.clone()).unwrap();
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "cat food");
             assert_eq!(row.description, "a product for feeding cats");
             found_it = true;
         }
     }
-    assert!(found_it);
+    assert!(found_it, "resulting records: {:?}", search_results);
 }
 
 #[ignore]
@@ -377,9 +381,10 @@ async fn test_realtime_tabled() {
     .await
     .expect("failed to init job");
 
-    let search_results = common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3)
-        .await
-        .expect("failed to exec search");
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
     assert_eq!(search_results.len(), 3);
 
     let random_product_id = rng.gen_range(0..100000);
@@ -397,7 +402,7 @@ async fn test_realtime_tabled() {
     // index will need to rebuild
     tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
     let search_results =
-        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3)
+        common::search_with_retry(&conn, "car testing devices", &job_name, 10, 2, 3, None)
             .await
             .expect("failed to exec search");
 
@@ -422,4 +427,102 @@ async fn test_realtime_tabled() {
 
     // 41 rows should be returned
     assert!(result.len() == 41);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_filter_join() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    // initialize a job using `join` method
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime',
+        table_method => 'join'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    let filter = "product_id = 1".to_string();
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 1, Some(filter))
+            .await
+            .expect("failed to exec search");
+    assert_eq!(search_results.len(), 1);
+    let result_val = search_results[0].search_results.clone();
+    let product_id_val = result_val["product_id"]
+        .as_i64()
+        .expect("failed parsing product id");
+    assert_eq!(product_id_val, 1);
+
+    let filter = "product_id = 1 and product_name ilike 'pencil'".to_string();
+    let search_results = common::search_with_retry(
+        &conn,
+        "some random query",
+        &job_name,
+        10,
+        2,
+        1,
+        Some(filter),
+    )
+    .await
+    .expect("failed to exec search");
+    assert_eq!(search_results.len(), 1);
+    let result_val = search_results[0].search_results.clone();
+    let product_id_val = result_val["product_id"]
+        .as_i64()
+        .expect("failed parsing product id");
+    assert_eq!(product_id_val, 1);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_filter_append() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    // initialize a job using `join` method
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        table_method => 'append'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    let filter = "product_id = 2".to_string();
+    let search_results =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 1, Some(filter))
+            .await
+            .expect("failed to exec search");
+    assert_eq!(search_results.len(), 1);
+    let result_val = search_results[0].search_results.clone();
+    let product_id_val = result_val["product_id"]
+        .as_i64()
+        .expect("failed parsing product id");
+    assert_eq!(product_id_val, 2);
 }

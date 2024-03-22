@@ -6,7 +6,7 @@ use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use pgrx::prelude::*;
 use vectorize_core::types::{self, TableMethod, VectorizeMeta};
 
@@ -65,7 +65,7 @@ pub fn init_table(
         }
         t => {
             // make sure transformer exists
-            let _ = sync_get_model_info(t, api_key.clone()).expect("transformer does not exist");
+            let _ = sync_get_model_info(t, api_key.clone()).context("transformer does not exist");
         }
     }
 
@@ -162,6 +162,7 @@ pub fn search(
     api_key: Option<String>,
     return_columns: Vec<String>,
     num_results: i32,
+    where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(
@@ -187,6 +188,7 @@ pub fn search(
             &return_columns,
             num_results,
             &embeddings[0],
+            where_clause,
         ),
     }
 }
@@ -197,19 +199,30 @@ pub fn cosine_similarity_search(
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
+    where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let schema = job_params.schema.clone();
     let table = job_params.table.clone();
 
     // switch on table method
     let query = match job_params.table_method {
-        TableMethod::append => {
-            single_table_cosine_similarity(project, &schema, &table, return_columns, num_results)
-        }
-        TableMethod::join => {
-            join_table_cosine_similarity(project, job_params, return_columns, num_results)
-        }
+        TableMethod::append => single_table_cosine_similarity(
+            project,
+            &schema,
+            &table,
+            return_columns,
+            num_results,
+            where_clause,
+        ),
+        TableMethod::join => join_table_cosine_similarity(
+            project,
+            job_params,
+            return_columns,
+            num_results,
+            where_clause,
+        ),
     };
+    log!("query: {}", query);
     Spi::connect(|client| {
         // let mut results: Vec<(pgrx::JsonB,)> = Vec::new();
         let mut results: Vec<pgrx::JsonB> = Vec::new();
@@ -236,6 +249,7 @@ fn join_table_cosine_similarity(
     job_params: &types::JobParams,
     return_columns: &[String],
     num_results: i32,
+    where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
     let table = job_params.table.clone();
@@ -245,6 +259,21 @@ fn join_table_cosine_similarity(
         .map(|s| format!("t0.{}", s))
         .collect::<Vec<_>>()
         .join(",");
+
+    let where_str = if let Some(w) = where_clause {
+        prepare_filter(&w, join_key)
+    } else {
+        "".to_string()
+    };
+    let inner_query = format!(
+        "
+    SELECT
+        {join_key},
+        1 - (embeddings <=> $1::vector) AS similarity_score
+    FROM vectorize._embeddings_{project}
+    ORDER BY similarity_score DESC
+    "
+    );
     format!(
         "
     SELECT to_jsonb(t) as results
@@ -252,16 +281,13 @@ fn join_table_cosine_similarity(
         SELECT {cols}, t1.similarity_score
         FROM
             (
-                SELECT
-                    {join_key},
-                    1 - (embeddings <=> $1::vector) AS similarity_score
-                FROM vectorize._embeddings_{project}
-                ORDER BY similarity_score DESC
-                LIMIT {num_results}
+                {inner_query}
             ) t1
         INNER JOIN {schema}.{table} t0 on t0.{join_key} = t1.{join_key}
+        {where_str}
     ) t
-    ORDER BY t.similarity_score DESC;
+    ORDER BY t.similarity_score DESC
+    LIMIT {num_results};
     "
     )
 }
@@ -272,7 +298,13 @@ fn single_table_cosine_similarity(
     table: &str,
     return_columns: &[String],
     num_results: i32,
+    where_clause: Option<String>,
 ) -> String {
+    let where_str = if let Some(w) = where_clause {
+        format!("AND {}", w)
+    } else {
+        "".to_string()
+    };
     format!(
         "
     SELECT to_jsonb(t) as results
@@ -282,10 +314,17 @@ fn single_table_cosine_similarity(
         {cols}
     FROM {schema}.{table}
     WHERE {project}_updated_at is NOT NULL
+    {where_str}
     ORDER BY similarity_score DESC
     LIMIT {num_results}
     ) t
     ",
         cols = return_columns.join(", "),
     )
+}
+
+// transform user's where_sql into the format search query expects
+fn prepare_filter(filter: &str, pkey: &str) -> String {
+    let wc = filter.replace(pkey, &format!("t0.{}", pkey));
+    format!("AND {wc}")
 }
