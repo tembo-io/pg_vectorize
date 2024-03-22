@@ -19,6 +19,8 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
+    index_type: &str,
+    distance_function: &str,
     transformer: &str,
     search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
