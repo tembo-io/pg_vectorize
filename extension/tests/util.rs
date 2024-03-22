@@ -138,12 +138,12 @@ pub mod common {
         retries: usize,
         delay_seconds: usize,
         num_results: i32,
-        filter: Option<Vec<String>>,
+        filter: Option<String>,
     ) -> Result<Vec<SearchJSON>> {
         let mut results: Vec<SearchJSON> = vec![];
         let filter_param = match filter {
-            Some(f) => format!(",filter => ARRAY['{}']::text[]", f.join("', '")),
-            None => ",filter => $$NULL$$".to_string(),
+            Some(f) => format!(",where_sql => $${f}$$"),
+            None => "".to_string(),
         };
         let query = format!(
             "SELECT * from vectorize.search(
@@ -154,7 +154,6 @@ pub mod common {
             {filter_param}
         ) as search_results;"
         );
-        println!("search query: {}", query);
         for i in 0..retries {
             results = sqlx::query_as::<_, SearchJSON>(&query)
                 .fetch_all(conn)

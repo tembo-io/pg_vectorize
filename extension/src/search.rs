@@ -289,9 +289,9 @@ fn join_table_cosine_similarity(
             ) t1
         INNER JOIN {schema}.{table} t0 on t0.{join_key} = t1.{join_key}
         {where_str}
-        LIMIT {num_results}
     ) t
-    ORDER BY t.similarity_score DESC;
+    ORDER BY t.similarity_score DESC
+    LIMIT {num_results};
     "
     )
 }
