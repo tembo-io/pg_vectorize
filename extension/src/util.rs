@@ -13,7 +13,6 @@ use vectorize_core::types;
 pub struct Config {
     pub pg_conn_str: String,
     pub vectorize_socket_url: Option<String>,
-    pub database_name: Option<String>,
 }
 
 impl Default for Config {
@@ -24,7 +23,6 @@ impl Default for Config {
                 "postgresql://postgres:postgres@localhost:5432/postgres",
             ),
             vectorize_socket_url: env::var("VECTORIZE_SOCKET_URL").ok(),
-            database_name: None,
         }
     }
 }
@@ -124,7 +122,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             last_completion: None,
         })
     });
-    Ok(result?)
+    result
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
