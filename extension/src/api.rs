@@ -79,6 +79,8 @@ fn init_rag(
     // column that have data we want to be able to chat with
     column: &str,
     schema: default!(&str, "'public'"),
+    index_type: default!(&str, "'hnsw'"),
+    distance_function: default!(&str, "'cosine'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
@@ -96,6 +98,8 @@ fn init_rag(
         unique_record_id,
         None,
         None,
+        index_type,
+        distance_function,
         transformer,
         search_alg.into(),
         table_method.into(),
