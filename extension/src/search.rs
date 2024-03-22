@@ -164,11 +164,7 @@ pub fn search(
     num_results: i32,
     where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
-    let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
-        js
-    } else {
-        error!("failed to get project metadata");
-    };
+    let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(
         serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
             error!("failed to serialize metadata: {}", e);
