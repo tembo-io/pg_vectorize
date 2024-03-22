@@ -138,23 +138,31 @@ pub mod common {
         retries: usize,
         delay_seconds: usize,
         num_results: i32,
+        filter: Option<String>,
     ) -> Result<Vec<SearchJSON>> {
         let mut results: Vec<SearchJSON> = vec![];
+        let filter_param = match filter {
+            Some(f) => format!(",where_sql => $${f}$$"),
+            None => "".to_string(),
+        };
+        let query = format!(
+            "SELECT * from vectorize.search(
+            job_name => '{job_name}',
+            query => '{query}',
+            return_columns => ARRAY['product_id', 'product_name', 'description'],
+            num_results => {num_results}
+            {filter_param}
+        ) as search_results;"
+        );
         for i in 0..retries {
-            results = sqlx::query_as::<_, SearchJSON>(&format!(
-                "SELECT * from vectorize.search(
-                job_name => '{job_name}',
-                query => '{query}',
-                return_columns => ARRAY['product_id', 'product_name', 'description'],
-                num_results => {num_results}
-            ) as search_results;"
-            ))
-            .fetch_all(conn)
-            .await?;
+            results = sqlx::query_as::<_, SearchJSON>(&query)
+                .fetch_all(conn)
+                .await?;
             let num_returned = results.len();
             if num_returned != num_results as usize {
                 println!(
-                    "num_results: {}, retrying search query: {}/{}",
+                    "job_name: {}, num_results: {}, retrying search query: {}/{}",
+                    job_name,
                     num_returned,
                     i + 1,
                     retries

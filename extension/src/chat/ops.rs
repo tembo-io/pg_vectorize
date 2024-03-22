@@ -35,7 +35,14 @@ pub fn call_chat(
     let pk = job_params.primary_key;
     let columns = vec![pk.clone(), content_column.clone()];
 
-    let raw_search = search::search(agent_name, query, api_key.clone(), columns, num_context)?;
+    let raw_search = search::search(
+        agent_name,
+        query,
+        api_key.clone(),
+        columns,
+        num_context,
+        None,
+    )?;
 
     let mut search_results: Vec<ContextualSearch> = Vec::new();
     for s in raw_search {
