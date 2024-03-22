@@ -122,7 +122,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             last_completion: None,
         })
     });
-    Ok(result?)
+    result
 }
 
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
@@ -133,7 +133,12 @@ pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
         cfg.vectorize_socket_url = Some(host);
     };
 
-    let opts = get_pg_options(cfg)?;
+    let mut opts = get_pg_options(cfg)?;
+
+    if let Some(dbname) = guc::get_guc(guc::VectorizeGuc::DatabaseName) {
+        opts = opts.database(&dbname)
+    };
+
     let pgp = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(4))
         .max_connections(4)
