@@ -162,7 +162,7 @@ pub fn search(
     api_key: Option<String>,
     return_columns: Vec<String>,
     num_results: i32,
-    where_clause: Option<Vec<String>>,
+    where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let project_meta: VectorizeMeta = if let Ok(Some(js)) = util::get_vectorize_meta_spi(job_name) {
         js
@@ -203,7 +203,7 @@ pub fn cosine_similarity_search(
     return_columns: &[String],
     num_results: i32,
     embeddings: &[f64],
-    where_clause: Option<Vec<String>>,
+    where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let schema = job_params.schema.clone();
     let table = job_params.table.clone();
@@ -253,7 +253,7 @@ fn join_table_cosine_similarity(
     job_params: &types::JobParams,
     return_columns: &[String],
     num_results: i32,
-    where_clause: Option<Vec<String>>,
+    where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
     let table = job_params.table.clone();
@@ -264,17 +264,10 @@ fn join_table_cosine_similarity(
         .collect::<Vec<_>>()
         .join(",");
 
-    let where_str = match where_clause {
-        Some(w) => {
-            // prefix each col with t0
-            let w = w
-                .iter()
-                .map(|s| format!("t0.{}", s))
-                .collect::<Vec<_>>()
-                .join(" AND ");
-            format!("WHERE {}", w)
-        }
-        None => "".to_string(),
+    let where_str = if let Some(w) = where_clause {
+        prepare_filter(&w, join_key)
+    } else {
+        "".to_string()
     };
     let inner_query = format!(
         "
@@ -309,15 +302,12 @@ fn single_table_cosine_similarity(
     table: &str,
     return_columns: &[String],
     num_results: i32,
-    where_clause: Option<Vec<String>>,
+    where_clause: Option<String>,
 ) -> String {
-    let where_str = match where_clause {
-        Some(w) => {
-            // prefix each col with t0
-            let w = w.join(" AND ");
-            format!("AND {}", w)
-        }
-        None => "".to_string(),
+    let where_str = if let Some(w) = where_clause {
+        format!("AND {}", w)
+    } else {
+        "".to_string()
     };
     format!(
         "
@@ -335,4 +325,10 @@ fn single_table_cosine_similarity(
     ",
         cols = return_columns.join(", "),
     )
+}
+
+// transform user's where_sql into the format search query expects
+fn prepare_filter(filter: &str, pkey: &str) -> String {
+    let wc = filter.replace(pkey, &format!("t0.{}", pkey));
+    format!("AND {wc}")
 }
