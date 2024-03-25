@@ -35,9 +35,9 @@ select vectorize.transform_embeddings(
 
 ## Updating the Database
 
-By default, `vectorize` is configured to run on the `postgres` database, but that can be changed to any database in Postgres.
+Configure `vectorize` to run on a database other than the default `postgres`.
 
-Update the following configuration parameters so that the corresponding background workers connect to the correct database.
+Note that when making this change, it's also required to update `pg_cron` such that its corresponding background workers also connect to the appropriate database. 
 
 ### Example
 
