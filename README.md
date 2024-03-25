@@ -42,6 +42,7 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/tembo-stacks/vect
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
+- [Updating the Database](#updating-the-database)
 - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
@@ -222,4 +223,34 @@ VALUES (12345, 'pizza', 'dish of Italian origin consisting of a flattened disk o
 UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
 WHERE product_name = 'Hammock';
+```
+
+## Updating the Database
+
+By default, `vectorize` is configured to run on the `postgres` database, but that can be changed to any database in Postgres.
+
+Update the following configuration parameters so that the corresponding background workers connect to the correct database.
+
+```sql
+ALTER SYSTEM SET cron.database_name TO 'my_new_db';
+ALTER SYSTEM SET vectorize.database_name TO 'my_new_db';
+```
+
+You will need to restart Postgres to apply the changes.
+
+```sql
+SHOW cron.database_name;
+SHOW vectorize.database_name;
+```
+
+```sql
+ cron.database_name 
+--------------------
+ my_new_db
+(1 row)
+
+ vectorize.database_name 
+-------------------------
+ my_new_db
+(1 row)
 ```
