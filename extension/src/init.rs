@@ -52,6 +52,7 @@ pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> 
 
 pub fn init_job_query() -> String {
     // params is jsonb. conduct a merge on conflict instead of a overwrite
+    // search_alg is now obsolete to index_type and distance_function
     format!(
         "
         INSERT INTO {schema}.job (name, job_type, transformer, search_alg, params)

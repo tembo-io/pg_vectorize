@@ -19,6 +19,7 @@ fn table(
     index_type: default!(&str, "'hnsw'"),
     distance_function: default!(&str, "'cosine'"),
     transformer: default!(&str, "'text-embedding-ada-002'"),
+    // search_alg is now obsolete to index_type and distance_function
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -35,6 +36,7 @@ fn table(
         index_type,
         distance_function,
         transformer,
+        // search_alg is now obsolete to index_type and distance_function
         search_alg.into(),
         table_method.into(),
         schedule,
@@ -84,6 +86,7 @@ fn init_rag(
     // transformer model to use in vector-search
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
+    // search_alg is now obsolete to index_type and distance_function
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     schedule: default!(&str, "'* * * * *'"),
@@ -101,6 +104,7 @@ fn init_rag(
         index_type,
         distance_function,
         transformer,
+        // search_alg is now obsolete to index_type and distance_function
         search_alg.into(),
         table_method.into(),
         schedule,

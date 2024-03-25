@@ -118,6 +118,7 @@ pub fn initalize_table_job(
     job_params: &JobParams,
     job_type: &JobType,
     transformer: &str,
+    // search_alg is now obsolete to index_type and distance_function
     search_alg: SimilarityAlg,
 ) -> Result<()> {
     // start with initial batch load
@@ -155,6 +156,7 @@ pub fn initalize_table_job(
         job_type: job_type.clone(),
         params: serde_json::to_value(job_params.clone()).unwrap(),
         transformer: transformer.to_string(),
+        // search_alg is now obsolete to index_type and distance_function
         search_alg: search_alg.clone(),
         last_completion: None,
     };
