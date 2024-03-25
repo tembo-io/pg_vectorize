@@ -247,7 +247,7 @@ SHOW cron.database_name;
 SHOW vectorize.database_name;
 ```
 
-```sql
+```text
  cron.database_name 
 --------------------
  my_new_db
