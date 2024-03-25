@@ -42,7 +42,6 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/tembo-stacks/vect
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
-- [Updating the Database](#updating-the-database)
 - [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
