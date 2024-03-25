@@ -224,37 +224,3 @@ UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
 WHERE product_name = 'Hammock';
 ```
-
-## Updating the Database
-
-By default, `vectorize` is configured to run on the `postgres` database, but that can be changed to any database in Postgres.
-
-Update the following configuration parameters so that the corresponding background workers connect to the correct database.
-
-```sql
-ALTER SYSTEM SET cron.database_name TO 'my_new_db';
-ALTER SYSTEM SET vectorize.database_name TO 'my_new_db';
-```
-
-Then, restart postgres to apply the changes and, if you haven't already, enable `vectorize` in your new database.
-
-```sql
-CREATE EXTENSION vectorize CASCADE;
-```
-
-```sql
-SHOW cron.database_name;
-SHOW vectorize.database_name;
-```
-
-```text
- cron.database_name 
---------------------
- my_new_db
-(1 row)
-
- vectorize.database_name 
--------------------------
- my_new_db
-(1 row)
-```
