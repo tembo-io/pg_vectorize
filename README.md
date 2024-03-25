@@ -236,7 +236,11 @@ ALTER SYSTEM SET cron.database_name TO 'my_new_db';
 ALTER SYSTEM SET vectorize.database_name TO 'my_new_db';
 ```
 
-You will need to restart Postgres to apply the changes.
+Then, restart postgres to apply the changes and, if you haven't already, enable `vectorize` in your new database.
+
+```sql
+CREATE EXTENSION vectorize CASCADE;
+```
 
 ```sql
 SHOW cron.database_name;
