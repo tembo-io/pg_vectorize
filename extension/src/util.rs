@@ -68,8 +68,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             job_id,
             name,
             job_type,
-            index_type,
-            distance_function,
+            index_dist_type,
             transformer,
             search_alg,
             params
@@ -102,9 +101,10 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .get_by_name("job_type")
             .expect("job_type column does not exist.")
             .expect("job_type column was null.");
-        let index_type
-        let distance_function
-
+        let index_dist_type: String = result_row
+            .get_by_name("index_dist_type")
+            .expect("index_dist_type column does not exist.")
+            .expect("index_dist_type column was null.");
         let transformer: String = result_row
             .get_by_name("transformer")
             .expect("transformer column does not exist.")

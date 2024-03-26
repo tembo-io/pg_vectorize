@@ -17,7 +17,6 @@ fn table(
     schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
     index_dist_type: default!(&str, "'hnsw'"),
-    distance_function: default!(&str, "'cosine'"), // remove !
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
@@ -33,8 +32,7 @@ fn table(
         primary_key,
         Some(serde_json::to_value(args).expect("failed to parse args")),
         Some(update_col),
-        index_type,
-        distance_function,
+        index_dist_type,
         transformer,
         // search_alg is now deprecated
         search_alg.into(),
@@ -81,8 +79,7 @@ fn init_rag(
     // column that have data we want to be able to chat with
     column: &str,
     schema: default!(&str, "'public'"),
-    index_type: default!(&str, "'hnsw'"),
-    distance_function: default!(&str, "'cosine'"),
+    index_dist_type: default!(&str, "'hnsw'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
@@ -101,8 +98,7 @@ fn init_rag(
         unique_record_id,
         None,
         None,
-        index_type,
-        distance_function,
+        index_dist_type,
         transformer,
         // search_alg is now deprecated
         search_alg.into(),

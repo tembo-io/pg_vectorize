@@ -19,8 +19,7 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
-    index_type: &str,
-    distance_function: &str,
+    index_dist_type: &str,
     transformer: &str,
     // search_alg is now deprecated
     search_alg: types::SimilarityAlg,
