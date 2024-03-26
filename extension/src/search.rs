@@ -22,7 +22,7 @@ pub fn init_table(
     index_type: &str,
     distance_function: &str,
     transformer: &str,
-    // search_alg is now obsolete to index_type and distance_function
+    // search_alg is now deprecated
     search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -106,7 +106,7 @@ pub fn init_table(
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
-                    // search_alg is now obsolete to index_type and distance_function
+                    // search_alg is now deprecated
                     search_alg.to_string().into_datum(),
                 ),
                 (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
@@ -156,7 +156,7 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    // search_alg is now obsolete to index_type and distance_function
+    // search_alg is now deprecated
     initalize_table_job(job_name, &valid_params, &job_type, transformer, search_alg)?;
     Ok(format!("Successfully created job: {job_name}"))
 }
@@ -186,7 +186,7 @@ pub fn search(
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
-    // search_alg is now obsolete to index_type and distance_function
+    // search_alg is now deprecated
     match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
             job_name,

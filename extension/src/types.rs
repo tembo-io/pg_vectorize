@@ -34,3 +34,12 @@ impl From<SimilarityAlg> for CoreSimilarityAlg {
         }
     }
 }
+
+
+pub enum IndexDist {
+    hnsw_l2
+    hnsw_cosin
+...
+}
+
+
