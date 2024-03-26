@@ -16,7 +16,7 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
-    index_dist_type: default!(&str, "'hnsw'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
