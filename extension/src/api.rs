@@ -79,7 +79,7 @@ fn init_rag(
     // column that have data we want to be able to chat with
     column: &str,
     schema: default!(&str, "'public'"),
-    index_dist_type: default!(&str, "'hnsw'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
