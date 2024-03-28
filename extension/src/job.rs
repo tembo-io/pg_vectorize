@@ -9,7 +9,7 @@ use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 use vectorize_core::transformers::types::Inputs;
 use vectorize_core::types::{
-    JobMessage, JobParams, JobType, SimilarityAlg, TableMethod, VectorizeMeta,
+    IndexDist, JobMessage, JobParams, JobType, SimilarityAlg, TableMethod, VectorizeMeta,
 };
 
 /// called by the trigger function when a table is updated
@@ -117,6 +117,7 @@ pub fn initalize_table_job(
     job_name: &str,
     job_params: &JobParams,
     job_type: &JobType,
+    index_dist_type: IndexDist,
     transformer: &str,
     // search_alg is now deprecated
     search_alg: SimilarityAlg,
@@ -155,6 +156,7 @@ pub fn initalize_table_job(
         job_id: 0,
         job_type: job_type.clone(),
         params: serde_json::to_value(job_params.clone()).unwrap(),
+        index_dist_type: index_dist_type.clone(),
         transformer: transformer.to_string(),
         // search_alg is now deprecated
         search_alg: search_alg.clone(),
