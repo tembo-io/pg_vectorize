@@ -19,7 +19,7 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
-    index_dist_type: &str,
+    index_dist_type: types::IndexDist,
     transformer: &str,
     // search_alg is now deprecated
     search_alg: types::SimilarityAlg,
@@ -156,7 +156,14 @@ pub fn init_table(
     }
     // start with initial batch load
     // search_alg is now deprecated
-    initalize_table_job(job_name, &valid_params, &job_type, transformer, search_alg)?;
+    initalize_table_job(
+        job_name,
+        &valid_params,
+        &job_type,
+        index_dist_type,
+        transformer,
+        search_alg,
+    )?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 

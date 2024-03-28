@@ -32,7 +32,7 @@ fn table(
         primary_key,
         Some(serde_json::to_value(args).expect("failed to parse args")),
         Some(update_col),
-        index_dist_type,
+        index_dist_type.into(),
         transformer,
         // search_alg is now deprecated
         search_alg.into(),
@@ -98,7 +98,7 @@ fn init_rag(
         unique_record_id,
         None,
         None,
-        index_dist_type,
+        index_dist_type.into(),
         transformer,
         // search_alg is now deprecated
         search_alg.into(),
