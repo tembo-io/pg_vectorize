@@ -1,5 +1,7 @@
 use pgrx::*;
-use vectorize_core::types::{SimilarityAlg as CoreSimilarityAlg, TableMethod as CoreTableMethod};
+use vectorize_core::types::{
+    IndexDist as CoreIndexDist, SimilarityAlg as CoreSimilarityAlg, TableMethod as CoreTableMethod,
+};
 
 use serde::{Deserialize, Serialize};
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
@@ -23,6 +25,9 @@ impl From<TableMethod> for CoreTableMethod {
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+//
+// SimilarityAlg is now deprecated
+//
 pub enum SimilarityAlg {
     pgv_cosine_similarity,
 }
@@ -31,6 +36,24 @@ impl From<SimilarityAlg> for CoreSimilarityAlg {
     fn from(mysim: SimilarityAlg) -> Self {
         match mysim {
             SimilarityAlg::pgv_cosine_similarity => CoreSimilarityAlg::pgv_cosine_similarity,
+        }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
+pub enum IndexDist {
+    pgv_hnsw_l2,
+    pgv_hnsw_ip,
+    pgv_hnsw_cosin,
+}
+
+impl From<IndexDist> for CoreIndexDist {
+    fn from(dist: IndexDist) -> Self {
+        match dist {
+            IndexDist::pgv_hnsw_l2 => CoreIndexDist::pgv_hnsw_l2,
+            IndexDist::pgv_hnsw_ip => CoreIndexDist::pgv_hnsw_ip,
+            IndexDist::pgv_hnsw_cosin => CoreIndexDist::pgv_hnsw_cosin,
         }
     }
 }
