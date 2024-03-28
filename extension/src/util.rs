@@ -123,6 +123,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             job_id,
             name,
             job_type: job_type.into(),
+            index_dist_type: index_dist_type.into(),
             transformer,
             // search_alg is now deprecated
             search_alg: search_alg.into(),
