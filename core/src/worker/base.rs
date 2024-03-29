@@ -1,4 +1,4 @@
-use crate::transformers::{generic, http_handler, openai};
+use crate::transformers::{generic, http_handler, openai, ollama};
 use crate::types::{JobMessage, JobParams};
 use crate::worker::ops;
 use anyhow::Result;
@@ -95,6 +95,13 @@ async fn execute_job(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
+        )?,
+        // Adding default model URL for now
+        // Need to decide how the model url will be defined
+        "llama2" => ollama::prepare_ollama_embedding_request(
+            job_meta.clone(), 
+            &msg.message.inputs, 
+            "https://0.0.0.0:11434".to_string()
         )?,
         _ => generic::prepare_generic_embedding_request(
             job_meta.clone(),

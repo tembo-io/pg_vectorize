@@ -3,6 +3,7 @@ pub mod http_handler;
 pub mod openai;
 pub mod tembo;
 pub mod types;
+pub mod ollama;
 
 use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
 use generic::get_generic_svc_url;
