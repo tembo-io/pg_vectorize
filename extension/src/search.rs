@@ -101,6 +101,10 @@ pub fn init_table(
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
+                    index_dist_type.to_string().into_datum(),
+                ),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
                     transformer.to_string().into_datum(),
                 ),
                 (
@@ -155,13 +159,13 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    // search_alg is now deprecated
     initalize_table_job(
         job_name,
         &valid_params,
         &job_type,
         index_dist_type,
         transformer,
+        // search_alg is now deprecated
         search_alg,
     )?;
     Ok(format!("Successfully created job: {job_name}"))
@@ -191,6 +195,34 @@ pub fn search(
     };
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
+
+    match project_meta.index_dist_type {
+        types::IndexDist::pgv_hnsw_l2 => l2_similarity_search(
+            job_name,
+            &proj_params,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+            where_clause,
+        ),
+        types::IndexDist::pgv_hnsw_ip => ip_similarity_search(
+            // Assuming a function for inner product search
+            job_name,
+            &proj_params,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+            where_clause,
+        ),
+        types::IndexDist::pgv_hnsw_cosin => cosine_similarity_search(
+            job_name,
+            &proj_params,
+            &return_columns,
+            num_results,
+            &embeddings[0],
+            where_clause,
+        ),
+    }
 
     // search_alg is now deprecated
     match project_meta.search_alg {

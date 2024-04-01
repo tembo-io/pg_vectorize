@@ -156,7 +156,7 @@ pub fn initalize_table_job(
         job_id: 0,
         job_type: job_type.clone(),
         params: serde_json::to_value(job_params.clone()).unwrap(),
-        index_dist_type: index_dist_type.clone(),
+        index_dist_type: index_dist_type.clone().into(),
         transformer: transformer.to_string(),
         // search_alg is now deprecated
         search_alg: search_alg.clone(),

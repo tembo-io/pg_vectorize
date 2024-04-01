@@ -49,8 +49,8 @@ pub enum IndexDist {
 }
 
 impl From<IndexDist> for CoreIndexDist {
-    fn from(dist: IndexDist) -> Self {
-        match dist {
+    fn from(myindexdist: IndexDist) -> Self {
+        match myindexdist {
             IndexDist::pgv_hnsw_l2 => CoreIndexDist::pgv_hnsw_l2,
             IndexDist::pgv_hnsw_ip => CoreIndexDist::pgv_hnsw_ip,
             IndexDist::pgv_hnsw_cosin => CoreIndexDist::pgv_hnsw_cosin,
