@@ -147,7 +147,9 @@ SELECT * FROM vectorize.search(
     return_columns => ARRAY['product_id', 'product_name'],
     num_results => 3
 );
+```
 
+```text
                                        search_results                                        
 ---------------------------------------------------------------------------------------------
  {"product_id": 13, "product_name": "Phone Charger", "similarity_score": 0.8147814132322894}
@@ -204,6 +206,8 @@ SELECT vectorize.rag(
 ```text
 "A pencil is an item that is commonly used for writing and is known to be most effective on paper."
 ```
+
+:bulb: Note that the `-> 'chat_response'` addition selects for that field of the JSON object output. Removing it will show the full JSON object, including information on which documents were included in the contextual prompt.
 
 ## Updating Embeddings
 
