@@ -1,7 +1,6 @@
 mod util;
 use rand::Rng;
 use util::common;
-use vectorize_core::types::IndexDist;
 
 // Integration tests are ignored by default
 #[ignore]
