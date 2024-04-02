@@ -166,7 +166,7 @@ jobs:
          cargo install pg-trunk
       - name: trunk build
         working-directory: ./extension
-        run:
+        run: |
           mv ../core ./core
           sed -i '0,/..\/core/s//.\/core/' Cargo.toml
           ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
