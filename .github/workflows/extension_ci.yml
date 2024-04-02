@@ -179,8 +179,8 @@ jobs:
         run: ~/.cargo/bin/trunk publish
   build_and_push:
     name: Build and push images
-    needs:
-      - publish
+    # needs:
+    #   - publish
     env:
       TARGET_PLATFORMS: linux/amd64,linux/arm64    
     runs-on:
