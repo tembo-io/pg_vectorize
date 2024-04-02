@@ -1,4 +1,4 @@
-FROM postgres:15.4-bookworm as builder
+FROM postgres:16.2-bookworm as builder
 
 ARG PGMQ_VER=1.1.1
 ARG VECTOR_VER=0.6.0
@@ -49,9 +49,10 @@ RUN git clone https://github.com/tembo-io/pgmq.git && \
 
 # install pg-vectorize
 COPY . .
-RUN $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
+RUN cd extension && \
+	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
-FROM postgres:15.4-bookworm
+FROM postgres:16.2-bookworm
 
 COPY --from=builder /usr/share/postgresql/15/extension /usr/share/postgresql/15/extension
 COPY --from=builder /usr/lib/postgresql/15/lib /usr/lib/postgresql/15/lib
