@@ -137,7 +137,7 @@ jobs:
           make test-integration
 
   publish:
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-22.04
     strategy:
@@ -166,7 +166,10 @@ jobs:
          cargo install pg-trunk
       - name: trunk build
         working-directory: ./extension
-        run: ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
+        run:
+          mv ../core ./core
+          sed -i '0,/..\/core/s//.\/core/' Cargo.toml
+          ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         working-directory: ./extension
         env:
