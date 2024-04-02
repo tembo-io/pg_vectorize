@@ -45,7 +45,7 @@ impl From<SimilarityAlg> for CoreSimilarityAlg {
 pub enum IndexDist {
     pgv_hnsw_l2,
     pgv_hnsw_ip,
-    pgv_hnsw_cosin,
+    pgv_hnsw_cosine,
 }
 
 impl From<IndexDist> for CoreIndexDist {
@@ -53,7 +53,7 @@ impl From<IndexDist> for CoreIndexDist {
         match myindexdist {
             IndexDist::pgv_hnsw_l2 => CoreIndexDist::pgv_hnsw_l2,
             IndexDist::pgv_hnsw_ip => CoreIndexDist::pgv_hnsw_ip,
-            IndexDist::pgv_hnsw_cosin => CoreIndexDist::pgv_hnsw_cosin,
+            IndexDist::pgv_hnsw_cosine => CoreIndexDist::pgv_hnsw_cosine,
         }
     }
 }

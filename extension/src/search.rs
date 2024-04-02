@@ -199,7 +199,7 @@ pub fn search(
     let result = match project_meta.index_dist_type {
         types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
         types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
-        types::IndexDist::pgv_hnsw_cosin => cosine_similarity_search(
+        types::IndexDist::pgv_hnsw_cosine => cosine_similarity_search(
             job_name,
             &proj_params,
             &return_columns,

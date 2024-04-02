@@ -1,6 +1,7 @@
 mod util;
 use rand::Rng;
 use util::common;
+use vectorize_core::types::IndexDist;
 
 // Integration tests are ignored by default
 #[ignore]
@@ -525,4 +526,75 @@ async fn test_filter_append() {
         .as_i64()
         .expect("failed parsing product id");
     assert_eq!(product_id_val, 2);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_index_dist() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    // Initialize job using the join method
+    let index_dist_type = IndexDist::pgv_hnsw_cosine;
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'all-MiniLM-L12-v2',
+        index_dist_type => '{index_dist_type}',
+        table_method => 'join'
+    );",
+        job_name = job_name,
+        test_table_name = test_table_name,
+        index_dist_type = index_dist_type
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // Define filter for the first search
+    let filter = "product_id = 1".to_string();
+    // Execute first search with cosine similarity
+    let search_results_cosin =
+        common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 1, Some(filter))
+            .await
+            .expect("failed to exec search");
+    // Assert search results for the first search with cosine similarity
+    assert_eq!(search_results_cosin.len(), 1);
+    // Validate the product ID of the search result
+    let result_val = search_results_cosin[0].search_results.clone();
+    let product_id_val = result_val["product_id"]
+        .as_i64()
+        .expect("failed parsing product id");
+    assert_eq!(product_id_val, 1);
+
+    // Define filter for the second search
+    let filter = "product_id = 1 and product_name ilike 'pencil'".to_string();
+    // Execute second search with inner product
+    let search_results_ip = common::search_with_retry(
+        &conn,
+        "some random query",
+        &job_name,
+        10,
+        2,
+        1,
+        Some(filter),
+    )
+    .await
+    .expect("failed to exec search");
+    // Assert search results for the second search with inner product
+    assert_eq!(search_results_ip.len(), 1);
+    // Validate the product ID of the search result
+    let result_val = search_results_ip[0].search_results.clone();
+    let product_id_val = result_val["product_id"]
+        .as_i64()
+        .expect("failed parsing product id");
+    assert_eq!(product_id_val, 1);
 }

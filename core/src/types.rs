@@ -47,7 +47,7 @@ impl From<String> for SimilarityAlg {
 pub enum IndexDist {
     pgv_hnsw_l2,
     pgv_hnsw_ip,
-    pgv_hnsw_cosin,
+    pgv_hnsw_cosine,
 }
 
 impl Display for IndexDist {
@@ -55,7 +55,7 @@ impl Display for IndexDist {
         match self {
             IndexDist::pgv_hnsw_l2 => write!(f, "pgv_hnsw_l2"),
             IndexDist::pgv_hnsw_ip => write!(f, "pgv_hnsw_ip"),
-            IndexDist::pgv_hnsw_cosin => write!(f, "pgv_hnsw_cosin"),
+            IndexDist::pgv_hnsw_cosine => write!(f, "pgv_hnsw_cosine"),
         }
     }
 }
@@ -67,7 +67,7 @@ impl FromStr for IndexDist {
         match s {
             "pgv_hnsw_l2" => Ok(IndexDist::pgv_hnsw_l2),
             "pgv_hnsw_ip" => Ok(IndexDist::pgv_hnsw_ip),
-            "pgv_hnsw_cosin" => Ok(IndexDist::pgv_hnsw_cosin),
+            "pgv_hnsw_cosine" => Ok(IndexDist::pgv_hnsw_cosine),
             _ => Err(format!("Invalid value for IndexDist: {}", s)),
         }
     }
@@ -78,7 +78,7 @@ impl From<String> for IndexDist {
         match s.as_str() {
             "pgv_hnsw_l2" => IndexDist::pgv_hnsw_l2,
             "pgv_hnsw_ip" => IndexDist::pgv_hnsw_ip,
-            "pgv_hnsw_cosin" => IndexDist::pgv_hnsw_cosin,
+            "pgv_hnsw_cosine" => IndexDist::pgv_hnsw_cosine,
             _ => panic!("Invalid value for IndexDist: {}", s),
         }
     }
