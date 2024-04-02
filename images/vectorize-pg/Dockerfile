@@ -49,7 +49,8 @@ RUN git clone https://github.com/tembo-io/pgmq.git && \
 
 # install pg-vectorize
 COPY . .
-RUN $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
+RUN cd extension && \
+	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
 FROM postgres:15.4-bookworm
 
