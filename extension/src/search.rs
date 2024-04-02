@@ -196,24 +196,9 @@ pub fn search(
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
-    match project_meta.index_dist_type {
-        types::IndexDist::pgv_hnsw_l2 => l2_similarity_search(
-            job_name,
-            &proj_params,
-            &return_columns,
-            num_results,
-            &embeddings[0],
-            where_clause,
-        ),
-        types::IndexDist::pgv_hnsw_ip => ip_similarity_search(
-            // Assuming a function for inner product search
-            job_name,
-            &proj_params,
-            &return_columns,
-            num_results,
-            &embeddings[0],
-            where_clause,
-        ),
+    let result = match project_meta.index_dist_type {
+        types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
+        types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
         types::IndexDist::pgv_hnsw_cosin => cosine_similarity_search(
             job_name,
             &proj_params,
@@ -222,19 +207,14 @@ pub fn search(
             &embeddings[0],
             where_clause,
         ),
+    };
+
+    // Added error handling for the result of the match
+    if let Err(err) = result {
+        return Err(err);
     }
 
-    // search_alg is now deprecated
-    match project_meta.search_alg {
-        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
-            job_name,
-            &proj_params,
-            &return_columns,
-            num_results,
-            &embeddings[0],
-            where_clause,
-        ),
-    }
+    Ok(result.unwrap())
 }
 
 pub fn cosine_similarity_search(
