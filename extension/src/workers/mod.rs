@@ -5,7 +5,7 @@ use crate::transformers::generic::get_generic_svc_url;
 
 use vectorize_core::transformers::types::PairedEmbeddings;
 use vectorize_core::transformers::{generic, http_handler, openai};
-use vectorize_core::types;
+use vectorize_core::types::{self, Model, ModelSource};
 use vectorize_core::worker::ops;
 
 use anyhow::{Context, Result};
@@ -69,8 +69,9 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
     let job_meta = msg.message.job_meta;
     let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match job_meta.transformer.as_ref() {
-        "text-embedding-ada-002" => {
+    let model = Model::new(&job_meta.transformer)?;
+    let embedding_request = match model.source {
+        ModelSource::OpenAI => {
             info!("pg-vectorize: OpenAI transformer");
             let apikey = match job_params.api_key.clone() {
                 Some(k) => k,
@@ -87,7 +88,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
             };
             openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs, Some(apikey))
         }
-        _ => {
+        ModelSource::SentenceTransformers => {
             let svc_host =
                 get_generic_svc_url().context("failed to get embedding service url from GUC")?;
             generic::prepare_generic_embedding_request(

@@ -2,8 +2,10 @@ use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
+use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use thiserror::Error;
 
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
@@ -125,4 +127,129 @@ pub struct VectorizeMeta {
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Model {
+    pub source: ModelSource,
+    pub name: String,
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum ModelError {
+    #[error("Database error")]
+    InvalidSource,
+    #[error("Invalid model format: {0}")]
+    InvalidFormat(String),
+}
+
+impl Model {
+    pub fn new(input: &str) -> Result<Self, ModelError> {
+        let mut parts: Vec<&str> = input.split('/').collect();
+        let missing_source = parts.len() != 2;
+        if missing_source && parts[0] == "text-embedding-ada-002" {
+            // for backwards compatibility, prepend "openai" to text-embedding-ada-2
+            parts.insert(0, "openai");
+        } else if missing_source && parts[0] == "all-MiniLM-L12-v2" {
+            parts.insert(0, "sentence-transformers");
+        } else if missing_source {
+            return Err(ModelError::InvalidFormat(input.to_string()));
+        }
+
+        let source = parts[0]
+            .parse::<ModelSource>()
+            .map_err(|_| ModelError::InvalidSource)?;
+
+        Ok(Self {
+            source,
+            name: parts[1].to_string(),
+        })
+    }
+}
+
+impl fmt::Display for Model {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.source, self.name)
+    }
+}
+
+// model sources are places that serve models
+// each source can have its own API schema
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum ModelSource {
+    OpenAI,
+    SentenceTransformers,
+}
+
+impl FromStr for ModelSource {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "openai" => Ok(ModelSource::OpenAI),
+            "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
+            _ => Err(format!("Invalid value: {}", s)),
+        }
+    }
+}
+
+impl Display for ModelSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            ModelSource::OpenAI => write!(f, "openai"),
+            ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
+        }
+    }
+}
+
+impl From<String> for ModelSource {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "openai" => ModelSource::OpenAI,
+            "sentence-transformers" => ModelSource::SentenceTransformers,
+            _ => panic!("Invalid value for ModelSource: {}", s),
+        }
+    }
+}
+
+// test
+#[cfg(test)]
+mod model_tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_model_openai() {
+        let model = Model::new("openai/model-name").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "model-name");
+    }
+
+    #[test]
+    fn test_valid_model_sentencetransformers() {
+        let model = Model::new("sentence-transformers/model-name").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "model-name");
+    }
+
+    #[test]
+    fn test_invalid_model_source() {
+        assert!(Model::new("invalidsource/model-name").is_err());
+    }
+
+    #[test]
+    fn test_invalid_format_no_slash() {
+        assert!(Model::new("openaimodel-name").is_err());
+    }
+
+    #[test]
+    fn test_invalid_format_extra_slash() {
+        assert!(Model::new("openai/model/name").is_err());
+    }
+
+    #[test]
+    fn test_backwards_compatibility() {
+        let model = Model::new("text-embedding-ada-002").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "text-embedding-ada-002");
+    }
 }

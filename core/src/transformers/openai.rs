@@ -58,6 +58,15 @@ pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
         .collect()
 }
 
+pub fn openai_embedding_dim(model_name: &str) -> i32 {
+    match model_name {
+        "text-embedding-3-large" => 3072,
+        "text-embedding-3-small" => 1536,
+        "text-embedding-ada-002" => 1536,
+        _ => 1536,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
