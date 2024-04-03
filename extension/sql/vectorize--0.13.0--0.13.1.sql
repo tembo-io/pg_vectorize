@@ -1,4 +1,10 @@
--- TODO: update vectorize.job::transformer to namespace transformer names
+-- transformer names are now all namespaced
+UPDATE vectorize.job
+SET transformer = CASE
+    WHEN transformer = 'text-embedding-ada-002' THEN 'openai/text-embedding-ada-002'
+    WHEN transformer LIKE 'sentence-transformers/%' THEN transformer
+    ELSE 'sentence-transformers/' || transformer
+END;
 
 DROP FUNCTION vectorize."transform_embeddings";
 -- src/api.rs:63
@@ -10,8 +16,6 @@ CREATE  FUNCTION vectorize."transform_embeddings"(
 ) RETURNS double precision[] /* core::result::Result<alloc::vec::Vec<f64>, anyhow::Error> */
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'transform_embeddings_wrapper';
-
-
 
 DROP FUNCTION vectorize."rag";
 -- src/api.rs:108
@@ -47,8 +51,6 @@ CREATE  FUNCTION vectorize."init_rag"(
 STRICT
 LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'init_rag_wrapper';
-
-
 
 DROP FUNCTION VECTORIZE."table";
 -- src/api.rs:12
