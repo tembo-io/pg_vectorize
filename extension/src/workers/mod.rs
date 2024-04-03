@@ -5,7 +5,7 @@ use crate::transformers::generic::get_generic_svc_url;
 
 use vectorize_core::transformers::types::PairedEmbeddings;
 use vectorize_core::transformers::{generic, http_handler, openai};
-use vectorize_core::types::{self, Model, ModelSource};
+use vectorize_core::types::{self, ModelSource};
 use vectorize_core::worker::ops;
 
 use anyhow::{Context, Result};
@@ -69,8 +69,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
     let job_meta = msg.message.job_meta;
     let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let model = Model::new(&job_meta.transformer)?;
-    let embedding_request = match model.source {
+    let embedding_request = match job_meta.transformer.source {
         ModelSource::OpenAI => {
             info!("pg-vectorize: OpenAI transformer");
             let apikey = match job_params.api_key.clone() {

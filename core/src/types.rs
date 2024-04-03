@@ -122,7 +122,7 @@ pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub job_type: JobType,
-    pub transformer: String,
+    pub transformer: Model,
     pub search_alg: SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
@@ -133,6 +133,13 @@ pub struct VectorizeMeta {
 pub struct Model {
     pub source: ModelSource,
     pub name: String,
+}
+
+impl From<String> for Model {
+    fn from(input: String) -> Self {
+        let errmsg = format!("Invalid input string for Model: {}", input);
+        Model::new(&input).expect(&errmsg)
+    }
 }
 
 #[derive(Debug, Error, PartialEq)]

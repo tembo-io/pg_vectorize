@@ -120,10 +120,11 @@ fn rag(
     // truncates context to fit the model's context window
     force_trim: default!(bool, false),
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
+    let model = Model::new(&chat_model)?;
     let resp = call_chat(
         agent_name,
         query,
-        &chat_model,
+        &model,
         &task,
         api_key,
         num_context,

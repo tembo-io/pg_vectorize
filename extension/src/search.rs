@@ -179,8 +179,7 @@ pub fn search(
         // if not, use the one from the project metadata
         None => proj_params.api_key.clone(),
     };
-    let model = Model::new(&project_meta.transformer)?;
-    let embeddings = transform(query, &model, proj_api_key);
+    let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
     match project_meta.search_alg {
         types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(

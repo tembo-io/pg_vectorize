@@ -154,7 +154,7 @@ pub fn initalize_table_job(
         job_id: 0,
         job_type: job_type.clone(),
         params: serde_json::to_value(job_params.clone()).unwrap(),
-        transformer: transformer.to_string(),
+        transformer: transformer.clone(),
         search_alg: search_alg.clone(),
         last_completion: None,
     };
