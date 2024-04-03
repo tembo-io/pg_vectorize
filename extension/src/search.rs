@@ -8,7 +8,7 @@ use crate::util;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
-use vectorize_core::types::{self, TableMethod, VectorizeMeta};
+use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
@@ -19,7 +19,7 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
-    transformer: &str,
+    transformer: &Model,
     search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -50,8 +50,8 @@ pub fn init_table(
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
-    match transformer {
-        "text-embedding-ada-002" => {
+    match transformer.source {
+        ModelSource::OpenAI => {
             let openai_key = match api_key.clone() {
                 Some(k) => k,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
@@ -63,9 +63,10 @@ pub fn init_table(
             };
             openai::validate_api_key(&openai_key)?;
         }
-        t => {
+        ModelSource::SentenceTransformers => {
             // make sure transformer exists
-            let _ = sync_get_model_info(t, api_key.clone()).context("transformer does not exist");
+            let _ = sync_get_model_info(&transformer.name, api_key.clone())
+                .context("transformer does not exist");
         }
     }
 
@@ -178,7 +179,6 @@ pub fn search(
         // if not, use the one from the project metadata
         None => proj_params.api_key.clone(),
     };
-
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
     match project_meta.search_alg {

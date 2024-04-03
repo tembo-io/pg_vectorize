@@ -7,7 +7,7 @@ use std::env;
 use url::{ParseError, Url};
 
 use crate::guc;
-use vectorize_core::types;
+use vectorize_core::types::{self, Model};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -112,11 +112,12 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .expect("params column does not exist.")
             .expect("params column was null.");
 
+        let transformer_model = Model::new(&transformer)?;
         Ok(types::VectorizeMeta {
             job_id,
             name,
             job_type: job_type.into(),
-            transformer,
+            transformer: transformer_model,
             search_alg: search_alg.into(),
             params: serde_json::to_value(params).unwrap(),
             last_completion: None,

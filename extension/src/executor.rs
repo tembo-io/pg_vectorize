@@ -1,6 +1,5 @@
 use pgrx::prelude::*;
 
-use crate::errors::DatabaseError;
 use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
@@ -11,6 +10,7 @@ use sqlx::postgres::PgRow;
 use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
+use vectorize_core::errors::DatabaseError;
 use vectorize_core::transformers::types::Inputs;
 use vectorize_core::types::{JobMessage, JobParams, TableMethod, VectorizeMeta};
 

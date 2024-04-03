@@ -1,5 +1,5 @@
 use crate::transformers::{generic, http_handler, openai};
-use crate::types::{JobMessage, JobParams};
+use crate::types::{JobMessage, JobParams, ModelSource};
 use crate::worker::ops;
 use anyhow::Result;
 use log::{error, info};
@@ -90,13 +90,13 @@ async fn execute_job(
     let job_meta = msg.message.job_meta;
     let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match job_meta.transformer.as_ref() {
-        "text-embedding-ada-002" => openai::prepare_openai_request(
+    let embedding_request = match &job_meta.transformer.source {
+        ModelSource::OpenAI => openai::prepare_openai_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         )?,
-        _ => generic::prepare_generic_embedding_request(
+        ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.embedding_svc_url.clone(),

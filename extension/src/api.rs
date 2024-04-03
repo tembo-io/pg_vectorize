@@ -1,10 +1,11 @@
 use crate::chat::ops::call_chat;
 use crate::search::{self, init_table};
 use crate::transformers::transform;
-
 use crate::types;
+
 use anyhow::Result;
 use pgrx::prelude::*;
+use vectorize_core::types::Model;
 
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
@@ -16,12 +17,13 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
-    transformer: default!(&str, "'text-embedding-ada-002'"),
+    transformer: default!(&str, "'openai/text-embedding-ada-002'"),
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
+    let model = Model::new(transformer)?;
     init_table(
         job_name,
         schema,
@@ -30,7 +32,7 @@ fn table(
         primary_key,
         Some(serde_json::to_value(args).expect("failed to parse args")),
         Some(update_col),
-        transformer,
+        &model,
         search_alg.into(),
         table_method.into(),
         schedule,
@@ -60,10 +62,11 @@ fn search(
 #[pg_extern]
 fn transform_embeddings(
     input: &str,
-    model_name: default!(String, "'text-embedding-ada-002'"),
+    model_name: default!(String, "'openai/text-embedding-ada-002'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>> {
-    Ok(transform(input, &model_name, api_key).remove(0))
+    let model = Model::new(&model_name)?;
+    Ok(transform(input, &model, api_key).remove(0))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -76,7 +79,7 @@ fn init_rag(
     column: &str,
     schema: default!(&str, "'public'"),
     // transformer model to use in vector-search
-    transformer: default!(&str, "'text-embedding-ada-002'"),
+    transformer: default!(&str, "'openai/text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
@@ -84,6 +87,7 @@ fn init_rag(
 ) -> Result<String> {
     // chat only supports single columns transform
     let columns = vec![column.to_string()];
+    let transformer_model = Model::new(transformer)?;
     init_table(
         agent_name,
         schema,
@@ -92,7 +96,7 @@ fn init_rag(
         unique_record_id,
         None,
         None,
-        transformer,
+        &transformer_model,
         search_alg.into(),
         table_method.into(),
         schedule,
@@ -107,7 +111,7 @@ fn rag(
     // chat models: currently only supports gpt 3.5 and 4
     // https://platform.openai.com/docs/models/gpt-3-5-turbo
     // https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
-    chat_model: default!(String, "'gpt-3.5-turbo'"),
+    chat_model: default!(String, "'openai/gpt-3.5-turbo'"),
     // points to the type of prompt template to use
     task: default!(String, "'question_answer'"),
     api_key: default!(Option<String>, "NULL"),
@@ -116,10 +120,11 @@ fn rag(
     // truncates context to fit the model's context window
     force_trim: default!(bool, false),
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
+    let model = Model::new(&chat_model)?;
     let resp = call_chat(
         agent_name,
         query,
-        &chat_model,
+        &model,
         &task,
         api_key,
         num_context,
