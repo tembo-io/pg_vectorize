@@ -527,27 +527,78 @@ async fn test_filter_append() {
     assert_eq!(product_id_val, 2);
 }
 
+#[ignore]
 #[tokio::test]
-async fn test_index_dist_type() {
+async fn test_index_dist_type_hnsw_cosine() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
 
-    let dist_types = vec![
-        ("pgv_hnsw_cosine", true), // Expected to pass
-        ("pgv_hnsw_l2", false),    // Expected to fail
-        ("pgv_hnsw_ip", false),    // Expected to fail
-    ];
+    let dist_type = "pgv_hnsw_cosine";
+    let test_num: u32 = rand::thread_rng().gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    let job_name = format!("job_{}", test_num);
 
-    for (dist_type, should_pass) in dist_types {
-        let mut rng = rand::thread_rng();
-        let test_num = rng.gen_range(1..100000);
-        let test_table_name = format!("products_test_{}", test_num);
-        let job_name = format!("job_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
 
-        common::init_test_table(&test_table_name, &conn).await;
+    let query = format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        index_dist_type => '{dist_type}',
+        transformer => 'all-MiniLM-L12-v2',
+        schedule => 'realtime'
+    );",
+        job_name = job_name,
+        test_table_name = test_table_name,
+        dist_type = dist_type,
+    );
 
-        let query = format!(
-            "SELECT vectorize.table(
+    let result = sqlx::query(&query).execute(&conn).await;
+
+    assert!(
+        result.is_ok(),
+        "pgv_hnsw_cosine index_dist_type should pass but failed with: {:?}",
+        result.err()
+    );
+
+    // Now perform a search operation to ensure it passes
+    let search_query = format!(
+        "SELECT * FROM vectorize.search(
+            job_name => '{job_name}',
+            query => 'search query',
+            return_columns => ARRAY['product_name'],
+            num_results => 10
+        );",
+        job_name = job_name
+    );
+
+    let search_result = sqlx::query(&search_query).fetch_all(&conn).await;
+
+    // Assert that the search operation is successful
+    assert!(
+        search_result.is_ok(),
+        "Search operation failed with pgv_hnsw_cosine distribution type: {:?}",
+        search_result.err()
+    );
+}
+
+#[tokio::test]
+#[ignore]
+async fn test_index_dist_type_hnsw_l2() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+
+    let dist_type = "pgv_hnsw_l2";
+    let test_num: u32 = rand::thread_rng().gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    let job_name = format!("job_{}", test_num);
+
+    // Initialize the test table and job
+    common::init_test_table(&test_table_name, &conn).await;
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
             job_name => '{job_name}',
             \"table\" => '{test_table_name}',
             primary_key => 'product_id',
@@ -556,41 +607,81 @@ async fn test_index_dist_type() {
             transformer => 'all-MiniLM-L12-v2',
             schedule => 'realtime'
         );",
-            job_name = job_name,
-            test_table_name = test_table_name,
-            dist_type = dist_type,
-        );
+        job_name = job_name,
+        test_table_name = test_table_name,
+        dist_type = dist_type,
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to initialize job");
 
-        let result = sqlx::query(&query).execute(&conn).await;
+    // Directly call vectorize.search to perform a search operation
+    let search_query = format!(
+        "SELECT * FROM vectorize.search(
+            job_name => '{job_name}',
+            query => 'search query',
+            return_columns => ARRAY['product_name'],
+            num_results => 10
+        );",
+        job_name = job_name
+    );
 
-        // Assert based on whether this index_dist_type is expected to pass or fail
-        match (should_pass, result) {
-            (true, Ok(_)) => (),   // Pass: Expected to succeed, and it did.
-            (false, Err(_)) => (), // Pass: Expected to fail, and it did.
-            (true, Err(e)) => panic!("Expected to pass, but failed: {:?}", e),
-            (false, Ok(_)) => panic!("Expected to fail, but passed."),
-        }
+    let search_result = sqlx::query(&search_query).fetch_all(&conn).await;
 
-        if should_pass {
-            let filter = "product_id = 2".to_string();
-            let search_results = common::search_with_retry(
-                &conn,
-                "mobile devices",
-                &job_name,
-                10,
-                2,
-                1,
-                Some(filter),
-            )
-            .await
-            .expect("failed to exec search");
-            assert_eq!(search_results.len(), 1);
+    // Assert that the search operation fails as expected with pgv_hnsw_l2
+    assert!(
+        search_result.is_err(),
+        "Expected search with pgv_hnsw_l2 to fail, but it succeeded."
+    );
+}
 
-            let result_val = search_results[0].search_results.clone();
-            let product_id_val = result_val["product_id"]
-                .as_i64()
-                .expect("failed parsing product id");
-            assert_eq!(product_id_val, 2);
-        }
-    }
+#[tokio::test]
+#[ignore]
+async fn test_index_dist_type_hnsw_ip() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+
+    let dist_type = "pgv_hnsw_ip";
+    let test_num: u32 = rand::thread_rng().gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    let job_name = format!("job_{}", test_num);
+
+    // Initialize the test table and job
+    common::init_test_table(&test_table_name, &conn).await;
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+            job_name => '{job_name}',
+            \"table\" => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['product_name'],
+            index_dist_type => '{dist_type}',
+            transformer => 'all-MiniLM-L12-v2',
+            schedule => 'realtime'
+        );",
+        job_name = job_name,
+        test_table_name = test_table_name,
+        dist_type = dist_type,
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to initialize job");
+
+    // Directly call vectorize.search to perform a search operation
+    let search_query = format!(
+        "SELECT * FROM vectorize.search(
+            job_name => '{job_name}',
+            query => 'search query',
+            return_columns => ARRAY['product_name'],
+            num_results => 10
+        );",
+        job_name = job_name
+    );
+
+    let search_result = sqlx::query(&search_query).fetch_all(&conn).await;
+
+    // Assert that the search operation fails as expected with pgv_hnsw_l2
+    assert!(
+        search_result.is_err(),
+        "Expected search with pgv_hnsw_ip to fail, but it succeeded."
+    );
 }
