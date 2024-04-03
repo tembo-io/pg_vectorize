@@ -526,3 +526,71 @@ async fn test_filter_append() {
         .expect("failed parsing product id");
     assert_eq!(product_id_val, 2);
 }
+
+#[tokio::test]
+async fn test_index_dist_type() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+
+    let dist_types = vec![
+        ("pgv_hnsw_cosine", true), // Expected to pass
+        ("pgv_hnsw_l2", false),    // Expected to fail
+        ("pgv_hnsw_ip", false),    // Expected to fail
+    ];
+
+    for (dist_type, should_pass) in dist_types {
+        let mut rng = rand::thread_rng();
+        let test_num = rng.gen_range(1..100000);
+        let test_table_name = format!("products_test_{}", test_num);
+        let job_name = format!("job_{}", test_num);
+
+        common::init_test_table(&test_table_name, &conn).await;
+
+        let query = format!(
+            "SELECT vectorize.table(
+            job_name => '{job_name}',
+            \"table\" => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['product_name'],
+            index_dist_type => '{dist_type}',
+            transformer => 'all-MiniLM-L12-v2',
+            schedule => 'realtime'
+        );",
+            job_name = job_name,
+            test_table_name = test_table_name,
+            dist_type = dist_type,
+        );
+
+        let result = sqlx::query(&query).execute(&conn).await;
+
+        // Assert based on whether this index_dist_type is expected to pass or fail
+        match (should_pass, result) {
+            (true, Ok(_)) => (),   // Pass: Expected to succeed, and it did.
+            (false, Err(_)) => (), // Pass: Expected to fail, and it did.
+            (true, Err(e)) => panic!("Expected to pass, but failed: {:?}", e),
+            (false, Ok(_)) => panic!("Expected to fail, but passed."),
+        }
+
+        if should_pass {
+            let filter = "product_id = 2".to_string();
+            let search_results = common::search_with_retry(
+                &conn,
+                "mobile devices",
+                &job_name,
+                10,
+                2,
+                1,
+                Some(filter),
+            )
+            .await
+            .expect("failed to exec search");
+            assert_eq!(search_results.len(), 1);
+
+            let result_val = search_results[0].search_results.clone();
+            let product_id_val = result_val["product_id"]
+                .as_i64()
+                .expect("failed parsing product id");
+            assert_eq!(product_id_val, 2);
+        }
+    }
+}

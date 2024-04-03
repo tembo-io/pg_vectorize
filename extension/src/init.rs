@@ -56,7 +56,7 @@ pub fn init_job_query() -> String {
     format!(
         "
         INSERT INTO {schema}.job (name, job_type, index_dist_type, transformer, search_alg, params)
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,
             index_dist_type = EXCLUDED.index_dist_type,
