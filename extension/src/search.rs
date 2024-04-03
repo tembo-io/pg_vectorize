@@ -196,7 +196,7 @@ pub fn search(
 
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
-    let result = match project_meta.index_dist_type {
+    match project_meta.index_dist_type {
         types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
         types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
         types::IndexDist::pgv_hnsw_cosine => cosine_similarity_search(
@@ -207,14 +207,7 @@ pub fn search(
             &embeddings[0],
             where_clause,
         ),
-    };
-
-    // Added error handling for the result of the match
-    if let Err(err) = result {
-        return Err(err);
     }
-
-    Ok(result.unwrap())
 }
 
 pub fn cosine_similarity_search(
