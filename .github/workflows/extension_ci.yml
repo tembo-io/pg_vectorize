@@ -166,7 +166,12 @@ jobs:
          cargo install pg-trunk
       - name: trunk build
         working-directory: ./extension
-        run: ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
+        # trunk does not support path dependencies in Cargo.toml that are not within the current working directory
+        # therefore, we need to move the core crate into the extension directory for the build
+        run: |
+          mv ../core ./core
+          sed -i '0,/..\/core/s//.\/core/' Cargo.toml
+          ~/.cargo/bin/trunk build --pg-version ${{ matrix.pg-version }}
       - name: trunk publish
         working-directory: ./extension
         env:
