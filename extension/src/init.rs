@@ -55,12 +55,14 @@ pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> 
 
 pub fn init_job_query() -> String {
     // params is jsonb. conduct a merge on conflict instead of a overwrite
+    // search_alg is now deprecated
     format!(
         "
-        INSERT INTO {schema}.job (name, job_type, transformer, search_alg, params)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO {schema}.job (name, job_type, index_dist_type, transformer, search_alg, params)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (name) DO UPDATE SET
             job_type = EXCLUDED.job_type,
+            index_dist_type = EXCLUDED.index_dist_type,
             search_alg = EXCLUDED.search_alg,
             params = job.params || EXCLUDED.params;
         ",

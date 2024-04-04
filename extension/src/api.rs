@@ -17,7 +17,9 @@ fn table(
     args: default!(pgrx::Json, "'{}'"),
     schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     transformer: default!(&str, "'openai/text-embedding-ada-002'"),
+    // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -32,7 +34,9 @@ fn table(
         primary_key,
         Some(serde_json::to_value(args).expect("failed to parse args")),
         Some(update_col),
+        index_dist_type.into(),
         &model,
+        // search_alg is now deprecated
         search_alg.into(),
         table_method.into(),
         schedule,
@@ -78,9 +82,11 @@ fn init_rag(
     // column that have data we want to be able to chat with
     column: &str,
     schema: default!(&str, "'public'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'openai/text-embedding-ada-002'"),
     // similarity algorithm to use in vector-search
+    // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     schedule: default!(&str, "'* * * * *'"),
@@ -96,7 +102,9 @@ fn init_rag(
         unique_record_id,
         None,
         None,
+        index_dist_type.into(),
         &transformer_model,
+        // search_alg is now deprecated
         search_alg.into(),
         table_method.into(),
         schedule,
