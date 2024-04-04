@@ -102,8 +102,9 @@ pub fn init_embedding_table_query(
             format!("vector({dim})")
         }
         ModelSource::SentenceTransformers => {
-            let model_info: TransformerMetadata = sync_get_model_info(&transformer.name, api_key)
-                .expect("failed to call vectorize.embedding_service_url");
+            let model_info: TransformerMetadata =
+                sync_get_model_info(&transformer.fullname, api_key)
+                    .expect("failed to call vectorize.embedding_service_url");
             let dim = model_info.embedding_dimension;
             format!("vector({dim})")
         }
