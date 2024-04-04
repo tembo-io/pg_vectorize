@@ -67,8 +67,8 @@ pub fn init_table(
         }
         ModelSource::SentenceTransformers => {
             // make sure transformer exists
-            let _ = sync_get_model_info(&transformer.name, api_key.clone())
-                .context("transformer does not exist");
+            sync_get_model_info(&transformer.fullname, api_key.clone())
+                .context("transformer does not exist")?;
         }
     }
 

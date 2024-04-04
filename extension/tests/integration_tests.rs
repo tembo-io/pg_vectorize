@@ -685,3 +685,52 @@ async fn test_index_dist_type_hnsw_ip() {
         "Expected search with pgv_hnsw_ip to fail, but it succeeded."
     );
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_private_hf_model() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    common::init_embedding_svc_url(&conn).await;
+
+    let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
+
+    // initialize a job
+    let created = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'chuckhend/private-model',
+        schedule => 'realtime',
+        args => '{{\"api_key\": \"{hf_api_key}\"}}'
+    );"
+    ))
+    .execute(&conn)
+    .await;
+
+    assert!(created.is_ok(), "Failed with error: {:?}", created);
+
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.search(
+        job_name => '{job_name}',
+        query => 'mobile devices',
+        return_columns => ARRAY['product_name'],
+        num_results => 3
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to select from test_table");
+    // 3 rows returned
+    assert_eq!(result.rows_affected(), 3);
+}

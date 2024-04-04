@@ -55,6 +55,8 @@ jobs:
           sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
           make setup
       - name: Test previous version (main))
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
           git fetch --tags
           git checkout main
@@ -63,6 +65,7 @@ jobs:
       - name: Test branch's version
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
           git checkout $CI_BRANCH
           make test-update

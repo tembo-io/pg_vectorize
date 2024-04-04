@@ -44,7 +44,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
             let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],
-                model: transformer.name.to_string(),
+                model: transformer.fullname.to_string(),
             };
             EmbeddingRequest {
                 url,

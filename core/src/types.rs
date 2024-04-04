@@ -177,6 +177,8 @@ pub struct VectorizeMeta {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Model {
     pub source: ModelSource,
+    // the model's namespace + model name
+    pub fullname: String,
     pub name: String,
 }
 
@@ -189,8 +191,8 @@ impl From<String> for Model {
 
 #[derive(Debug, Error, PartialEq)]
 pub enum ModelError {
-    #[error("Database error")]
-    InvalidSource,
+    #[error("Invalid model source: {0}")]
+    InvalidSource(String),
     #[error("Invalid model format: {0}")]
     InvalidFormat(String),
 }
@@ -210,10 +212,11 @@ impl Model {
 
         let source = parts[0]
             .parse::<ModelSource>()
-            .map_err(|_| ModelError::InvalidSource)?;
+            .map_err(|_| ModelError::InvalidSource(parts[0].to_string()))?;
 
         Ok(Self {
             source,
+            fullname: format!("{}/{}", parts[0], parts[1]),
             name: parts[1].to_string(),
         })
     }
@@ -221,7 +224,7 @@ impl Model {
 
 impl fmt::Display for Model {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.source, self.name)
+        write!(f, "{}", self.fullname)
     }
 }
 
@@ -240,7 +243,7 @@ impl FromStr for ModelSource {
         match s.to_lowercase().as_str() {
             "openai" => Ok(ModelSource::OpenAI),
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
-            _ => Err(format!("Invalid value: {}", s)),
+            _ => Ok(ModelSource::SentenceTransformers),
         }
     }
 }
@@ -259,7 +262,9 @@ impl From<String> for ModelSource {
         match s.as_str() {
             "openai" => ModelSource::OpenAI,
             "sentence-transformers" => ModelSource::SentenceTransformers,
-            _ => panic!("Invalid value for ModelSource: {}", s),
+            // other cases are assumed to be private sentence-transformer compatible model
+            // and can be hot-loaded
+            _ => ModelSource::SentenceTransformers,
         }
     }
 }
@@ -268,6 +273,24 @@ impl From<String> for ModelSource {
 #[cfg(test)]
 mod model_tests {
     use super::*;
+
+    #[test]
+    fn test_legacy_fullname() {
+        let model = Model::new("text-embedding-ada-002").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "text-embedding-ada-002");
+        assert_eq!(model.fullname, "openai/text-embedding-ada-002");
+        let model_string = model.to_string();
+        assert_eq!(model_string, "openai/text-embedding-ada-002");
+
+        let model = Model::new("all-MiniLM-L12-v2").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "all-MiniLM-L12-v2");
+        assert_eq!(model.fullname, "sentence-transformers/all-MiniLM-L12-v2");
+
+        let model_string = model.to_string();
+        assert_eq!(model_string, "sentence-transformers/all-MiniLM-L12-v2");
+    }
 
     #[test]
     fn test_valid_model_openai() {
@@ -284,8 +307,12 @@ mod model_tests {
     }
 
     #[test]
-    fn test_invalid_model_source() {
-        assert!(Model::new("invalidsource/model-name").is_err());
+    fn test_unknown_namespace() {
+        // unknown namespace should default to sentence-transformers
+        let model = Model::new("unknown/model-name").unwrap();
+        assert!(model.source == ModelSource::SentenceTransformers);
+        assert!(model.name == "model-name");
+        assert!(model.fullname == "unknown/model-name");
     }
 
     #[test]
@@ -303,5 +330,15 @@ mod model_tests {
         let model = Model::new("text-embedding-ada-002").unwrap();
         assert_eq!(model.source, ModelSource::OpenAI);
         assert_eq!(model.name, "text-embedding-ada-002");
+    }
+
+    #[test]
+    fn test_private_hf_sentence_transformer() {
+        let model = Model::new("chuckhend/private-model").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "private-model");
+        assert_eq!(model.fullname, "chuckhend/private-model");
+        let model_string = model.to_string();
+        assert_eq!(model_string, "chuckhend/private-model");
     }
 }
