@@ -7,6 +7,8 @@ use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
+use vectorize_core::types::Model;
+use vectorize_core::types::ModelSource;
 
 use crate::chat::types::{ChatResponse, ContextualSearch, PromptTemplate, RenderedPrompt};
 use tiktoken_rs::{get_bpe_from_model, model::get_context_size, CoreBPE};
@@ -15,7 +17,7 @@ use vectorize_core::types::{JobParams, VectorizeMeta};
 pub fn call_chat(
     agent_name: &str,
     query: &str,
-    chat_model: &str,
+    chat_model: &Model,
     task: &str,
     api_key: Option<String>,
     num_context: i32,
@@ -28,7 +30,7 @@ pub fn call_chat(
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
 
     // for various token count estimations
-    let bpe = get_bpe_from_model(chat_model).expect("failed to get BPE from model");
+    let bpe = get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model");
 
     // can only be 1 column in a chat job, for now, so safe to grab first element
     let content_column = job_params.columns[0].clone();
@@ -88,7 +90,7 @@ pub fn call_chat(
     let sys_prompt_template = p_ok.sys_prompt;
     let user_prompt_template = p_ok.user_prompt;
 
-    let max_context_length = get_context_size(chat_model) as i32;
+    let max_context_length = get_context_size(&chat_model.name) as i32;
 
     let rendered_prompt = prepared_prompt(
         &search_results,
@@ -101,7 +103,13 @@ pub fn call_chat(
     )?;
 
     // http request to chat completions
-    let chat_response = call_chat_completions(rendered_prompt, chat_model, api_key)?;
+    let chat_response = match chat_model.source {
+        ModelSource::OpenAI => call_chat_completions(rendered_prompt, &chat_model.name, api_key)?,
+        ModelSource::SentenceTransformers => {
+            error!("SentenceTransformers not supported for chat completions");
+        }
+    };
+
     Ok(ChatResponse {
         context: search_results,
         chat_response,

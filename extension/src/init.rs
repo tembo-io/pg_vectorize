@@ -6,8 +6,11 @@ use crate::{
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
-use vectorize_core::transformers::types::TransformerMetadata;
 use vectorize_core::types::{JobParams, TableMethod};
+use vectorize_core::{
+    transformers::{openai::openai_embedding_dim, types::TransformerMetadata},
+    types::{Model, ModelSource},
+};
 
 pub static VECTORIZE_QUEUE: &str = "vectorize_jobs";
 
@@ -85,7 +88,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
 
 pub fn init_embedding_table_query(
     job_name: &str,
-    transformer: &str,
+    transformer: &Model,
     job_params: &JobParams,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
@@ -93,12 +96,15 @@ pub fn init_embedding_table_query(
     let table = &job_params.table;
     let api_key = job_params.api_key.clone();
 
-    let col_type = match transformer {
+    let col_type = match transformer.source {
         // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
         // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
-        "text-embedding-ada-002" => "vector(1536)".to_owned(),
-        _ => {
-            let model_info: TransformerMetadata = sync_get_model_info(transformer, api_key)
+        ModelSource::OpenAI => {
+            let dim = openai_embedding_dim(&transformer.name);
+            format!("vector({dim})")
+        }
+        ModelSource::SentenceTransformers => {
+            let model_info: TransformerMetadata = sync_get_model_info(&transformer.name, api_key)
                 .expect("failed to call vectorize.embedding_service_url");
             let dim = model_info.embedding_dimension;
             format!("vector({dim})")

@@ -2,7 +2,6 @@ use pgrx::prelude::*;
 
 mod api;
 mod chat;
-mod errors;
 mod executor;
 mod guc;
 mod init;

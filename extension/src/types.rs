@@ -23,6 +23,8 @@ impl From<TableMethod> for CoreTableMethod {
     }
 }
 
+// NOTE: re-implementing SimilarityAlg enum from vectorize_core because we need to derive the PostgresEnum trait on it here
+// this Enum will be soon deprecated
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize, PostgresEnum)]
 //
