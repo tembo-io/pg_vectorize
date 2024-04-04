@@ -130,6 +130,8 @@ jobs:
         run: |
           make test-unit
       - name: integration-test
+        env:
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
         run: |
           pgrx15_config=$(/usr/local/bin/stoml ~/.pgrx/config.toml configs.pg15)
           pg_version=$(/usr/local/bin/stoml Cargo.toml features.default)

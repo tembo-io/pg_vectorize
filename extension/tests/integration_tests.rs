@@ -698,6 +698,8 @@ async fn test_private_hf_model() {
 
     common::init_embedding_svc_url(&conn).await;
 
+    let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
+
     // initialize a job
     let created = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -706,7 +708,8 @@ async fn test_private_hf_model() {
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'chuckhend/private-model',
-        schedule => 'realtime'
+        schedule => 'realtime',
+        args => '{{\"api_key\": \"{hf_api_key}\"}}'
     );"
     ))
     .execute(&conn)
