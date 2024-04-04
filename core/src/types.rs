@@ -276,12 +276,12 @@ mod model_tests {
 
     #[test]
     fn test_legacy_fullname() {
-        let model = Model::new("text-embedding-ada-2").unwrap();
+        let model = Model::new("text-embedding-ada-002").unwrap();
         assert_eq!(model.source, ModelSource::OpenAI);
-        assert_eq!(model.name, "text-embedding-ada-2");
-        assert_eq!(model.fullname, "openai/text-embedding-ada-2");
+        assert_eq!(model.name, "text-embedding-ada-002");
+        assert_eq!(model.fullname, "openai/text-embedding-ada-002");
         let model_string = model.to_string();
-        assert_eq!(model_string, "openai/text-embedding-ada-2");
+        assert_eq!(model_string, "openai/text-embedding-ada-002");
 
         let model = Model::new("all-MiniLM-L12-v2").unwrap();
         assert_eq!(model.source, ModelSource::SentenceTransformers);
