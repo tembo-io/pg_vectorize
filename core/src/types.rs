@@ -216,7 +216,7 @@ impl Model {
 
         Ok(Self {
             source,
-            fullname: input.to_string(),
+            fullname: format!("{}/{}", parts[0], parts[1]),
             name: parts[1].to_string(),
         })
     }
