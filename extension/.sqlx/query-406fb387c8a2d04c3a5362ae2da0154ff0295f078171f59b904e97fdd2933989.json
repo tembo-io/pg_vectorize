@@ -20,21 +20,26 @@
       },
       {
         "ordinal": 3,
-        "name": "transformer",
+        "name": "index_dist_type",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "search_alg",
+        "name": "transformer",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
+        "name": "search_alg",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "params",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "last_completion",
         "type_info": "Timestamptz"
       }
@@ -45,6 +50,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

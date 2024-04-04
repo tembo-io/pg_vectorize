@@ -11,6 +11,7 @@ pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+// SimilarityAlg is now deprecated
 pub enum SimilarityAlg {
     pgv_cosine_similarity,
 }
@@ -39,6 +40,48 @@ impl From<String> for SimilarityAlg {
         match s.as_str() {
             "pgv_cosine_similarity" => SimilarityAlg::pgv_cosine_similarity, // ... handle other variants ...
             _ => panic!("Invalid value for SimilarityAlg: {}", s), // or handle this case differently
+        }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum IndexDist {
+    pgv_hnsw_l2,
+    pgv_hnsw_ip,
+    pgv_hnsw_cosine,
+}
+
+impl Display for IndexDist {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            IndexDist::pgv_hnsw_l2 => write!(f, "pgv_hnsw_l2"),
+            IndexDist::pgv_hnsw_ip => write!(f, "pgv_hnsw_ip"),
+            IndexDist::pgv_hnsw_cosine => write!(f, "pgv_hnsw_cosine"),
+        }
+    }
+}
+
+impl FromStr for IndexDist {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pgv_hnsw_l2" => Ok(IndexDist::pgv_hnsw_l2),
+            "pgv_hnsw_ip" => Ok(IndexDist::pgv_hnsw_ip),
+            "pgv_hnsw_cosine" => Ok(IndexDist::pgv_hnsw_cosine),
+            _ => Err(format!("Invalid value for IndexDist: {}", s)),
+        }
+    }
+}
+
+impl From<String> for IndexDist {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "pgv_hnsw_l2" => IndexDist::pgv_hnsw_l2,
+            "pgv_hnsw_ip" => IndexDist::pgv_hnsw_ip,
+            "pgv_hnsw_cosine" => IndexDist::pgv_hnsw_cosine,
+            _ => panic!("Invalid value for IndexDist: {}", s),
         }
     }
 }
@@ -122,7 +165,9 @@ pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub job_type: JobType,
+    pub index_dist_type: IndexDist,
     pub transformer: Model,
+    // search_alg and SimilarityAlg are now deprecated
     pub search_alg: SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]

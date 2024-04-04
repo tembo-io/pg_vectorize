@@ -1,3 +1,5 @@
+ALTER TABLE vectorize.job ADD COLUMN index_dist_type TEXT NOT NULL DEFAULT 'pgv_hsnw_cosine';
+
 -- transformer names are now all namespaced
 UPDATE vectorize.job
 SET transformer = CASE
@@ -43,6 +45,7 @@ CREATE  FUNCTION vectorize."init_rag"(
 	"unique_record_id" TEXT, /* &str */
 	"column" TEXT, /* &str */
 	"schema" TEXT DEFAULT 'public', /* &str */
+  "index_dist_type" TEXT DEFAULT 'pgv_hsnw_cosine', /* vectorize::types::IndexDist */
 	"transformer" TEXT DEFAULT 'openai/text-embedding-ada-002', /* &str */
 	"search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
 	"table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
@@ -63,7 +66,8 @@ CREATE  FUNCTION vectorize."table"(
 	"args" json DEFAULT '{}', /* pgrx::datum::json::Json */
 	"schema" TEXT DEFAULT 'public', /* &str */
 	"update_col" TEXT DEFAULT 'last_updated_at', /* alloc::string::String */
-	"transformer" TEXT DEFAULT 'openai/text-embedding-ada-002', /* &str */
+	"index_dist_type" TEXT DEFAULT 'pgv_hsnw_cosine', /* vectorize::types::IndexDist */
+  "transformer" TEXT DEFAULT 'openai/text-embedding-ada-002', /* &str */
 	"search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
 	"table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
 	"schedule" TEXT DEFAULT '* * * * *' /* &str */

@@ -19,7 +19,9 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
+    index_dist_type: types::IndexDist,
     transformer: &Model,
+    // search_alg is now deprecated
     search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -100,10 +102,15 @@ pub fn init_table(
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
+                    index_dist_type.to_string().into_datum(),
+                ),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
                     transformer.to_string().into_datum(),
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
+                    // search_alg is now deprecated
                     search_alg.to_string().into_datum(),
                 ),
                 (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
@@ -153,7 +160,15 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    initalize_table_job(job_name, &valid_params, &job_type, transformer, search_alg)?;
+    initalize_table_job(
+        job_name,
+        &valid_params,
+        &job_type,
+        index_dist_type,
+        transformer,
+        // search_alg is now deprecated
+        search_alg,
+    )?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 
@@ -181,8 +196,10 @@ pub fn search(
     };
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
-    match project_meta.search_alg {
-        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+    match project_meta.index_dist_type {
+        types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
+        types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
+        types::IndexDist::pgv_hnsw_cosine => cosine_similarity_search(
             job_name,
             &proj_params,
             &return_columns,
