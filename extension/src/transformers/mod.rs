@@ -12,16 +12,17 @@ use pgrx::prelude::*;
 use vectorize_core::transformers::http_handler::openai_embedding_request;
 use vectorize_core::transformers::openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
 use vectorize_core::transformers::types::{EmbeddingPayload, EmbeddingRequest};
+use vectorize_core::types::{Model, ModelSource};
 
-pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec<Vec<f64>> {
+pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let embedding_request = match transformer {
-        "text-embedding-ada-002" => {
+    let embedding_request = match transformer.source {
+        ModelSource::OpenAI => {
             let openai_key = match api_key {
                 Some(k) => k.to_owned(),
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
@@ -42,11 +43,11 @@ pub fn transform(input: &str, transformer: &str, api_key: Option<String>) -> Vec
                 api_key: Some(openai_key.to_string()),
             }
         }
-        _ => {
+        ModelSource::SentenceTransformers => {
             let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],
-                model: transformer.to_string(),
+                model: transformer.fullname.to_string(),
             };
             EmbeddingRequest {
                 url,

@@ -43,6 +43,8 @@ pub struct Config {
     pub queue_name: String,
     pub embedding_svc_url: String,
     pub openai_api_key: Option<String>,
+    pub ollama_host: Option<String>,
+    pub ollama_port: i32,
     pub embedding_request_timeout: i32,
     pub poll_interval: u64,
     pub poll_interval_error: u64,
@@ -62,6 +64,10 @@ impl Config {
                 "http://localhost:3000/v1/embeddings",
             ),
             openai_api_key: env::var("OPENAI_API_KEY").ok(),
+            ollama_host: env::var("OLLAMA_HOST").ok(),
+            ollama_port: from_env_default("OLLAMA_PORT", "11434")
+                .parse()
+                .unwrap(),
             embedding_request_timeout: from_env_default("EMBEDDING_REQUEST_TIMEOUT", "6")
                 .parse()
                 .unwrap(),
@@ -90,20 +96,20 @@ async fn execute_job(
     let job_meta = msg.message.job_meta;
     let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match job_meta.transformer.as_ref() {
-        "text-embedding-ada-002" => openai::prepare_openai_request(
+    let embedding_request = match &job_meta.transformer.source {
+        ModelSource::OpenAI => openai::prepare_openai_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         )?,
         // Adding default model URL for now
         // Need to decide how the model url will be defined
-        "llama2" => ollama::prepare_ollama_embedding_request(
+        ModelSource::Ollama => ollama::prepare_ollama_embedding_request(
             job_meta.clone(), 
             &msg.message.inputs, 
-            "https://0.0.0.0:11434".to_string()
+            // .to_string()
         )?,
-        _ => generic::prepare_generic_embedding_request(
+        ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
             cfg.embedding_svc_url.clone(),

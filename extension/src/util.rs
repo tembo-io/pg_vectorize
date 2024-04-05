@@ -7,7 +7,7 @@ use std::env;
 use url::{ParseError, Url};
 
 use crate::guc;
-use vectorize_core::types;
+use vectorize_core::types::{self, Model};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -62,11 +62,13 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 }
 
 pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
+    // search_alg is now deprecated
     let query: &str = "
         SELECT 
             job_id,
             name,
             job_type,
+            index_dist_type,
             transformer,
             search_alg,
             params
@@ -99,10 +101,15 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .get_by_name("job_type")
             .expect("job_type column does not exist.")
             .expect("job_type column was null.");
+        let index_dist_type: String = result_row
+            .get_by_name("index_dist_type")
+            .expect("index_dist_type column does not exist.")
+            .expect("index_dist_type column was null.");
         let transformer: String = result_row
             .get_by_name("transformer")
             .expect("transformer column does not exist.")
             .expect("transformer column was null.");
+        // search_alg is now deprecated
         let search_alg: String = result_row
             .get_by_name("search_alg")
             .expect("search_alg column does not exist.")
@@ -112,11 +119,14 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .expect("params column does not exist.")
             .expect("params column was null.");
 
+        let transformer_model = Model::new(&transformer)?;
         Ok(types::VectorizeMeta {
             job_id,
             name,
             job_type: job_type.into(),
-            transformer,
+            index_dist_type: index_dist_type.into(),
+            transformer: transformer_model,
+            // search_alg is now deprecated
             search_alg: search_alg.into(),
             params: serde_json::to_value(params).unwrap(),
             last_completion: None,

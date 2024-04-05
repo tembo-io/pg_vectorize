@@ -2,13 +2,16 @@ use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
+use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use thiserror::Error;
 
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+// SimilarityAlg is now deprecated
 pub enum SimilarityAlg {
     pgv_cosine_similarity,
 }
@@ -37,6 +40,48 @@ impl From<String> for SimilarityAlg {
         match s.as_str() {
             "pgv_cosine_similarity" => SimilarityAlg::pgv_cosine_similarity, // ... handle other variants ...
             _ => panic!("Invalid value for SimilarityAlg: {}", s), // or handle this case differently
+        }
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum IndexDist {
+    pgv_hnsw_l2,
+    pgv_hnsw_ip,
+    pgv_hnsw_cosine,
+}
+
+impl Display for IndexDist {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            IndexDist::pgv_hnsw_l2 => write!(f, "pgv_hnsw_l2"),
+            IndexDist::pgv_hnsw_ip => write!(f, "pgv_hnsw_ip"),
+            IndexDist::pgv_hnsw_cosine => write!(f, "pgv_hnsw_cosine"),
+        }
+    }
+}
+
+impl FromStr for IndexDist {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "pgv_hnsw_l2" => Ok(IndexDist::pgv_hnsw_l2),
+            "pgv_hnsw_ip" => Ok(IndexDist::pgv_hnsw_ip),
+            "pgv_hnsw_cosine" => Ok(IndexDist::pgv_hnsw_cosine),
+            _ => Err(format!("Invalid value for IndexDist: {}", s)),
+        }
+    }
+}
+
+impl From<String> for IndexDist {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "pgv_hnsw_l2" => IndexDist::pgv_hnsw_l2,
+            "pgv_hnsw_ip" => IndexDist::pgv_hnsw_ip,
+            "pgv_hnsw_cosine" => IndexDist::pgv_hnsw_cosine,
+            _ => panic!("Invalid value for IndexDist: {}", s),
         }
     }
 }
@@ -120,9 +165,181 @@ pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub job_type: JobType,
-    pub transformer: String,
+    pub index_dist_type: IndexDist,
+    pub transformer: Model,
+    // search_alg and SimilarityAlg are now deprecated
     pub search_alg: SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Model {
+    pub source: ModelSource,
+    // the model's namespace + model name
+    pub fullname: String,
+    pub name: String,
+}
+
+impl From<String> for Model {
+    fn from(input: String) -> Self {
+        let errmsg = format!("Invalid input string for Model: {}", input);
+        Model::new(&input).expect(&errmsg)
+    }
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum ModelError {
+    #[error("Invalid model source: {0}")]
+    InvalidSource(String),
+    #[error("Invalid model format: {0}")]
+    InvalidFormat(String),
+}
+
+impl Model {
+    pub fn new(input: &str) -> Result<Self, ModelError> {
+        let mut parts: Vec<&str> = input.split('/').collect();
+        let missing_source = parts.len() != 2;
+        if missing_source && parts[0] == "text-embedding-ada-002" {
+            // for backwards compatibility, prepend "openai" to text-embedding-ada-2
+            parts.insert(0, "openai");
+        } else if missing_source && parts[0] == "all-MiniLM-L12-v2" {
+            parts.insert(0, "sentence-transformers");
+        } else if missing_source {
+            return Err(ModelError::InvalidFormat(input.to_string()));
+        }
+
+        let source = parts[0]
+            .parse::<ModelSource>()
+            .map_err(|_| ModelError::InvalidSource(parts[0].to_string()))?;
+
+        Ok(Self {
+            source,
+            fullname: format!("{}/{}", parts[0], parts[1]),
+            name: parts[1].to_string(),
+        })
+    }
+}
+
+impl fmt::Display for Model {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.fullname)
+    }
+}
+
+// model sources are places that serve models
+// each source can have its own API schema
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum ModelSource {
+    OpenAI,
+    SentenceTransformers,
+    Ollama
+}
+
+impl FromStr for ModelSource {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "openai" => Ok(ModelSource::OpenAI),
+            "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
+            _ => Ok(ModelSource::SentenceTransformers),
+        }
+    }
+}
+
+impl Display for ModelSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            ModelSource::OpenAI => write!(f, "openai"),
+            ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
+        }
+    }
+}
+
+impl From<String> for ModelSource {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "openai" => ModelSource::OpenAI,
+            "sentence-transformers" => ModelSource::SentenceTransformers,
+            // other cases are assumed to be private sentence-transformer compatible model
+            // and can be hot-loaded
+            _ => ModelSource::SentenceTransformers,
+        }
+    }
+}
+
+// test
+#[cfg(test)]
+mod model_tests {
+    use super::*;
+
+    #[test]
+    fn test_legacy_fullname() {
+        let model = Model::new("text-embedding-ada-002").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "text-embedding-ada-002");
+        assert_eq!(model.fullname, "openai/text-embedding-ada-002");
+        let model_string = model.to_string();
+        assert_eq!(model_string, "openai/text-embedding-ada-002");
+
+        let model = Model::new("all-MiniLM-L12-v2").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "all-MiniLM-L12-v2");
+        assert_eq!(model.fullname, "sentence-transformers/all-MiniLM-L12-v2");
+
+        let model_string = model.to_string();
+        assert_eq!(model_string, "sentence-transformers/all-MiniLM-L12-v2");
+    }
+
+    #[test]
+    fn test_valid_model_openai() {
+        let model = Model::new("openai/model-name").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "model-name");
+    }
+
+    #[test]
+    fn test_valid_model_sentencetransformers() {
+        let model = Model::new("sentence-transformers/model-name").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "model-name");
+    }
+
+    #[test]
+    fn test_unknown_namespace() {
+        // unknown namespace should default to sentence-transformers
+        let model = Model::new("unknown/model-name").unwrap();
+        assert!(model.source == ModelSource::SentenceTransformers);
+        assert!(model.name == "model-name");
+        assert!(model.fullname == "unknown/model-name");
+    }
+
+    #[test]
+    fn test_invalid_format_no_slash() {
+        assert!(Model::new("openaimodel-name").is_err());
+    }
+
+    #[test]
+    fn test_invalid_format_extra_slash() {
+        assert!(Model::new("openai/model/name").is_err());
+    }
+
+    #[test]
+    fn test_backwards_compatibility() {
+        let model = Model::new("text-embedding-ada-002").unwrap();
+        assert_eq!(model.source, ModelSource::OpenAI);
+        assert_eq!(model.name, "text-embedding-ada-002");
+    }
+
+    #[test]
+    fn test_private_hf_sentence_transformer() {
+        let model = Model::new("chuckhend/private-model").unwrap();
+        assert_eq!(model.source, ModelSource::SentenceTransformers);
+        assert_eq!(model.name, "private-model");
+        assert_eq!(model.fullname, "chuckhend/private-model");
+        let model_string = model.to_string();
+        assert_eq!(model_string, "chuckhend/private-model");
+    }
 }

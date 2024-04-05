@@ -8,7 +8,7 @@ use crate::util;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
-use vectorize_core::types::{self, TableMethod, VectorizeMeta};
+use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
@@ -19,7 +19,9 @@ pub fn init_table(
     primary_key: &str,
     args: Option<serde_json::Value>,
     update_col: Option<String>,
-    transformer: &str,
+    index_dist_type: types::IndexDist,
+    transformer: &Model,
+    // search_alg is now deprecated
     search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
@@ -50,8 +52,8 @@ pub fn init_table(
 
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
-    match transformer {
-        "text-embedding-ada-002" => {
+    match transformer.source {
+        ModelSource::OpenAI => {
             let openai_key = match api_key.clone() {
                 Some(k) => k,
                 None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
@@ -63,9 +65,10 @@ pub fn init_table(
             };
             openai::validate_api_key(&openai_key)?;
         }
-        t => {
+        ModelSource::SentenceTransformers => {
             // make sure transformer exists
-            let _ = sync_get_model_info(t, api_key.clone()).context("transformer does not exist");
+            sync_get_model_info(&transformer.fullname, api_key.clone())
+                .context("transformer does not exist")?;
         }
     }
 
@@ -99,10 +102,15 @@ pub fn init_table(
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
+                    index_dist_type.to_string().into_datum(),
+                ),
+                (
+                    PgBuiltInOids::TEXTOID.oid(),
                     transformer.to_string().into_datum(),
                 ),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
+                    // search_alg is now deprecated
                     search_alg.to_string().into_datum(),
                 ),
                 (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
@@ -152,7 +160,15 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    initalize_table_job(job_name, &valid_params, &job_type, transformer, search_alg)?;
+    initalize_table_job(
+        job_name,
+        &valid_params,
+        &job_type,
+        index_dist_type,
+        transformer,
+        // search_alg is now deprecated
+        search_alg,
+    )?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 
@@ -178,11 +194,12 @@ pub fn search(
         // if not, use the one from the project metadata
         None => proj_params.api_key.clone(),
     };
-
     let embeddings = transform(query, &project_meta.transformer, proj_api_key);
 
-    match project_meta.search_alg {
-        types::SimilarityAlg::pgv_cosine_similarity => cosine_similarity_search(
+    match project_meta.index_dist_type {
+        types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
+        types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
+        types::IndexDist::pgv_hnsw_cosine => cosine_similarity_search(
             job_name,
             &proj_params,
             &return_columns,
