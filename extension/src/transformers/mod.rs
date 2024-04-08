@@ -1,8 +1,6 @@
 pub mod generic;
 pub mod http_handler;
 pub mod openai;
-pub mod tembo;
-pub mod types;
 pub mod ollama;
 
 use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
@@ -44,6 +42,18 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
             }
         }
         ModelSource::SentenceTransformers => {
+            let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
+            let embedding_request = EmbeddingPayload {
+                input: vec![input.to_string()],
+                model: transformer.fullname.to_string(),
+            };
+            EmbeddingRequest {
+                url,
+                payload: embedding_request,
+                api_key: api_key.map(|s| s.to_string()),
+            }
+        }
+        ModelSource::Ollama => {
             let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],

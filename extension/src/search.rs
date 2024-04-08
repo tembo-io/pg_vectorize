@@ -69,6 +69,9 @@ pub fn init_table(
             // make sure transformer exists
             sync_get_model_info(&transformer.fullname, api_key.clone())
                 .context("transformer does not exist")?;
+        },
+        ModelSource::Ollama => {
+            todo!("Ollama Support")
         }
     }
 

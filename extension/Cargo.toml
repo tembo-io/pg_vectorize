@@ -1,3 +1,4 @@
+workspace = { members = ["pg15"] }
 [package]
 name = "vectorize"
 version = "0.14.0"

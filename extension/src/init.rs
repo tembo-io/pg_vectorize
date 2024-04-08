@@ -6,7 +6,7 @@ use crate::{
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
-use vectorize_core::types::{JobParams, TableMethod};
+use vectorize_core::{transformers::openai::ollama_embedding_dim, types::{JobParams, TableMethod}};
 use vectorize_core::{
     transformers::{openai::openai_embedding_dim, types::TransformerMetadata},
     types::{Model, ModelSource},
@@ -108,6 +108,10 @@ pub fn init_embedding_table_query(
                 sync_get_model_info(&transformer.fullname, api_key)
                     .expect("failed to call vectorize.embedding_service_url");
             let dim = model_info.embedding_dimension;
+            format!("vector({dim})")
+        },
+        ModelSource::Ollama => {
+            let dim = ollama_embedding_dim(&transformer.name);
             format!("vector({dim})")
         }
     };

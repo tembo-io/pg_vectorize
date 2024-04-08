@@ -107,7 +107,8 @@ pub fn call_chat(
         ModelSource::OpenAI => call_chat_completions(rendered_prompt, &chat_model.name, api_key)?,
         ModelSource::SentenceTransformers => {
             error!("SentenceTransformers not supported for chat completions");
-        }
+        },
+        ModelSource::Ollama => todo!("Ollama chat completion function")
     };
 
     Ok(ChatResponse {
