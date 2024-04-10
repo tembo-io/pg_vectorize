@@ -48,6 +48,7 @@ pub fn prepare_ollama_embedding_request(
     vect_meta: types::VectorizeMeta,
     inputs: &[Inputs],
     model_url: String,
+    ollama_port: u16
 ) -> Result<EmbeddingRequest> {
     let text_inputs = trim_inputs(inputs);
     let payload = EmbeddingPayload {
@@ -64,4 +65,11 @@ pub fn prepare_ollama_embedding_request(
         api_key: None,
     })
 
+}
+
+pub fn ollama_embedding_dim(model_name: &str) -> i32 {
+    match model_name {
+        "llama2" => 5192,
+        _ => 1536,
+    }
 }

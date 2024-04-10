@@ -1,12 +1,14 @@
 use crate::guc;
 use crate::search;
 use crate::util::get_vectorize_meta_spi;
+use crate::transformers::ollama::{init_llm_instance};
 
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
+use vectorize_core::transformers::ollama::LLMFunctions;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -166,6 +168,27 @@ fn call_chat_completions(
         .expect("no response from chat model");
     Ok(chat_response)
 }
+
+async fn call_ollama_chat_completions(
+    prompts: RenderedPrompt,
+    model: &str,
+    host_url: &str,
+    host_port: u16,
+    api_key: Option<String>,
+) -> Result<String> { 
+
+    let instance = init_llm_instance(model, host_url, host_port);
+    let response = instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await;
+
+    match response{
+        Ok(k) => Ok(k),
+        Err(k) => {
+            error!("Unable to generate response. Error: {k}");
+        }
+    }
+}
+
+
 
 // Trims the context to fit within the token limit when force_trim = True
 // Otherwise returns an error if the context exceeds the token limit

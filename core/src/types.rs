@@ -254,6 +254,7 @@ impl Display for ModelSource {
         match self {
             ModelSource::OpenAI => write!(f, "openai"),
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
+            ModelSource::Ollama => write!(f, "ollama")
         }
     }
 }

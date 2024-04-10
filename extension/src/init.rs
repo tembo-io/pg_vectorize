@@ -6,7 +6,7 @@ use crate::{
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
-use vectorize_core::{transformers::openai::ollama_embedding_dim, types::{JobParams, TableMethod}};
+use vectorize_core::{transformers::ollama::ollama_embedding_dim, types::{JobParams, TableMethod}};
 use vectorize_core::{
     transformers::{openai::openai_embedding_dim, types::TransformerMetadata},
     types::{Model, ModelSource},

@@ -1,5 +1,5 @@
 use crate::transformers::{generic, http_handler, openai, ollama};
-use crate::types::{JobMessage, JobParams};
+use crate::types::{JobMessage, JobParams, ModelSource};
 use crate::worker::ops;
 use anyhow::Result;
 use log::{error, info};
@@ -107,7 +107,8 @@ async fn execute_job(
         ModelSource::Ollama => ollama::prepare_ollama_embedding_request(
             job_meta.clone(), 
             &msg.message.inputs, 
-            // .to_string()
+            cfg.ollama_host.clone().unwrap(),
+            cfg.ollama_port as u16
         )?,
         ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
