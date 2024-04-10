@@ -1,3 +1,4 @@
+use crate::plugin;
 use crate::transformers::{generic, http_handler, openai};
 use crate::types::{JobMessage, JobParams, ModelSource};
 use crate::worker::ops;
@@ -43,7 +44,7 @@ pub struct Config {
     pub queue_name: String,
     pub embedding_svc_url: String,
     pub openai_api_key: Option<String>,
-    pub embedding_request_timeout: i32,
+    pub embedding_request_timeout: u64,
     pub poll_interval: u64,
     pub poll_interval_error: u64,
     pub max_retries: i32,
@@ -107,9 +108,9 @@ async fn execute_job(
         embedding_request.payload.input.len()
     );
     let embeddings =
-        http_handler::openai_embedding_request(embedding_request, cfg.embedding_request_timeout)
-            .await?;
-    let paired_embeddings = http_handler::merge_input_output(msg.message.inputs, embeddings);
+        plugin::embedding_request(embedding_request, cfg.embedding_request_timeout).await?;
+    let paired_embeddings =
+        http_handler::merge_input_output(msg.message.inputs, embeddings.embeddings);
     match job_params.clone().table_method {
         crate::types::TableMethod::append => {
             ops::update_embeddings(

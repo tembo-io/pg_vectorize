@@ -205,6 +205,7 @@ impl Model {
             // for backwards compatibility, prepend "openai" to text-embedding-ada-2
             parts.insert(0, "openai");
         } else if missing_source && parts[0] == "all-MiniLM-L12-v2" {
+            // and sentence-transformers to all-MiniLM-L12-v2
             parts.insert(0, "sentence-transformers");
         } else if missing_source {
             return Err(ModelError::InvalidFormat(input.to_string()));

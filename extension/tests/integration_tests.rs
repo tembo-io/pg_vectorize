@@ -1,5 +1,6 @@
 mod util;
 use rand::Rng;
+use sqlx::postgres::PgQueryResult;
 use util::common;
 
 // Integration tests are ignored by default
@@ -733,4 +734,34 @@ async fn test_private_hf_model() {
     .expect("failed to select from test_table");
     // 3 rows returned
     assert_eq!(result.rows_affected(), 3);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_manual_transform() {
+    use sqlx::Row;
+    let conn = common::init_database().await;
+    let result = sqlx::query(
+        "SELECT * FROM vectorize.transform_embeddings(
+            input => 'the quick brown fox jumps over the lazy dog',
+            model_name => 'sentence-transformers/all-MiniLM-L12-v2'
+    ) as embeddings;",
+    )
+    .fetch_one(&conn)
+    .await
+    .expect("failed to select from test_table");
+    let embeddings: Vec<f64> = result.get("embeddings");
+    assert_eq!(embeddings.len(), 384);
+
+    let result = sqlx::query(
+        "SELECT * FROM vectorize.transform_embeddings(
+            input => 'the quick brown fox jumps over the lazy dog',
+            model_name => 'sentence-transformers/multi-qa-mpnet-base-dot-v1'
+    ) as embeddings;",
+    )
+    .fetch_one(&conn)
+    .await
+    .expect("failed to select from test_table");
+    let embeddings: Vec<f64> = result.get("embeddings");
+    assert_eq!(embeddings.len(), 768);
 }

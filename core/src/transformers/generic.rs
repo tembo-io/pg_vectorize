@@ -5,7 +5,12 @@ use std::collections::HashSet;
 use std::env;
 
 use crate::{
-    transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs},
+    plugin::{map_http_transform, EmbeddingRequest},
+    transformers::types::{
+        EmbeddingPayload,
+        // EmbeddingRequest,
+        Inputs,
+    },
     types,
 };
 
@@ -50,12 +55,16 @@ pub fn prepare_generic_embedding_request(
         model: job_meta.transformer.to_string(),
     };
 
-    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
+    let model = job_meta.transformer;
 
+    let trans = map_http_transform(model.source);
+
+    let job_params: types::JobParams = serde_json::from_value(job_meta.params)?;
     Ok(EmbeddingRequest {
         url,
         payload,
         api_key: job_params.api_key,
+        json_transform: trans,
     })
 }
 

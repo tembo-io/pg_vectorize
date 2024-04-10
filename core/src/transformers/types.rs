@@ -2,22 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct EmbeddingResponse {
-    pub data: Vec<EmbeddingObject>,
-    pub model: String,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct EmbeddingObject {
-    // object: String,
-    pub index: usize,
-    pub embedding: Vec<f64>,
-}
-
-#[derive(Deserialize, Debug, Serialize)]
-pub struct EmbeddingRequest {
-    pub url: String,
-    pub payload: EmbeddingPayload,
-    pub api_key: Option<String>,
+    pub embeddings: Vec<Vec<f64>>,
 }
 
 #[derive(Deserialize, Debug, Serialize)]

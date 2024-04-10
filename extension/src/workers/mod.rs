@@ -3,6 +3,7 @@ pub mod pg_bgw;
 use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
 use crate::transformers::generic::get_generic_svc_url;
 
+use vectorize_core::plugin;
 use vectorize_core::transformers::types::PairedEmbeddings;
 use vectorize_core::transformers::{generic, http_handler, openai};
 use vectorize_core::types::{self, ModelSource};
@@ -99,10 +100,10 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
     }?;
 
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
-    let embeddings = http_handler::openai_embedding_request(embedding_request, timeout).await?;
+    let embeddings = plugin::embedding_request(embedding_request, timeout as u64).await?;
     // TODO: validate returned embeddings order is same as the input order
     let paired_embeddings: Vec<PairedEmbeddings> =
-        http_handler::merge_input_output(msg.message.inputs, embeddings);
+        http_handler::merge_input_output(msg.message.inputs, embeddings.embeddings);
 
     log!("pg-vectorize: embeddings size: {}", paired_embeddings.len());
     // write embeddings to result table

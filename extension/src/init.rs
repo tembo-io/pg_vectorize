@@ -97,8 +97,6 @@ pub fn init_embedding_table_query(
     let api_key = job_params.api_key.clone();
 
     let col_type = match transformer.source {
-        // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-        // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
         ModelSource::OpenAI => {
             let dim = openai_embedding_dim(&transformer.name);
             format!("vector({dim})")
