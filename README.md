@@ -22,7 +22,7 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3815)](https://ossrank.com/p/3815)
 
 
-pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/tembo-stacks/vector-db) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
+pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai/vectordb) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
 
 **API Documentation**: https://tembo-io.github.io/pg_vectorize/
 
