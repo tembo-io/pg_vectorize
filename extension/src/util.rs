@@ -149,6 +149,8 @@ pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
         opts = opts.database(&dbname)
     };
 
+    opts = opts.application_name("pg-vectorize");
+
     let pgp = PgPoolOptions::new()
         .acquire_timeout(std::time::Duration::from_secs(4))
         .max_connections(4)
