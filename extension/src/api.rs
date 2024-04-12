@@ -127,6 +127,8 @@ fn rag(
     num_context: default!(i32, 2),
     // truncates context to fit the model's context window
     force_trim: default!(bool, false),
+    host_url: default!(Option<String>, "http://0.0.0.0"),
+    host_port: default!(i32, 11434)
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
     let model = Model::new(&chat_model)?;
     let resp = call_chat(
@@ -137,6 +139,8 @@ fn rag(
         api_key,
         num_context,
         force_trim,
+        host_url,
+        host_port as u16
     )?;
     let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
     Ok(TableIterator::new(iter))

@@ -24,7 +24,11 @@ pub fn call_chat(
     api_key: Option<String>,
     num_context: i32,
     force_trim: bool,
+    host_url: Option<String>,
+    host_port: u16
 ) -> Result<ChatResponse> {
+
+    
     // get job metadata
     let project_meta: VectorizeMeta = get_vectorize_meta_spi(agent_name)?;
 
@@ -110,7 +114,16 @@ pub fn call_chat(
         ModelSource::SentenceTransformers => {
             error!("SentenceTransformers not supported for chat completions");
         },
-        ModelSource::Ollama => todo!("Ollama chat completion function")
+        ModelSource::Ollama => {
+            match host_url{
+                Some(url) => {
+                    call_ollama_chat_completions(rendered_prompt, &chat_model.name, &url, host_port)?
+                },
+                None => {
+                    error!("No host url specified!")
+                }
+            }
+        }
     };
 
     Ok(ChatResponse {
@@ -169,16 +182,21 @@ fn call_chat_completions(
     Ok(chat_response)
 }
 
-async fn call_ollama_chat_completions(
+fn call_ollama_chat_completions(
     prompts: RenderedPrompt,
     model: &str,
     host_url: &str,
     host_port: u16,
-    api_key: Option<String>,
 ) -> Result<String> { 
 
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+
     let instance = init_llm_instance(model, host_url, host_port);
-    let response = instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await;
+    let response = runtime.block_on(instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered));
 
     match response{
         Ok(k) => Ok(k),
