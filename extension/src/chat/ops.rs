@@ -36,7 +36,13 @@ pub fn call_chat(
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
 
     // for various token count estimations
-    let bpe = get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model");
+    let bpe = match chat_model.source{
+        ModelSource::Ollama => {
+            // Using gpt-3.5-turbo tokenizer for Ollama since the library does not support llama2
+            get_bpe_from_model("gpt-3.5-turbo").expect("failed to get BPE from model")
+        },
+        _ => get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
+    };
 
     // can only be 1 column in a chat job, for now, so safe to grab first element
     let content_column = job_params.columns[0].clone();
@@ -196,7 +202,7 @@ fn call_ollama_chat_completions(
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     let instance = init_llm_instance(model, host_url, host_port);
-    let response = runtime.block_on(instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered));
+    let response = runtime.block_on(async {instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await});
 
     match response{
         Ok(k) => Ok(k),

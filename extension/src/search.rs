@@ -41,6 +41,8 @@ pub fn init_table(
             error!("invalid json for argument `args`: {}", e);
         }
     };
+
+    warning!("{:?}", arguments);
     let api_key = match arguments.get("api_key") {
         Some(k) => Some(serde_json::from_value::<String>(k.clone())?),
         None => None,
@@ -71,7 +73,7 @@ pub fn init_table(
                 .context("transformer does not exist")?;
         },
         ModelSource::Ollama => {
-            todo!("Ollama Support")
+            info!("Intializing ollama");
         }
     }
 
