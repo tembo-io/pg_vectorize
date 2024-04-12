@@ -9,8 +9,6 @@ async fn main() {
     info!("starting pg-vectorize remote-worker");
 
     let cfg = Config::from_env();
-    // Remove
-    println!("{:?}", cfg);
 
     let conn = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
