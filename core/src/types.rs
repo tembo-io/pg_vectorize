@@ -206,6 +206,8 @@ impl Model {
             parts.insert(0, "openai");
         } else if missing_source && parts[0] == "all-MiniLM-L12-v2" {
             parts.insert(0, "sentence-transformers");
+        } else if missing_source && parts[0] == "llama2" {
+            parts.insert(0, "llama2");
         } else if missing_source {
             return Err(ModelError::InvalidFormat(input.to_string()));
         }
@@ -244,6 +246,7 @@ impl FromStr for ModelSource {
         match s.to_lowercase().as_str() {
             "openai" => Ok(ModelSource::OpenAI),
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
+            "llama2" => Ok(ModelSource::Ollama),
             _ => Ok(ModelSource::SentenceTransformers),
         }
     }
@@ -254,7 +257,7 @@ impl Display for ModelSource {
         match self {
             ModelSource::OpenAI => write!(f, "openai"),
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
-            ModelSource::Ollama => write!(f, "ollama")
+            ModelSource::Ollama => write!(f, "llama2")
         }
     }
 }
@@ -264,6 +267,7 @@ impl From<String> for ModelSource {
         match s.as_str() {
             "openai" => ModelSource::OpenAI,
             "sentence-transformers" => ModelSource::SentenceTransformers,
+            "llama2" => ModelSource::Ollama,
             // other cases are assumed to be private sentence-transformer compatible model
             // and can be hot-loaded
             _ => ModelSource::SentenceTransformers,
@@ -289,6 +293,10 @@ mod model_tests {
         assert_eq!(model.source, ModelSource::SentenceTransformers);
         assert_eq!(model.name, "all-MiniLM-L12-v2");
         assert_eq!(model.fullname, "sentence-transformers/all-MiniLM-L12-v2");
+
+        let model = Model::new("llama2").unwrap();
+        assert_eq!(model.source, ModelSource::Ollama);
+        assert_eq!(model.name, "llama2");
 
         let model_string = model.to_string();
         assert_eq!(model_string, "sentence-transformers/all-MiniLM-L12-v2");

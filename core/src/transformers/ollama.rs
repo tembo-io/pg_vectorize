@@ -1,3 +1,4 @@
+// use pgrx::{error, info};
 use ollama_rs::{generation::{completion::request::GenerationRequest, options::GenerationOptions}, Ollama};
 use anyhow::Result;
 
@@ -5,6 +6,7 @@ use crate::transformers::types::{EmbeddingPayload, EmbeddingRequest, Inputs};
 use crate::types;
 use crate::transformers::openai::trim_inputs;
 
+#[derive(Debug)]
 pub struct OllamaInstance{
     model_name: String,
     host_url: String,
@@ -33,7 +35,11 @@ impl LLMFunctions for OllamaInstance{
         if let Ok(res) = res {
             return Ok(res.response);
         }
-        return Err("Unable to generate any response".to_string());
+        let msg = match res {
+            Err(x) => x,
+            _ => "Unable to determine error".to_string()
+        };
+        return Err(msg);
     }
     async fn generate_emebeddings(&self, input: String) -> Result<Vec<f64>, String>{
         let embedding = self.instance.generate_embeddings(self.model_name.clone(), input, None).await;

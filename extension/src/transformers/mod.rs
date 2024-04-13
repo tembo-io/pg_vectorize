@@ -62,7 +62,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                 input: vec![input.to_string()],
                 model: transformer.fullname.to_string(),
             };
-            info!("{:?}", embedding_request);
+            info!("Embedding request: {:?}", embedding_request);
             EmbeddingRequest {
                 url,
                 payload: embedding_request,
@@ -71,6 +71,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
         }
     };
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
+    info!("Timeout: {:?}", timeout);
 
     match transformer.source {
         ModelSource::Ollama => {
@@ -78,7 +79,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
             match runtime.block_on(
                 async{ ollama_embedding_request(host, 11434 as u16, embedding_request.payload).await }
             ) {
-                Ok(e) => e as Vec<Vec<f64>>,
+                Ok(e) => {info!("{:?}", e); e },
                 Err(e) => {
                     error!("error getting embeddings from ollama: {}", e);
                 }

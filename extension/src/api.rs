@@ -127,10 +127,11 @@ fn rag(
     num_context: default!(i32, 2),
     // truncates context to fit the model's context window
     force_trim: default!(bool, false),
-    host_url: default!(Option<String>, "'0.0.0.0'"),
+    host_url: default!(Option<String>, "'http://0.0.0.0'"),
     host_port: default!(i32, 11434)
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
     let model = Model::new(&chat_model)?;
+    info!("Calling chat");
     let resp = call_chat(
         agent_name,
         query,
