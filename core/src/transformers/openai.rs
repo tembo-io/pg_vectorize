@@ -7,7 +7,6 @@ use crate::types::{JobParams, VectorizeMeta};
 // however, depending on content of text, token count can be higher than
 pub const MAX_TOKEN_LEN: usize = 8192;
 pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
-pub const OPENAI_EMBEDDING_MODEL: &str = "text-embedding-ada-002";
 
 pub fn prepare_openai_request(
     vect_meta: VectorizeMeta,
@@ -18,7 +17,7 @@ pub fn prepare_openai_request(
     let job_params: JobParams = serde_json::from_value(vect_meta.params.clone())?;
     let payload = EmbeddingPayload {
         input: text_inputs,
-        model: OPENAI_EMBEDDING_MODEL.to_owned(),
+        model: vect_meta.transformer.name.clone(),
     };
 
     let apikey = match job_params.api_key {
