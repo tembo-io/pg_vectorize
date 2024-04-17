@@ -1,4 +1,4 @@
-DROP FUNCTION vectorize."search"();
+DROP FUNCTION vectorize."search";
 
 -- src/api.rs:41
 -- vectorize::api::search
