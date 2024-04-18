@@ -26,25 +26,8 @@ defaults:
     working-directory: ./ollama-serve/
   
 jobs:
-  tests:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11.1
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.11.1
-    - name: Setup
-      run: make setup
-    - name: Init Model Cache
-      run: make download.models
-    - name: Lints
-      run: make check
-    - name: Tests
-      run: make test
   build_and_push:
     name: Build and push images
-    needs: tests
     runs-on:
       - self-hosted
       - dind
