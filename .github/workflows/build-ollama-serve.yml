@@ -1,19 +1,19 @@
-name: Build and deploy embedding server
+name: Build and deploy ollama server
 
 on:
   push:
     branches:
       - main
     paths:
-      - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - ".github/workflows/build-ollama-serve.yml"
+      - "ollama-serve/**"
 
   pull_request:
     branches:
       - main
     paths:
-      - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - ".github/workflows/build-ollama-serve.yml"
+      - "ollama-serve/**"
 
 permissions:
   id-token: write
@@ -22,7 +22,7 @@ permissions:
 defaults:
   run:
     shell: bash
-    working-directory: ./vector-serve/
+    working-directory: ./ollama-serve/
   
 jobs:
   tests:
@@ -76,21 +76,21 @@ jobs:
         # push a build for every commit
         uses: docker/build-push-action@v5
         with:
-          file: ./vector-serve/Dockerfile
-          context: ./
+          file: ./ollama-serve/Dockerfile
+          context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/ollama-serve:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Latest
         # only push latest off main
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
-          file: ./vector-serve/Dockerfile
-          context: ./
+          file: ./ollama-serve/Dockerfile
+          context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/vector-serve:latest
+            quay.io/tembo/ollama-serve:latest
