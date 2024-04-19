@@ -14,9 +14,7 @@ services:
     ports:
       - 3000:3000
   ollama-serve:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: quay.io/tembo/ollama-serve:7acf84b
     ports:
       - 3001:3001
     environment:
