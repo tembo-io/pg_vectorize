@@ -1,4 +1,4 @@
-use crate::transformers::{generic, http_handler, ollama, openai};
+use crate::transformers::{generic, http_handler, openai};
 use crate::types::{JobMessage, JobParams, ModelSource};
 use crate::worker::ops;
 use anyhow::Result;

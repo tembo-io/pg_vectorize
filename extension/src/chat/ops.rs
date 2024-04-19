@@ -31,7 +31,7 @@ pub fn call_chat(
     let job_params = serde_json::from_value::<JobParams>(project_meta.params.clone())
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
 
-        // for various token count estimations
+    // for various token count estimations
     let bpe = match chat_model.source {
         ModelSource::Ollama => {
             // Using gpt-3.5-turbo tokenizer for Ollama since the library does not support llama2
