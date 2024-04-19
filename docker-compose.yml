@@ -13,3 +13,9 @@ services:
     image: quay.io/tembo/vector-serve:latest
     ports:
       - 3000:3000
+  ollama-serve:
+    image: quay.io/tembo/ollama-serve:7acf84b
+    ports:
+      - 3001:3001
+    environment:
+      - OLLAMA_HOST=0.0.0.0:3001
