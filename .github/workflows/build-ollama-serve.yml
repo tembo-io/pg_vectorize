@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - ollama-serve
+      - ollama-integration
     paths:
       - ".github/workflows/build-ollama-serve.yml"
       - "ollama-serve/**"
