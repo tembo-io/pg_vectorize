@@ -36,7 +36,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
 
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],
-                model: OPENAI_EMBEDDING_MODEL.to_string(),
+                model: transformer.name.to_string(),
             };
             EmbeddingRequest {
                 url: OPENAI_EMBEDDING_URL.to_owned(),
