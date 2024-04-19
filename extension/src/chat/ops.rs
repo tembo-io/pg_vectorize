@@ -7,6 +7,8 @@ use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
+use vectorize_core::transformers::ollama::LLMFunctions;
+use vectorize_core::transformers::ollama::OllamaInstance;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -30,7 +32,18 @@ pub fn call_chat(
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
 
     // for various token count estimations
-    let bpe = get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model");
+    let bpe = match chat_model.source {
+        ModelSource::Ollama => {
+            // Using gpt-3.5-turbo tokenizer for Ollama since the library does not support llama2
+            get_bpe_from_model("gpt-3.5-turbo").expect("failed to get BPE from model")
+        }
+        ModelSource::OpenAI => {
+            get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
+        }
+        ModelSource::SentenceTransformers => {
+            error!("SentenceTransformers not supported for chat completions")
+        }
+    };
 
     // can only be 1 column in a chat job, for now, so safe to grab first element
     let content_column = job_params.columns[0].clone();
@@ -108,6 +121,7 @@ pub fn call_chat(
         ModelSource::SentenceTransformers => {
             error!("SentenceTransformers not supported for chat completions");
         }
+        ModelSource::Ollama => call_ollama_chat_completions(rendered_prompt, &chat_model.name)?,
     };
 
     Ok(ChatResponse {
@@ -164,6 +178,37 @@ fn call_chat_completions(
         .clone()
         .expect("no response from chat model");
     Ok(chat_response)
+}
+
+fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<String> {
+    // get url from guc
+    let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
+        Some(k) => k,
+        None => {
+            error!("failed to get Ollama url from GUC");
+        }
+    };
+
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+
+    let instance = OllamaInstance::new(model.to_string(), url.to_string());
+
+    let response = runtime.block_on(async {
+        instance
+            .generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered)
+            .await
+    });
+
+    match response {
+        Ok(k) => Ok(k),
+        Err(k) => {
+            error!("Unable to generate response. Error: {k}");
+        }
+    }
 }
 
 // Trims the context to fit within the token limit when force_trim = True

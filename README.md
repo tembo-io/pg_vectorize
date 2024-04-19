@@ -21,7 +21,6 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
 [![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3815)](https://ossrank.com/p/3815)
 
-
 pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai/vectordb) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
 
 **API Documentation**: https://tembo-io.github.io/pg_vectorize/
@@ -34,7 +33,7 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 - Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [chat-completion](https://platform.openai.com/docs/guides/text-generation) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
 - Automated creation of Postgres triggers to keep your embeddings up to date
 - High level API - one function to initialize embeddings transformations, and another function to search
- 
+
 ## Table of Contents
 - [Features](#features)
 - [Table of Contents](#table-of-contents)
@@ -42,7 +41,6 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
-- [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
 
@@ -188,18 +186,18 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 
 ```sql
 SELECT vectorize.init_rag(
-    agent_name => 'product_chat',
-    table_name => 'products',
-    "column" => 'context',
-    unique_record_id => 'product_id',
-    transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+    agent_name          => 'product_chat',
+    table_name          => 'products',
+    "column"            => 'context',
+    unique_record_id    => 'product_id',
+    transformer         => 'sentence-transformers/all-MiniLM-L12-v2'
 );
 ```
 
 ```sql
 SELECT vectorize.rag(
-    agent_name => 'product_chat',
-    query => 'What is a pencil?'
+    agent_name  => 'product_chat',
+    query       => 'What is a pencil?'
 ) -> 'chat_response';
 ```
 

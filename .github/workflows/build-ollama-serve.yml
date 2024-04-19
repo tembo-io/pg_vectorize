@@ -1,19 +1,20 @@
-name: Build and deploy embedding server
+name: Build and deploy ollama server
 
 on:
   push:
     branches:
       - main
+      - ollama-integration
     paths:
-      - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - ".github/workflows/build-ollama-serve.yml"
+      - "ollama-serve/**"
 
   pull_request:
     branches:
       - main
     paths:
-      - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - ".github/workflows/build-ollama-serve.yml"
+      - "ollama-serve/**"
 
 permissions:
   id-token: write
@@ -22,28 +23,11 @@ permissions:
 defaults:
   run:
     shell: bash
-    working-directory: ./vector-serve/
+    working-directory: ./ollama-serve/
   
 jobs:
-  tests:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11.1
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.11.1
-    - name: Setup
-      run: make setup
-    - name: Init Model Cache
-      run: make download.models
-    - name: Lints
-      run: make check
-    - name: Tests
-      run: make test
   build_and_push:
     name: Build and push images
-    needs: tests
     runs-on:
       - self-hosted
       - dind
@@ -76,21 +60,21 @@ jobs:
         # push a build for every commit
         uses: docker/build-push-action@v5
         with:
-          file: ./vector-serve/Dockerfile
-          context: ./
+          file: ./ollama-serve/Dockerfile
+          context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+            quay.io/tembo/ollama-serve:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Latest
         # only push latest off main
         if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
-          file: ./vector-serve/Dockerfile
-          context: ./
+          file: ./ollama-serve/Dockerfile
+          context: .
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            quay.io/tembo/vector-serve:latest
+            quay.io/tembo/ollama-serve:latest

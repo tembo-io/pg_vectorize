@@ -234,6 +234,7 @@ impl fmt::Display for Model {
 pub enum ModelSource {
     OpenAI,
     SentenceTransformers,
+    Ollama,
 }
 
 impl FromStr for ModelSource {
@@ -241,6 +242,7 @@ impl FromStr for ModelSource {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
+            "ollama" => Ok(ModelSource::Ollama),
             "openai" => Ok(ModelSource::OpenAI),
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
             _ => Ok(ModelSource::SentenceTransformers),
@@ -251,6 +253,7 @@ impl FromStr for ModelSource {
 impl Display for ModelSource {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
+            ModelSource::Ollama => write!(f, "ollama"),
             ModelSource::OpenAI => write!(f, "openai"),
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
         }
@@ -260,6 +263,7 @@ impl Display for ModelSource {
 impl From<String> for ModelSource {
     fn from(s: String) -> Self {
         match s.as_str() {
+            "ollama" => ModelSource::Ollama,
             "openai" => ModelSource::OpenAI,
             "sentence-transformers" => ModelSource::SentenceTransformers,
             // other cases are assumed to be private sentence-transformer compatible model
@@ -273,6 +277,13 @@ impl From<String> for ModelSource {
 #[cfg(test)]
 mod model_tests {
     use super::*;
+
+    #[test]
+    fn test_ollama_parsing() {
+        let model = Model::new("ollama/wizardlm2:7b").unwrap();
+        assert_eq!(model.source, ModelSource::Ollama);
+        assert_eq!(model.name, "wizardlm2:7b");
+    }
 
     #[test]
     fn test_legacy_fullname() {

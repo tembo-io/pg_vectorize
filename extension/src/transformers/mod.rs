@@ -52,13 +52,21 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                 api_key: api_key.map(|s| s.to_string()),
             }
         }
+        ModelSource::Ollama => error!("Ollama transformer not implemented yet"),
     };
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
 
-    match runtime.block_on(async { openai_embedding_request(embedding_request, timeout).await }) {
-        Ok(e) => e,
-        Err(e) => {
-            error!("error getting embeddings: {}", e);
+    match transformer.source {
+        ModelSource::Ollama => error!("Ollama transformer not implemented yet"),
+        ModelSource::OpenAI | ModelSource::SentenceTransformers => {
+            match runtime
+                .block_on(async { openai_embedding_request(embedding_request, timeout).await })
+            {
+                Ok(e) => e,
+                Err(e) => {
+                    error!("error getting embeddings: {}", e);
+                }
+            }
         }
     }
 }

@@ -96,6 +96,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
                 svc_host,
             )
         }
+        ModelSource::Ollama => error!("pg-vectorize: Ollama transformer not implemented yet"),
     }?;
 
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
