@@ -4,7 +4,7 @@ use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
 use crate::transformers::generic::get_generic_svc_url;
 
 use vectorize_core::transformers::types::PairedEmbeddings;
-use vectorize_core::transformers::{generic, http_handler, ollama, openai};
+use vectorize_core::transformers::{generic, http_handler, openai};
 use vectorize_core::types::{self, ModelSource};
 use vectorize_core::worker::ops;
 
