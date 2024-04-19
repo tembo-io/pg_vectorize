@@ -7,4 +7,4 @@ sleep 5
 
 ollama pull $1
 
-kill $serve_pid
+kill $serve_pid || true
