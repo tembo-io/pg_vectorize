@@ -1,6 +1,6 @@
 pub mod pg_bgw;
 
-use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY, OLLAMA_HOST, OLLAMA_PORT};
+use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY, OLLAMA_URL};
 use crate::transformers::generic::get_generic_svc_url;
 
 use vectorize_core::transformers::types::PairedEmbeddings;
@@ -98,15 +98,14 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
         }
         ModelSource::Ollama => {
             info!("Ollama Model");
-            let ollama_host = match OLLAMA_HOST.get(){
+            let ollama_host = match OLLAMA_URL.get(){
                 Some(k) => k.to_str()?.to_owned(),
                 None => {
                     warning!("pg_vectorize: Ollama Host Not specified!");
                     return Err(anyhow::anyhow!("failed to get Ollama Host value"));
                 }
             };
-            let ollama_port = OLLAMA_PORT.get();
-            ollama::prepare_ollama_embedding_request(job_meta.clone(), &msg.message.inputs, ollama_host, ollama_port as u16)
+            ollama::prepare_ollama_embedding_request(job_meta.clone(), &msg.message.inputs, ollama_host)
         }
     }?;
 

@@ -12,8 +12,7 @@ pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
 pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
 pub static EMBEDDING_REQ_TIMEOUT_SEC: GucSetting<i32> = GucSetting::<i32>::new(120);
-pub static OLLAMA_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
-pub static OLLAMA_PORT: GucSetting<i32> = GucSetting::<i32>::new(11434);
+pub static OLLAMA_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -46,19 +45,8 @@ pub fn init_guc() {
     GucRegistry::define_string_guc(
         "vectorize.ollama_host",
         "Ollama Host address",
-        "Address of host where Ollama is running. Default Value is http://0.0.0.0",
-        &OLLAMA_HOST,
-        GucContext::Suset,
-        GucFlags::default(),
-    );
-
-    GucRegistry::define_int_guc(
-        "vectorize.ollama_port",
-        "Port number",
-        "Port number on host where ollama is running. Default value is 11434",
-        &OLLAMA_PORT,
-        0,
-        65535,
+        "Address of host where Ollama is running. Default Value is http://0.0.0.0:11434",
+        &OLLAMA_URL,
         GucContext::Suset,
         GucFlags::default(),
     );

@@ -24,8 +24,7 @@ pub fn call_chat(
     api_key: Option<String>,
     num_context: i32,
     force_trim: bool,
-    host_url: Option<String>,
-    host_port: u16
+    host_url: Option<String>
 ) -> Result<ChatResponse> {
 
     
@@ -124,7 +123,7 @@ pub fn call_chat(
         ModelSource::Ollama => {
             match host_url{
                 Some(url) => {
-                    call_ollama_chat_completions(rendered_prompt, &chat_model.name, &url, host_port)?
+                    call_ollama_chat_completions(rendered_prompt, &chat_model.name, &url)?
                 },
                 None => {
                     error!("No host url specified!")
@@ -193,7 +192,6 @@ fn call_ollama_chat_completions(
     prompts: RenderedPrompt,
     model: &str,
     host_url: &str,
-    host_port: u16,
 ) -> Result<String> { 
 
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -202,7 +200,7 @@ fn call_ollama_chat_completions(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let instance = init_llm_instance(model, host_url, host_port);
+    let instance = init_llm_instance(model, host_url);
     let response = runtime.block_on(async {instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await});
 
     match response{

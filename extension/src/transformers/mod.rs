@@ -9,7 +9,7 @@ use pgrx::prelude::*;
 
 use vectorize_core::transformers::http_handler::openai_embedding_request;
 use vectorize_core::transformers::ollama::OllamaInstance;
-use vectorize_core::transformers::openai::{OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_URL};
+use vectorize_core::transformers::openai::OPENAI_EMBEDDING_URL;
 use vectorize_core::transformers::types::{EmbeddingPayload, EmbeddingRequest};
 use vectorize_core::types::{Model, ModelSource};
 
@@ -73,9 +73,9 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
 
     match transformer.source {
         ModelSource::Ollama => {
-            let host = "http://0.0.0.0";
+            let host = "http://0.0.0.0:11434";
             match runtime.block_on(
-                async{ ollama_embedding_request(host, 11434 as u16, embedding_request.payload).await }
+                async{ ollama_embedding_request(host, embedding_request.payload).await }
             ) {
                 Ok(e) => e,
                 Err(e) => {
