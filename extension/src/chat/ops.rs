@@ -1,7 +1,6 @@
 use crate::guc;
 use crate::search;
 use crate::util::get_vectorize_meta_spi;
-use crate::transformers::ollama::{init_llm_instance};
 
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
@@ -9,6 +8,7 @@ use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
 use vectorize_core::transformers::ollama::LLMFunctions;
+use vectorize_core::transformers::ollama::OllamaInstance;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -24,24 +24,26 @@ pub fn call_chat(
     api_key: Option<String>,
     num_context: i32,
     force_trim: bool,
-    host_url: Option<String>,
-    host_port: u16
 ) -> Result<ChatResponse> {
-
-    
     // get job metadata
     let project_meta: VectorizeMeta = get_vectorize_meta_spi(agent_name)?;
 
     let job_params = serde_json::from_value::<JobParams>(project_meta.params.clone())
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
 
+    info!("CALLING CHAT");
     // for various token count estimations
-    let bpe = match chat_model.source{
+    let bpe = match chat_model.source {
         ModelSource::Ollama => {
             // Using gpt-3.5-turbo tokenizer for Ollama since the library does not support llama2
             get_bpe_from_model("gpt-3.5-turbo").expect("failed to get BPE from model")
-        },
-        _ => get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
+        }
+        ModelSource::OpenAI => {
+            get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
+        }
+        ModelSource::SentenceTransformers => {
+            error!("SentenceTransformers not supported for chat completions")
+        }
     };
 
     // can only be 1 column in a chat job, for now, so safe to grab first element
@@ -119,17 +121,8 @@ pub fn call_chat(
         ModelSource::OpenAI => call_chat_completions(rendered_prompt, &chat_model.name, api_key)?,
         ModelSource::SentenceTransformers => {
             error!("SentenceTransformers not supported for chat completions");
-        },
-        ModelSource::Ollama => {
-            match host_url{
-                Some(url) => {
-                    call_ollama_chat_completions(rendered_prompt, &chat_model.name, &url, host_port)?
-                },
-                None => {
-                    error!("No host url specified!")
-                }
-            }
         }
+        ModelSource::Ollama => call_ollama_chat_completions(rendered_prompt, &chat_model.name)?,
     };
 
     Ok(ChatResponse {
@@ -188,12 +181,16 @@ fn call_chat_completions(
     Ok(chat_response)
 }
 
-fn call_ollama_chat_completions(
-    prompts: RenderedPrompt,
-    model: &str,
-    host_url: &str,
-    host_port: u16,
-) -> Result<String> { 
+fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<String> {
+    // get url from guc
+    let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
+        Some(k) => k,
+        None => {
+            error!("failed to get Ollama url from GUC");
+        }
+    };
+
+    log!("ollama url ----- {}", url.to_string());
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -201,18 +198,22 @@ fn call_ollama_chat_completions(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let instance = init_llm_instance(model, host_url, host_port);
-    let response = runtime.block_on(async {instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await});
+    let instance = OllamaInstance::new(model.to_string(), url.to_string());
 
-    match response{
+    log!("got instance!!!----------");
+    let response = runtime.block_on(async {
+        instance
+            .generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered)
+            .await
+    });
+
+    match response {
         Ok(k) => Ok(k),
         Err(k) => {
             error!("Unable to generate response. Error: {k}");
         }
     }
 }
-
-
 
 // Trims the context to fit within the token limit when force_trim = True
 // Otherwise returns an error if the context exceeds the token limit

@@ -12,8 +12,7 @@ pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
 pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
 pub static EMBEDDING_REQ_TIMEOUT_SEC: GucSetting<i32> = GucSetting::<i32>::new(120);
-pub static OLLAMA_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
-pub static OLLAMA_PORT: GucSetting<i32> = GucSetting::<i32>::new(11434);
+pub static OLLAMA_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -44,21 +43,10 @@ pub fn init_guc() {
     );
 
     GucRegistry::define_string_guc(
-        "vectorize.ollama_host",
-        "Ollama Host address",
-        "Address of host where Ollama is running. Default Value is http://0.0.0.0",
-        &OLLAMA_HOST,
-        GucContext::Suset,
-        GucFlags::default(),
-    );
-
-    GucRegistry::define_int_guc(
-        "vectorize.ollama_port",
-        "Port number",
-        "Port number on host where ollama is running. Default value is 11434",
-        &OLLAMA_PORT,
-        0,
-        65535,
+        "vectorize.ollama_service_url",
+        "Ollama of the ollam service, including port",
+        "Address of host where Ollama is running.",
+        &OLLAMA_SERVICE_HOST,
         GucContext::Suset,
         GucFlags::default(),
     );
@@ -111,6 +99,7 @@ pub enum VectorizeGuc {
     DatabaseName,
     OpenAIKey,
     EmbeddingServiceUrl,
+    OllamaServiceUrl,
 }
 
 /// a convenience function to get this project's GUCs
@@ -120,6 +109,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::DatabaseName => VECTORIZE_DATABASE_NAME.get(),
         VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
         VectorizeGuc::EmbeddingServiceUrl => EMBEDDING_SERVICE_HOST.get(),
+        VectorizeGuc::OllamaServiceUrl => OLLAMA_SERVICE_HOST.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {

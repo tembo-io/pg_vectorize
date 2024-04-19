@@ -42,7 +42,6 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
-- [Try it on Tembo Cloud](#try-it-on-tembo-cloud)
 
 ## Installation
 
@@ -188,18 +187,18 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 
 ```sql
 SELECT vectorize.init_rag(
-    agent_name => 'product_chat',
-    table_name => 'products',
-    "column" => 'context',
-    unique_record_id => 'product_id',
-    transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+    agent_name          => 'product_chat',
+    table_name          => 'products',
+    "column"            => 'context',
+    unique_record_id    => 'product_id',
+    transformer         => 'sentence-transformers/all-MiniLM-L12-v2'
 );
 ```
 
 ```sql
 SELECT vectorize.rag(
-    agent_name => 'product_chat',
-    query => 'What is a pencil?'
+    agent_name  => 'product_chat',
+    query       => 'What is a pencil?'
 ) -> 'chat_response';
 ```
 

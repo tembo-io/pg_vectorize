@@ -1,4 +1,4 @@
-use crate::transformers::{generic, http_handler, openai, ollama};
+use crate::transformers::{generic, http_handler, ollama, openai};
 use crate::types::{JobMessage, JobParams, ModelSource};
 use crate::worker::ops;
 use anyhow::Result;
@@ -43,8 +43,7 @@ pub struct Config {
     pub queue_name: String,
     pub embedding_svc_url: String,
     pub openai_api_key: Option<String>,
-    pub ollama_host: Option<String>,
-    pub ollama_port: i32,
+    pub ollama_svc_url: String,
     pub embedding_request_timeout: i32,
     pub poll_interval: u64,
     pub poll_interval_error: u64,
@@ -64,10 +63,7 @@ impl Config {
                 "http://localhost:3000/v1/embeddings",
             ),
             openai_api_key: env::var("OPENAI_API_KEY").ok(),
-            ollama_host: env::var("OLLAMA_HOST").ok(),
-            ollama_port: from_env_default("OLLAMA_PORT", "11434")
-                .parse()
-                .unwrap(),
+            ollama_svc_url: from_env_default("OLLAMA_SVC_URL", "http://localhost:3001/api/chat"),
             embedding_request_timeout: from_env_default("EMBEDDING_REQUEST_TIMEOUT", "6")
                 .parse()
                 .unwrap(),
@@ -102,14 +98,7 @@ async fn execute_job(
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         )?,
-        // Adding default model URL for now
-        // Need to decide how the model url will be defined
-        ModelSource::Ollama => ollama::prepare_ollama_embedding_request(
-            job_meta.clone(), 
-            &msg.message.inputs, 
-            cfg.ollama_host.clone().unwrap(),
-            cfg.ollama_port as u16
-        )?,
+        ModelSource::Ollama => Err(anyhow::anyhow!("Ollama transformer not implemented yet"))?,
         ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
