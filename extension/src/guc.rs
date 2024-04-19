@@ -44,8 +44,8 @@ pub fn init_guc() {
 
     GucRegistry::define_string_guc(
         "vectorize.ollama_service_url",
-        "Ollama of the ollam service, including port",
-        "Address of host where Ollama is running.",
+        "Ollama server url",
+        "Scheme, host, and port of the Ollama server",
         &OLLAMA_SERVICE_HOST,
         GucContext::Suset,
         GucFlags::default(),

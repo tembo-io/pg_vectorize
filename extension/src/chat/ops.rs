@@ -189,8 +189,6 @@ fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<
         }
     };
 
-    log!("ollama url ----- {}", url.to_string());
-
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -199,7 +197,6 @@ fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<
 
     let instance = OllamaInstance::new(model.to_string(), url.to_string());
 
-    log!("got instance!!!----------");
     let response = runtime.block_on(async {
         instance
             .generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered)

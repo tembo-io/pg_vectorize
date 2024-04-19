@@ -63,7 +63,7 @@ impl Config {
                 "http://localhost:3000/v1/embeddings",
             ),
             openai_api_key: env::var("OPENAI_API_KEY").ok(),
-            ollama_svc_url: from_env_default("OLLAMA_SVC_URL", "http://localhost:3001/api/chat"),
+            ollama_svc_url: from_env_default("OLLAMA_SVC_URL", "http://localhost:3001"),
             embedding_request_timeout: from_env_default("EMBEDDING_REQUEST_TIMEOUT", "6")
                 .parse()
                 .unwrap(),

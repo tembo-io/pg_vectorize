@@ -12,7 +12,7 @@ services:
     ports:
       - 3000:3000
   ollama-serve:
-    image: quay.io/tembo/ollama-serve:ab2db7e
+    image: quay.io/tembo/ollama-serve:latest
     ports:
       - 3001:3001
     environment:

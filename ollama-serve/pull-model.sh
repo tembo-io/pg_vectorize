@@ -1,8 +1,6 @@
 #!/bin/bash
-# start-server.sh
 
 random_port=$(( ( RANDOM % 1000 )  + 1024 ))
-
 export OLLAMA_HOST=0.0.0.0:$random_port
 
 ollama serve &
