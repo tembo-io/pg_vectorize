@@ -167,7 +167,7 @@ async fn test_realtime_job() {
 
     let insert_query = format!(
         "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
-        VALUES ({random_product_id}, 'car tester', 'a product for testing cars');"
+        VALUES ({random_product_id}, 'car tester', $$a product for testing car's components$$);"
     );
 
     // insert a new row

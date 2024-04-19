@@ -47,7 +47,7 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
 
     // send the job message to the queue
     let query = format!(
-        "select pgmq.send('{VECTORIZE_QUEUE}', '{}');",
+        "select pgmq.send('{VECTORIZE_QUEUE}', $${}$$::jsonb);",
         serde_json::to_string(&job_message).unwrap()
     );
     let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
@@ -169,10 +169,8 @@ pub fn initalize_table_job(
             inputs: b,
         };
         let query = format!(
-            "select pgmq.send('{VECTORIZE_QUEUE}', '{}');",
-            serde_json::to_string(&job_message)
-                .unwrap()
-                .replace('\'', "''")
+            "select pgmq.send('{VECTORIZE_QUEUE}', $${}$$::jsonb);",
+            serde_json::to_string(&job_message).unwrap()
         );
         let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
             let _r = c.update(&query, None, None)?;

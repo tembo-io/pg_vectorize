@@ -11,13 +11,13 @@ on:
       - main
     paths:
       - ".github/workflows/extension_upgrade.yml"
-      - "./extension"
+      - "extension/**"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/extension_upgrade.yml"
-      - "./extension"
+      - "extension/**"
 
 jobs:
   test:
