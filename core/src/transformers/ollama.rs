@@ -75,7 +75,7 @@ pub fn prepare_ollama_embedding_request(
 
 pub fn ollama_embedding_dim(model_name: &str) -> i32 {
     match model_name {
-        "llama2" => 5192,
+        "llama2" => 1536,
         _ => 1536,
     }
 }

@@ -1,13 +1,12 @@
 use crate::guc;
 use crate::search;
 use crate::util::get_vectorize_meta_spi;
-use crate::transformers::ollama::{init_llm_instance};
+use crate::transformers::ollama::init_llm_instance;
 
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
-use pgrx::info;
 use pgrx::prelude::*;
 use vectorize_core::transformers::ollama::LLMFunctions;
 use vectorize_core::types::Model;
@@ -39,8 +38,8 @@ pub fn call_chat(
     // for various token count estimations
     let bpe = match chat_model.source{
         ModelSource::Ollama => {
-            // Using gpt-3.5-turbo tokenizer for Ollama since the library does not support llama2
-            info!("BPE");
+            // Using gpt-3.5-turbo tokenizer for Ollama since I wasn't able to find any tokenizer
+            // in tiktoken_rs for llama2
             get_bpe_from_model("gpt-3.5-turbo").expect("failed to get BPE from model")
         },
         _ => get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
@@ -125,7 +124,6 @@ pub fn call_chat(
         ModelSource::Ollama => {
             match host_url{
                 Some(url) => {
-                    info!("{:?}", url);
                     call_ollama_chat_completions(rendered_prompt, &chat_model.name, &url, host_port)?
                 },
                 None => {
@@ -205,7 +203,6 @@ fn call_ollama_chat_completions(
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     let instance = init_llm_instance(model, host_url, host_port);
-    info!("Instance: {:?}", instance);
     let response = runtime.block_on(async {instance.generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered).await});
 
     match response{

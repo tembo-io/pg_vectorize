@@ -131,7 +131,6 @@ fn rag(
     host_port: default!(i32, 11434)
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
     let model = Model::new(&chat_model)?;
-    info!("Calling chat");
     let resp = call_chat(
         agent_name,
         query,
