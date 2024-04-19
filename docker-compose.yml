@@ -1,5 +1,3 @@
-version: '3.2'
-
 services:
   postgres:
     restart: always
@@ -14,8 +12,7 @@ services:
     ports:
       - 3000:3000
   ollama-serve:
-    platform: linux/amd64
-    image: quay.io/tembo/ollama-serve:7acf84b
+    image: quay.io/tembo/ollama-serve:ab2db7e
     ports:
       - 3001:3001
     environment:
