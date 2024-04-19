@@ -16,7 +16,7 @@ services:
   ollama-serve:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ollama-serve/Dockerfile
     ports:
       - 3001:3001
     environment:
