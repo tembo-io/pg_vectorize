@@ -81,7 +81,3 @@ test-update:
 	echo "\q" | make run
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
 	make test-integration
-
-docs:
-	poetry install --no-directory --no-root
-	poetry run mkdocs serve
