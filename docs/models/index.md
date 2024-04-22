@@ -1,16 +1,16 @@
 # Supported Transformers and Generative Models
 
-pg_vectorize provides hooks into text-to-embedding transformer models and text-generation models.
+pg_vectorize provides hooks into two types of models; `text-to-embedding` transformer models and `text-generation` models.
  Whether a model is a text-to-embedding transformer or a text generation model, the models are always referenced from SQL using the following syntax:
 
 `${provider}/${model-name}`
 
 A few illustrative examples:
 
-- `openai/text-embedding-ada-002` is one of OpenAI's earliest text-to-embedding models
-- `openai/gpt-3.5-turbo-instruct` is a text generation model from OpenAI.
+- `openai/text-embedding-ada-002` is one of OpenAI's earliest [embedding](https://platform.openai.com/docs/models/embeddings) models
+- `openai/gpt-3.5-turbo-instruct` is a [text generation](https://platform.openai.com/docs/models/gpt-3-5-turbo) model from OpenAI.
 - `ollama/wizardlm2:7b-q2_k` is a language model hosted in [Ollama](https://ollama.com/library/wizardlm2:7b-q2_K) and developed by MicrosoftAI.
-- `sentence-transformers/all-MiniLM-L12-v2` is a text-to-embedding model from SentenceTransformers.
+- `sentence-transformers/all-MiniLM-L12-v2` is a text-to-embedding model from [SentenceTransformers](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2).
 
 ## Text-to-Embedding Models
 
@@ -32,11 +32,11 @@ For example, the `sentence-transformers` provider has a model named `all-MiniLM-
  The container image is pre-built with `sentence-transformers/all-mini-LM-L12-v2` pre-cached.
  Models that are not pre-cached will be downloaded on first use and cached for subsequent use.
 
-When calling the model server from Postgres, the url to the model server must first be set in the `vectorize.embedding_svc_url` configuration parameter.
+When calling the model server from Postgres, the url to the model server must first be set in the `vectorize.embedding_service_url` configuration parameter.
  Assuming the model server is running on the same host as Postgres, you would set the following:
 
 ```sql
-ALTER SYSTEM SET vectorize.embedding_svc_url TO 'http://localhost:3000/v1/embeddings';
+ALTER SYSTEM SET vectorize.embedding_service_url TO 'http://localhost:3000/v1/embeddings';
 SELECT pg_reload_conf();
 ```
 
@@ -134,7 +134,7 @@ ALTER SYSTEM SET vectorize.openai_key TO '<your api key>';
 SELECT pg_reload_conf();
 ```
 
-To call the `text-embedding-ada-002`:
+To call the `text-embedding-ada-002` from OpenAI:
 
 ```sql
 select vectorize.transform_embeddings(
@@ -189,16 +189,22 @@ ALTER SYSTEM set vectorize.ollama_service_url TO 'http://localhost:3001`;
 SELECT pg_reload_conf();
 ```
 
+The text-generation models are available as part of the [RAG](../api/rag.md) API.
+ To call the models provided by the self-hosted Ollama container,
+ pass the model name into the `chat_model` parameter.
+
 ```sql
-select vectorize.transform_embeddings(
-    input => 'the quick brown fox jumped over the lazy dogs',
-    model_name => 'ollama/'
+SELECT vectorize.rag(
+    agent_name  => 'product_chat',
+    query       => 'What is a pencil?',
+    chat_model  => 'ollama/wizardlm2:7b-q2_K'
 );
 ```
 
 #### Loading new Ollama models
 
 While Ollama server comes preloaded with `wizardlm2:7b-q2_K`, we can load and model supported by Ollama by calling the `/api/pull` endpoint.
+ The service is compatible with all models available in the [Ollama library](https://ollama.com/library).
 
 To pull Llama 3:
 
@@ -208,4 +214,12 @@ curl http://localhost:3001/api/pull -d '{
 }'
 ```
 
-Then call that model with pg_vectorize's RAG functions:
+Then use that model in your RAG application:
+
+```sql
+SELECT vectorize.rag(
+    agent_name  => 'product_chat',
+    query       => 'What is a pencil?'
+    chat_model  => 'ollama/llama3'
+);
+```

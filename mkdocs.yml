@@ -24,7 +24,7 @@ nav:
       - 'examples/sentence_transformers.md'
       - 'examples/openai_embeddings.md'
       - 'examples/scheduling.md'
-  - Model Proivers: 'models/index.md'
+  - Model Providers: 'models/index.md'
 markdown_extensions:
 - toc:
     permalink: true

@@ -34,8 +34,13 @@ pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
 clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
 
-setup: install-pg_cron install-pgvector install-pgmq
+setup.dependencies: install-pg_cron install-pgvector install-pgmq
+setup.shared_preload_libraries:
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
+setup.urls:
+	echo "vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
+	echo "vectorize.ollama_service_url = 'http://localhost:3001'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
+setup: setup.dependencies setup.shared_preload_libraries
 
 cat-logs:
 	cat ~/.pgrx/${PG_VERSION}.log
