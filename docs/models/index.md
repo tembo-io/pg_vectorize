@@ -167,7 +167,7 @@ To run the self-hosted Ollama models, you must first start the model server:
 docker compose up ollama-serve -d
 ```
 
-This starts an Ollama server pre-loaded with the `wizardlm2:7b-q2_K` model.
+This starts an Ollama server pre-loaded with the `wizardlm2:7b` model.
 
 #### Calling with `curl`
 
@@ -175,8 +175,8 @@ Once the Ollama server is running, you can call it directly with `curl`:
 
 ```bash
 curl http://localhost:3001/api/generate -d '{
-  "model": "wizardlm2:7b-q2_K",
-  "prompt": "Why is the sky blue?"
+  "model": "wizardlm2:7b",
+  "prompt": "What is Postgres?"
 }'
 ```
 
@@ -197,7 +197,7 @@ The text-generation models are available as part of the [RAG](../api/rag.md) API
 SELECT vectorize.rag(
     agent_name  => 'product_chat',
     query       => 'What is a pencil?',
-    chat_model  => 'ollama/wizardlm2:7b-q2_K'
+    chat_model  => 'ollama/wizardlm2:7b'
 );
 ```
 

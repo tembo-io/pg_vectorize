@@ -17,3 +17,11 @@ services:
       - 3001:3001
     environment:
       - OLLAMA_HOST=0.0.0.0:3001
+    # deploy:
+    #   replicas: 2
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
