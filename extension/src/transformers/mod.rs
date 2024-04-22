@@ -10,6 +10,8 @@ use vectorize_core::transformers::http_handler::openai_embedding_request;
 use vectorize_core::transformers::openai::OPENAI_EMBEDDING_URL;
 use vectorize_core::transformers::types::{EmbeddingPayload, EmbeddingRequest};
 use vectorize_core::types::{Model, ModelSource};
+use vectorize_core::transformers::ollama::LLMFunctions;
+use vectorize_core::transformers::ollama::OllamaInstance;
 
 pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -52,9 +54,28 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                 api_key: api_key.map(|s| s.to_string()),
             }
         }
-        ModelSource::Ollama => error!("Ollama transformer not implemented yet"),
+        ModelSource::Ollama => {
+            let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
+                Some(k) => k,
+                None => {
+                    error!("failed to get Ollama url from GUC");
+                }
+            };
+
+            let embedding_request = EmbeddingPayload {
+                input: vec![input.to_string()],
+                model: transformer.fullname.to_string(),
+            };
+
+            EmbeddingRequest {
+                url,
+                payload: embedding_request,
+                api_key: None
+            }
+        }
     };
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
+    info!("stuff: {:?}", embedding_request);
 
     match transformer.source {
         ModelSource::Ollama => error!("Ollama transformer not implemented yet"),

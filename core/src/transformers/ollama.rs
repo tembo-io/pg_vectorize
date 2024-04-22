@@ -11,6 +11,8 @@ pub trait LLMFunctions {
     fn new(model_name: String, url: String) -> Self;
     #[allow(async_fn_in_trait)]
     async fn generate_reponse(&self, prompt_text: String) -> Result<String, String>;
+    #[allow(async_fn_in_trait)]
+    async fn generate_embedding(&self, inputs: String)-> Result<Vec<f64>, String>;
 }
 
 impl LLMFunctions for OllamaInstance {
@@ -38,6 +40,13 @@ impl LLMFunctions for OllamaInstance {
             Err(e) => Err(e.to_string()),
         }
     }
+    async fn generate_embedding(&self, input: String) -> Result<Vec<f64>, String>{
+        let embed = self.instance.generate_embeddings(self.model_name.clone(), input, None).await;
+        match embed{
+            Ok(res) => Ok(res.embeddings),
+            Err(e) => Err(e.to_string())
+        }
+    } 
 }
 
 pub fn ollama_embedding_dim(model_name: &str) -> i32 {
