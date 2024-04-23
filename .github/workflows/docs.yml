@@ -17,4 +17,8 @@ jobs:
           python-version: 3.11
       - run: curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
       - run: poetry install
-      - run: poetry run mkdocs gh-deploy
+
+      - name: deploy docs
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: poetry run mkdocs gh-deploy --force
