@@ -15,8 +15,8 @@ vectorize."table"(
     "args" json DEFAULT '{}',
     "schema" TEXT DEFAULT 'public',
     "update_col" TEXT DEFAULT 'last_updated_at',
-    "transformer" TEXT DEFAULT 'text-embedding-ada-002',
-    "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity',
+    "transformer" TEXT DEFAULT 'openai/text-embedding-ada-002',
+    "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
     "table_method" vectorize.TableMethod DEFAULT 'join',
     "schedule" TEXT DEFAULT '* * * * *'
 ) RETURNS TEXT
@@ -47,12 +47,12 @@ Pass the API key into the function call via `args`.
 
 ```sql
 select vectorize.table(
-    job_name => 'product_search',
-    "table" => 'products',
+    job_name    => 'product_search',
+    "table"     => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
-    transformer =>  'text-embedding-ada-002',
-    args => '{"api_key": "my-openai-key"}'
+    columns     => ARRAY['product_name', 'description'],
+    transformer =>  'openai/text-embedding-ada-002',
+    args        => '{"api_key": "my-openai-key"}'
 );
 ```
 
@@ -67,11 +67,11 @@ Then call `vectorize.table()` without providing the API key.
 
 ```sql
 select vectorize.table(
-    job_name => 'product_search',
-    "table" => 'products',
+    job_name    => 'product_search',
+    "table"     => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
-    transformer =>  'text-embedding-ada-002'
+    columns     => ARRAY['product_name', 'description'],
+    transformer =>  'openai/text-embedding-ada-002'
 );
 ```
 
@@ -106,10 +106,10 @@ vectorize."search"(
 
 ```sql
 SELECT * FROM vectorize.search(
-    job_name => 'product_search',
-    query => 'mobile electronic devices',
-    return_columns => ARRAY['product_id', 'product_name'],
-    num_results => 3
+    job_name        => 'product_search',
+    query           => 'mobile electronic devices',
+    return_columns  => ARRAY['product_id', 'product_name'],
+    num_results     => 3
 );
 ```
 

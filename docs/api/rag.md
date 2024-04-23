@@ -15,8 +15,8 @@ vectorize.init_rag(
     "unique_record_id" TEXT,
     "column" TEXT,
     "schema" TEXT DEFAULT 'public',
-    "transformer" TEXT DEFAULT 'text-embedding-ada-002',
-    "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity',
+    "transformer" TEXT DEFAULT 'openai/text-embedding-ada-002',
+    "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine'
     "table_method" vectorize.TableMethod DEFAULT 'append'
 ) RETURNS TEXT
 ```
@@ -38,11 +38,11 @@ Example:
 
 ```sql
 select vectorize.init_rag(
-    agent_name => 'tembo_chat',
-    table_name => 'tembo_docs',
-    unique_record_id => 'document_name',
-    "column" => 'content',
-    transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+    agent_name        => 'tembo_chat',
+    table_name        => 'tembo_docs',
+    unique_record_id  => 'document_name',
+    "column"          => 'content',
+    transformer       => 'sentence-transformers/all-MiniLM-L12-v2'
 );
 ```
 
@@ -56,7 +56,7 @@ select vectorize.init_rag(
 vectorize."rag"(
     "agent_name" TEXT,
     "query" TEXT,
-    "chat_model" TEXT DEFAULT 'gpt-3.5-turbo',
+    "chat_model" TEXT DEFAULT 'openai/gpt-3.5-turbo',
     "task" TEXT DEFAULT 'question_answer',
     "api_key" TEXT DEFAULT NULL,
     "num_context" INT DEFAULT 2,
@@ -81,10 +81,10 @@ vectorize."rag"(
 
 ```sql
 select vectorize.rag(
-    agent_name => 'tembo_support',
-    query => 'what are the major features from the tembo kubernetes operator?',
-    chat_model => 'gpt-3.5-turbo',
-    force_trim => 'true'
+    agent_name  => 'tembo_support',
+    query       => 'what are the major features from the tembo kubernetes operator?',
+    chat_model  => 'openai/gpt-3.5-turbo',
+    force_trim  => 'true'
 );
 ```
 
@@ -112,10 +112,10 @@ Filter the results to just the `chat_response`:
 
 ```sql
 select vectorize.rag(
-    agent_name => 'tembo_support',
-    query => 'what are the major features from the tembo kubernetes operator?',
-    chat_model => 'gpt-3.5-turbo',
-    force_trim => 'true'
+    agent_name  => 'tembo_support',
+    query       => 'what are the major features from the tembo kubernetes operator?',
+    chat_model  => 'gpt-3.5-turbo',
+    force_trim  => 'true'
 ) -> 'chat_response';
 ```
 
