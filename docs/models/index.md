@@ -114,8 +114,8 @@ Model name support rules apply the same.
 
 ```sql
 select vectorize.transform_embeddings(
-    input => 'the quick brown fox jumped over the lazy dogs',
-    model_name => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
+    input       => 'the quick brown fox jumped over the lazy dogs',
+    model_name  => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
 );
 ```
 
@@ -138,8 +138,8 @@ To call the `text-embedding-ada-002` from OpenAI:
 
 ```sql
 select vectorize.transform_embeddings(
-    input => 'the quick brown fox jumped over the lazy dogs',
-    model_name => 'openai/text-embedding-ada-002'
+    input       => 'the quick brown fox jumped over the lazy dogs',
+    model_name  => 'openai/text-embedding-ada-002'
 );
 ```
 
