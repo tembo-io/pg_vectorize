@@ -4,12 +4,12 @@
 
 Transforms a block of text to embeddings using the specified transformer.
 
-Requires the `vector-serve` container to be set via `vectorize.embedding_svc_url`, or an OpenAI key to be set if using OpenAI embedding models.
+Requires the `vector-serve` container to be set via `vectorize.embedding_service_url`, or an OpenAI key to be set if using OpenAI embedding models.
 
 ```sql
 vectorize."transform_embeddings"(
     "input" TEXT,
-    "model_name" TEXT DEFAULT 'text-embedding-ada-002',
+    "model_name" TEXT DEFAULT 'openai/text-embedding-ada-002',
     "api_key" TEXT DEFAULT NULL
 ) RETURNS double precision[]
 ```
@@ -26,8 +26,8 @@ vectorize."transform_embeddings"(
 
 ```sql
 select vectorize.transform_embeddings(
-    input => 'the quick brown fox jumped over the lazy dogs',
-    model_name => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
+    input       => 'the quick brown fox jumped over the lazy dogs',
+    model_name  => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
 );
 
 {-0.2556323707103729,-0.3213586211204529 ..., -0.0951206386089325}
@@ -37,7 +37,7 @@ select vectorize.transform_embeddings(
 
 Configure `vectorize` to run on a database other than the default `postgres`.
 
-Note that when making this change, it's also required to update `pg_cron` such that its corresponding background workers also connect to the appropriate database. 
+Note that when making this change, it's also required to update `pg_cron` such that its corresponding background workers also connect to the appropriate database.
 
 ### Example
 

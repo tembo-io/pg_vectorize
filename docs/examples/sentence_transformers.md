@@ -53,12 +53,12 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 
 ```sql
 SELECT vectorize.table(
-    job_name => 'product_search_hf',
-    "table" => 'products',
+    job_name    => 'product_search_hf',
+    "table"     => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
+    columns     => ARRAY['product_name', 'description'],
     transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',
-    scheduler => 'realtime'
+    scheduler   => 'realtime'
 );
 ```
 
@@ -68,10 +68,10 @@ Then search,
 
 ```sql
 SELECT * FROM vectorize.search(
-    job_name => 'product_search_hf',
-    query => 'accessories for mobile devices',
-    return_columns => ARRAY['product_id', 'product_name'],
-    num_results => 3
+    job_name        => 'product_search_hf',
+    query           => 'accessories for mobile devices',
+    return_columns  => ARRAY['product_id', 'product_name'],
+    num_results     => 3
 );
 
                                        search_results                                        
