@@ -6,6 +6,7 @@ on:
       - apr-doc
     paths:
       - 'docs/**'
+      - '.github/workflows/docs.yml'
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -14,6 +15,6 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.11
-      - run: curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
+      - run: curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
       - run: poetry install
       - run: poetry mkdocs gh-deploy
