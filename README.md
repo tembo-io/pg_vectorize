@@ -217,7 +217,7 @@ And to use a locally hosted Ollama service, change the `chat_model` parameter:
 SELECT vectorize.rag(
     agent_name  => 'product_chat',
     query       => 'What is a pencil?',
-    chat_model  => 'ollama/wizardlm2:7b-q2_K'
+    chat_model  => 'ollama/wizardlm2:7b'
 ) -> 'chat_response';
 ```
 

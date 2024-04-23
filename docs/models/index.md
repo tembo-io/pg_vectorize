@@ -9,7 +9,7 @@ A few illustrative examples:
 
 - `openai/text-embedding-ada-002` is one of OpenAI's earliest [embedding](https://platform.openai.com/docs/models/embeddings) models
 - `openai/gpt-3.5-turbo-instruct` is a [text generation](https://platform.openai.com/docs/models/gpt-3-5-turbo) model from OpenAI.
-- `ollama/wizardlm2:7b-q2_k` is a language model hosted in [Ollama](https://ollama.com/library/wizardlm2:7b-q2_K) and developed by MicrosoftAI.
+- `ollama/wizardlm2:7b` is a language model hosted in [Ollama](https://ollama.com/library/wizardlm2:7b) and developed by MicrosoftAI.
 - `sentence-transformers/all-MiniLM-L12-v2` is a text-to-embedding model from [SentenceTransformers](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2).
 
 ## Text-to-Embedding Models
@@ -203,7 +203,7 @@ SELECT vectorize.rag(
 
 #### Loading new Ollama models
 
-While Ollama server comes preloaded with `wizardlm2:7b-q2_K`, we can load and model supported by Ollama by calling the `/api/pull` endpoint.
+While Ollama server comes preloaded with `wizardlm2:7b`, we can load and model supported by Ollama by calling the `/api/pull` endpoint.
  The service is compatible with all models available in the [Ollama library](https://ollama.com/library).
 
 To pull Llama 3:
