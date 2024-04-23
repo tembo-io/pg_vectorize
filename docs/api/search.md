@@ -32,7 +32,7 @@ vectorize."table"(
 | schema | text | The name of the schema where the table is located. Defaults to 'public'. |
 | update_col | text | Column specifying the last time the record was updated. Required for cron-like schedule. Defaults to `last_updated_at` |
 | transformer | text | The name of the transformer to use for the embeddings. Defaults to 'text-embedding-ada-002'. |
-| search_alg | SimilarityAlg | The name of the search algorithm to use. Defaults to 'pgv_cosine_similarity'. |
+| index_dist_type | IndexDist | The name of index type to build. Defaults to 'pgv_hnsw_cosine'. |
 | table_method | TableMethod | `join` to store embeddings in a new table in the vectorize schema. `append` to create columns for embeddings on the source table. Defaults to `join`. |
 | schedule | text | Accepts a cron-like input for a cron based updates. Or `realtime` to set up a trigger. |
 

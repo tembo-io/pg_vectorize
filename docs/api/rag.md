@@ -16,7 +16,7 @@ vectorize.init_rag(
     "column" TEXT,
     "schema" TEXT DEFAULT 'public',
     "transformer" TEXT DEFAULT 'openai/text-embedding-ada-002',
-    "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine'
+    "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
     "table_method" vectorize.TableMethod DEFAULT 'append'
 ) RETURNS TEXT
 ```
@@ -31,7 +31,7 @@ vectorize.init_rag(
 | column | text | The name of the column that contains the content that is used for context for RAG. |
 | schema | text | The name of the schema where the table is located. Defaults to 'public'. |
 | transformer | text | The name of the transformer to use for the embeddings. Defaults to 'text-embedding-ada-002'. |
-| search_alg | SimilarityAlg | The name of the search algorithm to use. Defaults to 'pgv_cosine_similarity'. |
+| index_dist_type | IndexDist | The name of index type to build. Defaults to 'pgv_hnsw_cosine'. |
 | table_method | TableMethod | The method to use for the table. Defaults to 'append', which adds a column to the existing table. |
 
 Example:
