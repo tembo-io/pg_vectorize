@@ -4,6 +4,8 @@ on:
     branches:
       - main
       - apr-doc
+    paths:
+      - 'docs/**'
 jobs:
   deploy:
     runs-on: ubuntu-latest
