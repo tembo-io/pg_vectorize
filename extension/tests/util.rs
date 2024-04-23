@@ -142,7 +142,7 @@ pub mod common {
     ) -> Result<Vec<SearchJSON>> {
         let mut results: Vec<SearchJSON> = vec![];
         let filter_param = match filter {
-            Some(f) => format!(",where_sql => $${f}$$"),
+            Some(f) => format!(",where_sql => $VECTDELIM${f}$VECTDELIM$"),
             None => "".to_string(),
         };
         let query = format!(
