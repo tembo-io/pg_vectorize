@@ -46,12 +46,22 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
     };
 
     // send the job message to the queue
-    let query = format!(
-        "select pgmq.send('{VECTORIZE_QUEUE}', $${}$$::jsonb);",
-        serde_json::to_string(&job_message).unwrap()
-    );
+    let query = "select pgmq.send($1, $2::jsonb);";
     let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(&query, None, None)?;
+        let _r = c.update(
+            query,
+            None,
+            Some(vec![
+                (PgBuiltInOids::TEXTOID.oid(), VECTORIZE_QUEUE.into_datum()),
+                (
+                    PgBuiltInOids::JSONBOID.oid(),
+                    pgrx::JsonB(
+                        serde_json::to_value(job_message).expect("failed parsing job message"),
+                    )
+                    .into_datum(),
+                ),
+            ]),
+        )?;
         Ok(())
     });
 }
@@ -168,12 +178,22 @@ pub fn initalize_table_job(
             job_meta: vectorize_meta.clone(),
             inputs: b,
         };
-        let query = format!(
-            "select pgmq.send('{VECTORIZE_QUEUE}', $${}$$::jsonb);",
-            serde_json::to_string(&job_message).unwrap()
-        );
+        let query = "select pgmq.send($1, $2::jsonb);";
         let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
-            let _r = c.update(&query, None, None)?;
+            let _r = c.update(
+                query,
+                None,
+                Some(vec![
+                    (PgBuiltInOids::TEXTOID.oid(), VECTORIZE_QUEUE.into_datum()),
+                    (
+                        PgBuiltInOids::JSONBOID.oid(),
+                        pgrx::JsonB(
+                            serde_json::to_value(job_message).expect("failed parsing job message"),
+                        )
+                        .into_datum(),
+                    ),
+                ]),
+            )?;
             Ok(())
         });
     }
