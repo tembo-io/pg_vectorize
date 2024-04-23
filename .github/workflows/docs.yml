@@ -17,4 +17,4 @@ jobs:
           python-version: 3.11
       - run: curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
       - run: poetry install
-      - run: poetry mkdocs gh-deploy
+      - run: poetry run mkdocs gh-deploy
