@@ -125,12 +125,12 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 
 ```sql
 SELECT vectorize.table(
-    job_name => 'product_search_hf',
-    "table" => 'products',
+    job_name    => 'product_search_hf',
+    "table"     => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
+    columns     => ARRAY['product_name', 'description'],
     transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',
-    schedule => 'realtime'
+    schedule    => 'realtime'
 );
 ```
 
@@ -140,10 +140,10 @@ Then search,
 
 ```sql
 SELECT * FROM vectorize.search(
-    job_name => 'product_search_hf',
-    query => 'accessories for mobile devices',
-    return_columns => ARRAY['product_id', 'product_name'],
-    num_results => 3
+    job_name        => 'product_search_hf',
+    query           => 'accessories for mobile devices',
+    return_columns  => ARRAY['product_id', 'product_name'],
+    num_results     => 3
 );
 ```
 
@@ -184,6 +184,9 @@ ALTER TABLE products
 ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description) STORED;
 ```
 
+Initialize the RAG project.
+ We'll use the `sentence-transformers/all-MiniLM-L12-v2` model to generate embeddings on our source documents.
+
 ```sql
 SELECT vectorize.init_rag(
     agent_name          => 'product_chat',
@@ -194,16 +197,34 @@ SELECT vectorize.init_rag(
 );
 ```
 
+Now we can ask questions of the `products` table and get responses from the `product_chat` agent using the `openai/gpt-3.5-turbo` generative model.
+
 ```sql
 SELECT vectorize.rag(
     agent_name  => 'product_chat',
-    query       => 'What is a pencil?'
+    query       => 'What is a pencil?',
+    chat_model  => 'openai/gpt-3.5-turbo'
 ) -> 'chat_response';
 ```
 
 ```text
 "A pencil is an item that is commonly used for writing and is known to be most effective on paper."
 ```
+
+And to use a locally hosted Ollama service, change the `chat_model` parameter:
+
+```sql
+SELECT vectorize.rag(
+    agent_name  => 'product_chat',
+    query       => 'What is a pencil?',
+    chat_model  => 'ollama/wizardlm2:7b'
+) -> 'chat_response';
+```
+
+```text
+" A pencil is a writing instrument that consists of a solid or gelignola wood core, known as the \"lead,\" encased in a cylindrical piece of breakable material (traditionally wood or plastic), which serves as the body of the pencil. The tip of the body is tapered to a point for writing, and it can mark paper with the imprint of the lead. When used on a sheet of paper, the combination of the pencil's lead and the paper creates a visible mark that is distinct from unmarked areas of the paper. Pencils are particularly well-suited for writing on paper, as they allow for precise control over the marks made."
+```
+
 
 :bulb: Note that the `-> 'chat_response'` addition selects for that field of the JSON object output. Removing it will show the full JSON object, including information on which documents were included in the contextual prompt.
 

@@ -22,11 +22,11 @@ Then create the job.
 
 ```sql
 SELECT vectorize.table(
-    job_name => 'product_search_openai',
-    "table" => 'products',
+    job_name    => 'product_search_openai',
+    "table"     => 'products',
     primary_key => 'product_id',
-    columns => ARRAY['product_name', 'description'],
-    transformer => 'text-embedding-ada-002'
+    columns     => ARRAY['product_name', 'description'],
+    transformer => 'openai/text-embedding-ada-002'
 );
 ```
 
@@ -34,10 +34,10 @@ To search the table, use the `vectorize.search` function.
 
 ```sql
 SELECT * FROM vectorize.search(
-    job_name => 'product_search_openai',
-    query => 'accessories for mobile devices',
-    return_columns => ARRAY['product_id', 'product_name'],
-    num_results => 3
+    job_name        => 'product_search_openai',
+    query           => 'accessories for mobile devices',
+    return_columns  => ARRAY['product_id', 'product_name'],
+    num_results     => 3
 );
 ```
 

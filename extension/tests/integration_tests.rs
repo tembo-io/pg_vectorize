@@ -148,7 +148,7 @@ async fn test_realtime_job() {
         job_name => '{job_name}',
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
-        columns => ARRAY['product_name'],
+        columns => ARRAY['product_name', 'description'],
         transformer => 'all-MiniLM-L12-v2',
         schedule => 'realtime'
     );"
@@ -188,6 +188,39 @@ async fn test_realtime_job() {
         let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
         if row.product_id == random_product_id {
             assert_eq!(row.product_name, "car tester");
+            assert_eq!(row.product_id, random_product_id);
+            found_it = true;
+        }
+    }
+    assert!(found_it);
+
+    // test with some double dollar quote string data
+    let random_product_id = rng.gen_range(0..100000);
+
+    let insert_query = format!(
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
+        VALUES ({random_product_id}, 'messy-product', $DELIM$the $$quick brown fox jump's over the lazy dog$DELIM$);"
+    );
+
+    // insert a new row
+    let _result = sqlx::query(&insert_query)
+        .execute(&conn)
+        .await
+        .expect("failed to insert into test_table");
+
+    // index will need to rebuild
+    tokio::time::sleep(tokio::time::Duration::from_secs(5 as u64)).await;
+    let search_results =
+        common::search_with_retry(&conn, "messy-product", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
+
+    let mut found_it = false;
+    for row in search_results {
+        let row: common::SearchResult = serde_json::from_value(row.search_results).unwrap();
+        if row.product_id == random_product_id {
+            assert_eq!(row.product_name, "messy-product");
+            assert_eq!(row.product_id, random_product_id);
             found_it = true;
         }
     }
