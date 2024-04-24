@@ -1,7 +1,6 @@
 CREATE TABLE vectorize.job (
     job_id bigserial,
     name TEXT NOT NULL UNIQUE,
-    job_type TEXT NOT NULL,
     index_dist_type TEXT NOT NULL DEFAULT 'pgv_hsnw_cosine',
     transformer TEXT NOT NULL,
     search_alg TEXT NOT NULL,

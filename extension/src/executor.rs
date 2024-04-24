@@ -111,7 +111,8 @@ pub async fn get_vectorize_meta(
     let row = sqlx::query_as!(
         VectorizeMeta,
         "
-        SELECT *
+        SELECT 
+            job_id, name, index_dist_type, transformer, search_alg, params, last_completion
         FROM vectorize.job
         WHERE name = $1
         ",

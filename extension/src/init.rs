@@ -61,10 +61,9 @@ pub fn init_job_query() -> String {
     // search_alg is now deprecated
     format!(
         "
-        INSERT INTO {schema}.job (name, job_type, index_dist_type, transformer, search_alg, params)
+        INSERT INTO {schema}.job (name, index_dist_type, transformer, search_alg, params)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (name) DO UPDATE SET
-            job_type = EXCLUDED.job_type,
             index_dist_type = EXCLUDED.index_dist_type,
             search_alg = EXCLUDED.search_alg,
             params = job.params || EXCLUDED.params;

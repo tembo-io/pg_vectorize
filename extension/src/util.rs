@@ -67,7 +67,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
         SELECT 
             job_id,
             name,
-            job_type,
             index_dist_type,
             transformer,
             search_alg,
@@ -97,10 +96,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .get_by_name("name")
             .expect("name column does not exist.")
             .expect("name column was null.");
-        let job_type: String = result_row
-            .get_by_name("job_type")
-            .expect("job_type column does not exist.")
-            .expect("job_type column was null.");
         let index_dist_type: String = result_row
             .get_by_name("index_dist_type")
             .expect("index_dist_type column does not exist.")
@@ -123,7 +118,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
         Ok(types::VectorizeMeta {
             job_id,
             name,
-            job_type: job_type.into(),
             index_dist_type: index_dist_type.into(),
             transformer: transformer_model,
             // search_alg is now deprecated
