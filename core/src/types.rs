@@ -208,8 +208,6 @@ impl Model {
             parts.insert(0, "openai");
         } else if missing_source && parts[0] == "all-MiniLM-L12-v2" {
             parts.insert(0, "sentence-transformers");
-        } else if missing_source && parts[0] == "llama2" {
-            parts.insert(0, "ollama");
         } else if missing_source {
             return Err(ModelError::InvalidFormat(input.to_string()));
         }
