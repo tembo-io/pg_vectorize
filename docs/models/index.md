@@ -29,7 +29,7 @@ For example, the `sentence-transformers` provider has a model named `all-MiniLM-
 
 [SentenceTransformers](https://sbert.net/) is a Python library for computing text embeddings.
  pg_vectorize provides a container image that implements the SentenceTransformer library beyind a REST API.
- The container image is pre-built with `sentence-transformers/all-mini-LM-L12-v2` pre-cached.
+ The container image is pre-built with `sentence-transformers/all-MiniLM-L12-v2` pre-cached.
  Models that are not pre-cached will be downloaded on first use and cached for subsequent use.
 
 When calling the model server from Postgres, the url to the model server must first be set in the `vectorize.embedding_service_url` configuration parameter.
