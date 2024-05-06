@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT *\n        FROM vectorize.job\n        WHERE name = $1\n        ",
+  "query": "\n        SELECT \n            job_id, name, index_dist_type, transformer, search_alg, params, last_completion\n        FROM vectorize.job\n        WHERE name = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -15,31 +15,26 @@
       },
       {
         "ordinal": 2,
-        "name": "job_type",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 3,
         "name": "index_dist_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "transformer",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "search_alg",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "params",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "last_completion",
         "type_info": "Timestamptz"
       }
@@ -56,9 +51,8 @@
       false,
       false,
       false,
-      false,
       true
     ]
   },
-  "hash": "406fb387c8a2d04c3a5362ae2da0154ff0295f078171f59b904e97fdd2933989"
+  "hash": "d7a62ec23a0731cdd64bbfeca0345279a8a8660c2336a598fca0b81c26404da8"
 }

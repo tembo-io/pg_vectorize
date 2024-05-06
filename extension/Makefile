@@ -11,7 +11,7 @@ RUST_LOG:=debug
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs docs
 
 sqlx-cache:
-	cargo sqlx prepare
+	cargo sqlx prepare --database-url=${DATABASE_URL}
 
 format:
 	SQLX_OFFLINE=${SQLX_OFFLINE} cargo fmt --all
