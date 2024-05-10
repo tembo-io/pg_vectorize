@@ -28,8 +28,6 @@ pub fn init_table(
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: &str,
 ) -> Result<String> {
-    let job_type = types::JobType::Columns;
-
     // validate table method
     // realtime is only compatible with the join method
     if schedule == "realtime" && table_method != TableMethod::join {
@@ -117,10 +115,6 @@ pub fn init_table(
                 (PgBuiltInOids::TEXTOID.oid(), job_name.into_datum()),
                 (
                     PgBuiltInOids::TEXTOID.oid(),
-                    job_type.to_string().into_datum(),
-                ),
-                (
-                    PgBuiltInOids::TEXTOID.oid(),
                     index_dist_type.to_string().into_datum(),
                 ),
                 (
@@ -180,7 +174,6 @@ pub fn init_table(
     initalize_table_job(
         job_name,
         &valid_params,
-        &job_type,
         index_dist_type,
         transformer,
         // search_alg is now deprecated

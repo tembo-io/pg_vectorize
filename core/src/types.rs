@@ -87,41 +87,6 @@ impl From<String> for IndexDist {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum JobType {
-    Columns,
-    // row,
-    // url,
-}
-
-impl FromStr for JobType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Columns" => Ok(JobType::Columns),
-            _ => Err(format!("Invalid value: {}", s)),
-        }
-    }
-}
-
-impl From<String> for JobType {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "Columns" => JobType::Columns,
-            _ => panic!("Invalid value for JobType: {}", s), // or handle this case differently
-        }
-    }
-}
-
-impl Display for JobType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match self {
-            JobType::Columns => write!(f, "Columns"),
-        }
-    }
-}
-
 #[allow(non_camel_case_types)]
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TableMethod {
@@ -165,7 +130,6 @@ pub struct JobMessage {
 pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
-    pub job_type: JobType,
     pub index_dist_type: IndexDist,
     pub transformer: Model,
     // search_alg and SimilarityAlg are now deprecated
