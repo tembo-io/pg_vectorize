@@ -196,6 +196,14 @@ fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
     let instance = OllamaInstance::new(model.to_string(), url.to_string());
+    let res = runtime.block_on(async {
+        instance.pull_model();
+    });
+
+    let _ = match res{
+        Err(e) => error!("ERROR: {:?}", e.to_string()),
+        _ => info!("Model pulled successfully!"),
+    };
 
     let response = runtime.block_on(async {
         instance

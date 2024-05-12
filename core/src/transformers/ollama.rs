@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
 use url::Url;
+use reqwest;
 
 pub struct OllamaInstance {
     pub model_name: String,
@@ -11,7 +14,11 @@ pub trait LLMFunctions {
     fn new(model_name: String, url: String) -> Self;
     #[allow(async_fn_in_trait)]
     async fn generate_reponse(&self, prompt_text: String) -> Result<String, String>;
+    #[allow(async_fn_in_trait)]
+    async fn pull_model(&self) -> Result<String, String>;
 }
+
+
 
 impl LLMFunctions for OllamaInstance {
     fn new(model_name: String, url: String) -> Self {
@@ -38,6 +45,13 @@ impl LLMFunctions for OllamaInstance {
             Err(e) => Err(e.to_string()),
         }
     }
+    async fn pull_model(&self) -> Result<String, String>{
+        let status = self.instance.pull_model(self.model_name.clone(), true).await;
+        match status{
+            Ok(_) => Ok("Pulled Model".to_string()),
+            Err(e) => Err(e.to_string())
+        }
+    }
 }
 
 pub fn ollama_embedding_dim(model_name: &str) -> i32 {
@@ -46,3 +60,5 @@ pub fn ollama_embedding_dim(model_name: &str) -> i32 {
         _ => 1536,
     }
 }
+
+
