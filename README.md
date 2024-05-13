@@ -5,19 +5,21 @@
 <br/>
   <a href="https://tembo.io"><img src="https://github.com/tembo-io/pg_vectorize/assets/15756360/34d65cba-065b-485f-84a4-76284e9def19" alt="pg_vectorize" width="368px"></a>
 
-</h1>
-
 <p align="center">
-  
+  <div style="text-align: center;">
+    <a href="https://cloud.tembo.io/sign-up">
+      <img src="https://tembo.io/tryFreeButton.svg" alt="Tembo Cloud Try Free">
+    </a>
+  </div>
 </p>
+
+</h1>
 
 A Postgres extension that automates the transformation and orchestration of text to embeddings and provides hooks into the most popular LLMs. This allows you to do vector search and build LLM applications on existing data with as little as two function calls.
 
 This project relies heavily on the work by [pgvector](https://github.com/pgvector/pgvector) for vector similarity search, [pgmq](https://github.com/tembo-io/pgmq) for orchestration in background workers, and [SentenceTransformers](https://huggingface.co/sentence-transformers).
 
 ---
-
-[![Tembo Cloud Try Free](https://tembo.io/tryFreeButton.svg)](https://cloud.tembo.io/sign-up)
 
 [![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
 [![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
