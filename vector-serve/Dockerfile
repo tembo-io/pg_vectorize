@@ -18,18 +18,20 @@ COPY --from=builder /build/core/target/release/vectorize-worker /usr/local/bin/v
 WORKDIR /usr/src/app
 
 RUN apt-get update && \
-    apt-get install -y curl
+    apt-get install -y curl make
 
-RUN pip install \
-    fastapi==0.104.0 \
-    uvicorn[standard]==0.23.2 \
-    sentence-transformers==2.2.2
+# RUN pip install \
+#     fastapi==0.104.0 \
+#     uvicorn[standard]==0.23.2 \
+#     sentence-transformers==2.2.2
 
 # Download models, save to image cache
 COPY vector-serve /vector-serve
 
 WORKDIR /vector-serve
+ENV PATH="/root/.local/bin:$PATH"
+RUN make setup
 
-RUN python app/models.py
+RUN poetry run python app/models.py
 
-CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
+CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
