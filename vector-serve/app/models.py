@@ -71,7 +71,9 @@ def get_model(
         logging.debug(f"Model: {model_name} not in cache.")
         try:
             logging.error("api_key: %s", api_key)
-            model = SentenceTransformer(model_name, use_auth_token=api_key, trust_remote_code=True)
+            model = SentenceTransformer(
+                model_name, use_auth_token=api_key, trust_remote_code=True
+            )
             # add model to cache
             model_cache[model_name] = model
             logging.debug(f"Added model: {model_name} to cache.")
