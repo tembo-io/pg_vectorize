@@ -25,13 +25,3 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
-
-
-
-# Path: Dockerfile
-  hf-serve:
-    ports:
-      - 8081:80
-    image: ghcr.io/huggingface/text-generation-inference:2.0
-    command: ["--model-id HuggingFaceH4/zephyr-7b-beta"]
-    shm_size: 1g
