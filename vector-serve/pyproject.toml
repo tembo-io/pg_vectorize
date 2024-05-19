@@ -7,11 +7,13 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-fastapi = "^0.104.0"
+fastapi = ">=0.104.0"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 sentence-transformers = "^2.2.2"
 torch = "^2.1.2"
 einops = "^0.7.0"
+prometheus-client = "^0.20.0"
+prometheus-fastapi-instrumentator = "^7.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
