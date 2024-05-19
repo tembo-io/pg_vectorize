@@ -39,11 +39,10 @@ def start_app_handler(app: FastAPI) -> Callable:
 
 app.add_event_handler("startup", start_app_handler(app))
 
-instrumentator = Instrumentator().instrument(app).expose(app)
-from app.routes.metrics import http_requested_models_total
-instrumentator.add(http_requested_models_total())
+instrumentator = Instrumentator().instrument(app)
+instrumentator.expose(app)
 
 if __name__ == "__main__":
     import uvicorn  # type: ignore
 
-    uvicorn.run("src.app:app", host="0.0.0.0", port=5000, reload=True)
+    uvicorn.run("app.app:app", host="0.0.0.0", port=3000, reload=True)
