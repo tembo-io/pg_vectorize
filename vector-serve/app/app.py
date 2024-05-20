@@ -10,6 +10,8 @@ from app.routes.health import router as health_router
 
 from app.models import load_model_cache
 
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -37,7 +39,10 @@ def start_app_handler(app: FastAPI) -> Callable:
 
 app.add_event_handler("startup", start_app_handler(app))
 
+instrumentator = Instrumentator().instrument(app)
+instrumentator.expose(app)
+
 if __name__ == "__main__":
     import uvicorn  # type: ignore
 
-    uvicorn.run("src.app:app", host="0.0.0.0", port=5000, reload=True)
+    uvicorn.run("app.app:app", host="0.0.0.0", port=3000, reload=True)

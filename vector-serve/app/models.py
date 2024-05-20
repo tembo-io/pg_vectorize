@@ -2,8 +2,9 @@ import os
 import logging
 
 from fastapi import FastAPI, HTTPException
-
 from sentence_transformers import SentenceTransformer
+
+from app.metrics import ML_MODEL_COUNT
 
 _HF_ORG = "sentence-transformers"
 
@@ -71,7 +72,9 @@ def get_model(
         logging.debug(f"Model: {model_name} not in cache.")
         try:
             logging.error("api_key: %s", api_key)
-            model = SentenceTransformer(model_name, use_auth_token=api_key)
+            model = SentenceTransformer(
+                model_name, use_auth_token=api_key, trust_remote_code=True
+            )
             # add model to cache
             model_cache[model_name] = model
             logging.debug(f"Added model: {model_name} to cache.")
@@ -80,6 +83,7 @@ def get_model(
                 logging.warning("No api_key provided for model: %s", model_name)
             logging.exception("Failed to load model %s", model_name)
             raise
+    ML_MODEL_COUNT.labels(model_name=model_name).inc()
     return model
 
 
