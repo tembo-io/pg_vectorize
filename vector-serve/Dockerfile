@@ -26,6 +26,6 @@ WORKDIR /vector-serve
 ENV PATH="/root/.local/bin:$PATH"
 RUN make setup
 # cache models
-RUN poetry run python app/models.py
+RUN poetry run python -m app.models
 
 CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
