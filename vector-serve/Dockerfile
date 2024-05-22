@@ -32,6 +32,5 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 RUN make setup
 # cache models
 RUN poetry run python -m app.models
-RUN chown -R nobody:nogroup $POETRY_HOME
 
 CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
