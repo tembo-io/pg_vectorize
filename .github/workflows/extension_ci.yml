@@ -84,7 +84,10 @@ jobs:
   test:
     name: Run tests
     needs: dependencies
-    runs-on: ubuntu-22.04
+    runs-on:
+      - self-hosted
+      - dind
+      - large-8x8
     services:
       # Label used to access the service container
       vector-serve:
