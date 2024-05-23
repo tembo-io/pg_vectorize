@@ -23,7 +23,12 @@ RUN apt-get update && \
 COPY vector-serve /vector-serve
 
 WORKDIR /vector-serve
-ENV PATH="/root/.local/bin:$PATH"
+
+ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+ENV POETRY_HOME="/opt/poetry"
+ENV POETRY_NO_INTERACTION=1
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
 RUN make setup
 # cache models
 RUN poetry run python -m app.models
