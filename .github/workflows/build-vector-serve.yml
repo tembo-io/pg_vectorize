@@ -23,24 +23,24 @@ defaults:
   run:
     shell: bash
     working-directory: ./vector-serve/
-  
+
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11.1
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.11.1
-    - name: Setup
-      run: make setup
-    - name: Init Model Cache
-      run: make download.models
-    - name: Lints
-      run: make check
-    - name: Tests
-      run: make test
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.1
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11.1
+      - name: Setup
+        run: make setup
+      - name: Init Model Cache
+        run: make download.models
+      - name: Lints
+        run: make check
+      - name: Tests
+        run: make test
   build_and_push:
     name: Build and push images
     needs: tests
@@ -59,7 +59,7 @@ jobs:
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -94,3 +94,34 @@ jobs:
           push: true
           tags: |
             quay.io/tembo/vector-serve:latest
+
+      - name: ECR Build and push -- Commit
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_IAM_ROLE }}
+          role-session-name: images-gha-docker-build-and-push
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Install awscli
+        uses: unfor19/install-aws-cli-action@v1
+      - name: Push to ECR
+        shell: bash
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}/vector-serve
+          docker tag quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }} ${{ secrets.ECR_REGISTRY }}/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+          docker push ${{ secrets.ECR_REGISTRY }}/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: ECR Build and push -- Commit
+        if: github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_IAM_ROLE }}
+          role-session-name: images-gha-docker-build-and-push
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Install awscli
+        uses: unfor19/install-aws-cli-action@v1
+      - name: Push to ECR
+        shell: bash
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}/vector-serve
+          docker tag quay.io/tembo/vector-serve:latest ${{ secrets.ECR_REGISTRY }}/vector-serve:latest
+          docker push ${{ secrets.ECR_REGISTRY }}/vector-serve:latest
