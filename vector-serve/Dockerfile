@@ -11,7 +11,7 @@ COPY core/ core/
 RUN cd core && \
     cargo build --bin vectorize-worker --release
 
-FROM python:3.12.3
+FROM python:3.12.3-slim-bookworm
 
 COPY --from=builder /build/core/target/release/vectorize-worker /usr/local/bin/vectorize-worker
 
