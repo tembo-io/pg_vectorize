@@ -11,7 +11,8 @@ COPY core/ core/
 RUN cd core && \
     cargo build --bin vectorize-worker --release
 
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+# FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+FROM python:3.12.3
 
 COPY --from=builder /build/core/target/release/vectorize-worker /usr/local/bin/vectorize-worker
 
