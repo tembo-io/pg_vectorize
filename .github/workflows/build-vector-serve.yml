@@ -72,16 +72,16 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
-      - name: Build and push -- Commit
-        # push a build for every commit
-        uses: docker/build-push-action@v5
-        with:
-          file: ./vector-serve/Dockerfile
-          context: ./
-          platforms: linux/amd64, linux/arm64
-          push: true
-          tags: |
-            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+      # - name: Build and push -- Commit
+      #   # push a build for every commit
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     file: ./vector-serve/Dockerfile
+      #     context: ./
+      #     platforms: linux/amd64, linux/arm64
+      #     push: true
+      #     tags: |
+      #       quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push -- Latest
         # only push latest off main
