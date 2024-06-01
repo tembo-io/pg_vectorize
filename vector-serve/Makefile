@@ -22,6 +22,10 @@ setup:
 	curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
 	poetry install
 
+setup-build:
+	curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
+	poetry install --no-cache --without dev --no-root
+
 check:
 	poetry run ruff check ${SOURCE_OBJECTS}
 	poetry run black --check ${SOURCE_OBJECTS}

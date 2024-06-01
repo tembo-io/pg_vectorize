@@ -15,22 +15,20 @@ FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 COPY --from=builder /build/core/target/release/vectorize-worker /usr/local/bin/vectorize-worker
 
-WORKDIR /usr/src/app
-
 RUN apt-get update && \
     apt-get install -y curl make
+    
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_HOME="/opt/poetry" \
+    PATH="/opt/poetry/bin:$PATH" \
+    TRANSFORMERS_CACHE=/models/.cache
 
-COPY vector-serve /vector-serve
+COPY vector-serve /vector-serve/
 
 WORKDIR /vector-serve
-
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
-ENV POETRY_HOME="/opt/poetry"
-ENV POETRY_NO_INTERACTION=1
-ENV PATH="$POETRY_HOME/bin:$PATH"
-
-RUN make setup
-# cache models
-RUN poetry run python -m app.models
+    
+RUN make setup-build && make download.models
 
 CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
