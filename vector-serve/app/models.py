@@ -36,10 +36,8 @@ def save_model_cache() -> None:
     """caches models to local storage"""
     for mod in MODELS_TO_CACHE:
         logging.debug(f"Caching model: {mod}")
-        model = SentenceTransformer(mod)
         save_dir = _model_dir(mod)
-        model.save(save_dir)
-
+        SentenceTransformer(mod, cache_folder=save_dir)
 
 def _model_dir(model: str) -> str:
     model_dir = model.replace("/", "_")
