@@ -27,8 +27,7 @@ def parse_header(authorization: str) -> str | None:
 def load_model_cache(app: FastAPI) -> dict[str, SentenceTransformer]:
     model_cache = {}
     for m in MODELS_TO_CACHE:
-        saved_path = _model_dir(m)
-        model_cache[m] = SentenceTransformer(saved_path)
+        model_cache[m] = SentenceTransformer(m, cache_folder=cache_dir)
     app.state.model_cache = model_cache
 
 
@@ -36,12 +35,7 @@ def save_model_cache() -> None:
     """caches models to local storage"""
     for mod in MODELS_TO_CACHE:
         logging.debug(f"Caching model: {mod}")
-        save_dir = _model_dir(mod)
-        SentenceTransformer(mod, cache_folder=save_dir)
-
-def _model_dir(model: str) -> str:
-    model_dir = model.replace("/", "_")
-    return f"{cache_dir}/{model_dir}"
+        SentenceTransformer(mod, cache_folder=cache_dir)
 
 
 def model_org_name(model_name: str) -> str:
