@@ -111,7 +111,7 @@ jobs:
         with:
           file: ./vector-serve/Dockerfile
           context: ./
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ secrets.ECR_REGISTRY }}/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
