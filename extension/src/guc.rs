@@ -13,6 +13,8 @@ pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
 pub static EMBEDDING_REQ_TIMEOUT_SEC: GucSetting<i32> = GucSetting::<i32>::new(120);
 pub static OLLAMA_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static TEMBO_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static TEMBO_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -90,6 +92,24 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.tembo_service_url",
+        "Url for an Tembo AI service",
+        "Url to Tembo's public AI hosting service",
+        &TEMBO_SERVICE_HOST,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "vectorize.tembo_jwt",
+        "JWT for calling Tembo AI service",
+        "JWT for calling Tembo AI service",
+        &TEMBO_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone
@@ -98,8 +118,10 @@ pub enum VectorizeGuc {
     Host,
     DatabaseName,
     OpenAIKey,
+    TemboAIKey,
     EmbeddingServiceUrl,
     OllamaServiceUrl,
+    TemboServiceUrl,
 }
 
 /// a convenience function to get this project's GUCs
@@ -110,6 +132,8 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::OpenAIKey => OPENAI_KEY.get(),
         VectorizeGuc::EmbeddingServiceUrl => EMBEDDING_SERVICE_HOST.get(),
         VectorizeGuc::OllamaServiceUrl => OLLAMA_SERVICE_HOST.get(),
+        VectorizeGuc::TemboServiceUrl => TEMBO_SERVICE_HOST.get(),
+        VectorizeGuc::TemboAIKey => TEMBO_API_KEY.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {

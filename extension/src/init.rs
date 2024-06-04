@@ -116,6 +116,7 @@ pub fn init_embedding_table_query(
             let dim = ollama_embedding_dim(&transformer.name);
             format!("vector({dim})")
         }
+        ModelSource::Tembo => error!("Tembo transformer not implemented yet"),
     };
     match job_params.table_method {
         TableMethod::append => {
