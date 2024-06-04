@@ -1,19 +1,4 @@
-FROM rust:1.76.0-slim-buster as builder
-
-RUN apt-get update && \
-    apt-get install -y pkg-config libssl-dev && apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-
-WORKDIR /build
-
-COPY core/ core/
-
-RUN cd core && \
-    cargo build --bin vectorize-worker --release
-
 FROM python:3.12.3-slim-bookworm
-
-COPY --from=builder /build/core/target/release/vectorize-worker /usr/local/bin/vectorize-worker
 
 RUN apt-get update && \
     apt-get install -y curl make && \
@@ -34,4 +19,4 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
     find $POETRY_HOME -type d -name "__pycache__" -exec rm -rf {} + && \
     poetry run python -m app.models
 
-CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "2"]
+CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]
