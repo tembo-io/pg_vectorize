@@ -16,7 +16,7 @@ make run
 
 ## Sentence to embedding transform
 
-The image comes pre-loaded with `all-MiniLM-L12-v2`.
+The image comes pre-loaded with `all-MiniLM-L6-v2`.
 
 ```bash
 curl -X POST http://localhost:3000/v1/embeddings \
@@ -39,7 +39,7 @@ curl -X POST http://localhost:3000/v1/embeddings \
       "index": 0
     }
   ],
-  "model": "all-MiniLM-L12-v2"
+  "model": "sentence-transformers/all-MiniLM-L6-v2"
 }
 ```
 
