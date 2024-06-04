@@ -24,7 +24,6 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                 Some(k) => k.to_string(),
                 None => {
                     let this_guc = match transformer.source {
-                        ModelSource::Tembo => guc::VectorizeGuc::TemboAIKey,
                         ModelSource::OpenAI => guc::VectorizeGuc::OpenAIKey,
                         _ => {
                             error!("API key not found for model source");

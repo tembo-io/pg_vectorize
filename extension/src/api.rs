@@ -73,6 +73,16 @@ fn transform_embeddings(
     Ok(transform(input, &model, api_key).remove(0))
 }
 
+#[pg_extern]
+fn encode(
+    input: &str,
+    model_name: default!(String, "'openai/text-embedding-ada-002'"),
+    api_key: default!(Option<String>, "NULL"),
+) -> Result<Vec<f64>> {
+    let model = Model::new(&model_name)?;
+    Ok(transform(input, &model, api_key).remove(0))
+}
+
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn init_rag(
@@ -140,4 +150,14 @@ fn rag(
     )?;
     let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
     Ok(TableIterator::new(iter))
+}
+
+#[pg_extern]
+fn generate(
+    input: &str,
+    model: default!(String, "'openai/gpt-3.5-turbo'"),
+    api_key: default!(Option<String>, "NULL"),
+) -> Result<Vec<f64>> {
+    let model = Model::new(&model)?;
+    Ok(transform(input, &model, api_key).remove(0))
 }
