@@ -164,7 +164,10 @@ pub enum ModelError {
 impl Model {
     pub fn new(input: &str) -> Result<Self, ModelError> {
         let mut parts: Vec<&str> = input.split('/').collect();
-        let missing_source = parts.len() != 2;
+        let missing_source = parts.len() < 2;
+        if parts.len() > 3 {
+            return Err(ModelError::InvalidFormat(input.to_string()));
+        }
         if missing_source && parts[0] == "text-embedding-ada-002" {
             // for backwards compatibility, prepend "openai" to text-embedding-ada-2
             parts.insert(0, "openai");
@@ -178,10 +181,19 @@ impl Model {
             .parse::<ModelSource>()
             .map_err(|_| ModelError::InvalidSource(parts[0].to_string()))?;
 
+        let name = if source == ModelSource::Tembo {
+            // removes the leading /tembo from the model name
+            parts.remove(0);
+            // all others remain the same
+            parts.join("/")
+        } else {
+            parts.last().expect("expected non-empty model name").to_string()
+        };
+
         Ok(Self {
             source,
-            fullname: format!("{}/{}", parts[0], parts[1]),
-            name: parts[1].to_string(),
+            fullname: parts.join("/"),
+            name
         })
     }
 }
@@ -199,6 +211,7 @@ pub enum ModelSource {
     OpenAI,
     SentenceTransformers,
     Ollama,
+    Tembo,
 }
 
 impl FromStr for ModelSource {
@@ -209,6 +222,7 @@ impl FromStr for ModelSource {
             "ollama" => Ok(ModelSource::Ollama),
             "openai" => Ok(ModelSource::OpenAI),
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
+            "tembo" => Ok(ModelSource::Tembo),
             _ => Ok(ModelSource::SentenceTransformers),
         }
     }
@@ -220,6 +234,7 @@ impl Display for ModelSource {
             ModelSource::Ollama => write!(f, "ollama"),
             ModelSource::OpenAI => write!(f, "openai"),
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
+            ModelSource::Tembo => write!(f, "tembo"),
         }
     }
 }
@@ -230,6 +245,7 @@ impl From<String> for ModelSource {
             "ollama" => ModelSource::Ollama,
             "openai" => ModelSource::OpenAI,
             "sentence-transformers" => ModelSource::SentenceTransformers,
+            "tembo" => ModelSource::Tembo,
             // other cases are assumed to be private sentence-transformer compatible model
             // and can be hot-loaded
             _ => ModelSource::SentenceTransformers,
@@ -243,9 +259,18 @@ mod model_tests {
     use super::*;
 
     #[test]
+    fn test_tembo_parsing() {
+        let model = Model::new("tembo/meta-llama/Meta-Llama-3-8B-Instruct").unwrap();
+        assert_eq!(model.source, ModelSource::Tembo);
+        assert_eq!(model.fullname, "meta-llama/Meta-Llama-3-8B-Instruct");
+        assert_eq!(model.name, "meta-llama/Meta-Llama-3-8B-Instruct");
+    }
+
+    #[test]
     fn test_ollama_parsing() {
         let model = Model::new("ollama/wizardlm2:7b").unwrap();
         assert_eq!(model.source, ModelSource::Ollama);
+        assert_eq!(model.fullname, "ollama/wizardlm2:7b");
         assert_eq!(model.name, "wizardlm2:7b");
     }
 
@@ -293,11 +318,6 @@ mod model_tests {
     #[test]
     fn test_invalid_format_no_slash() {
         assert!(Model::new("openaimodel-name").is_err());
-    }
-
-    #[test]
-    fn test_invalid_format_extra_slash() {
-        assert!(Model::new("openai/model/name").is_err());
     }
 
     #[test]

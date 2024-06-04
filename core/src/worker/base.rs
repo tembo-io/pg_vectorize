@@ -98,7 +98,9 @@ async fn execute_job(
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         )?,
-        ModelSource::Ollama => Err(anyhow::anyhow!("Ollama transformer not implemented yet"))?,
+        ModelSource::Ollama | &ModelSource::Tembo => Err(anyhow::anyhow!(
+            "Ollama/Tembo transformer not implemented yet"
+        ))?,
         ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
