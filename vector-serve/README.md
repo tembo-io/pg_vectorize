@@ -39,7 +39,7 @@ curl -X POST http://localhost:3000/v1/embeddings \
       "index": 0
     }
   ],
-  "model": "all-MiniLM-L6-v2"
+  "model": "sentence-transformers/all-MiniLM-L6-v2"
 }
 ```
 

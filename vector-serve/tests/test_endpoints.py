@@ -12,7 +12,7 @@ def test_alive_endpoint(test_client):
     assert response.json() == {"alive": True}
 
 def test_model_info(test_client):
-    response = test_client.get("/v1/info", params={"model_name": "all-MiniLM-L6-v2"})
+    response = test_client.get("/v1/info", params={"model_name": "sentence-transformers/all-MiniLM-L6-v2"})
     assert response.status_code == 200
 
 
