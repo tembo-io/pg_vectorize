@@ -189,7 +189,7 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 ```
 
 Initialize the RAG project.
- We'll use the `sentence-transformers/all-MiniLM-L12-v2` model to generate embeddings on our source documents.
+ We'll use the `sentence-transformers/all-MiniLM-L6-v2` model to generate embeddings on our source documents.
 
 ```sql
 SELECT vectorize.init_rag(
@@ -197,7 +197,7 @@ SELECT vectorize.init_rag(
     table_name          => 'products',
     "column"            => 'context',
     unique_record_id    => 'product_id',
-    transformer         => 'sentence-transformers/all-MiniLM-L12-v2'
+    transformer         => 'sentence-transformers/all-MiniLM-L6-v2'
 );
 ```
 

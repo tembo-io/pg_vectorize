@@ -8,7 +8,7 @@ from app.metrics import ML_MODEL_COUNT
 
 _HF_ORG = "sentence-transformers"
 
-MODELS_TO_CACHE = [f"{_HF_ORG}/all-MiniLM-L12-v2"]
+MODELS_TO_CACHE = [f"{_HF_ORG}/all-MiniLM-L6-v2"]
 
 cache_dir = "./models"
 
@@ -40,9 +40,6 @@ def save_model_cache() -> None:
 
 def model_org_name(model_name: str) -> str:
     """prepends with the HF if the org is not specified"""
-    if model_name == "all_MiniLM_L12_v2":
-        model_name = "all-MiniLM-L12-v2"
-
     if "/" not in model_name:
         return f"{_HF_ORG}/{model_name}"
     else:
