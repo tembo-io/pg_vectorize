@@ -187,13 +187,16 @@ impl Model {
             // all others remain the same
             parts.join("/")
         } else {
-            parts.last().expect("expected non-empty model name").to_string()
+            parts
+                .last()
+                .expect("expected non-empty model name")
+                .to_string()
         };
 
         Ok(Self {
             source,
             fullname: parts.join("/"),
-            name
+            name,
         })
     }
 }
