@@ -122,7 +122,7 @@ jobs:
         run: |
           make trunk-dependencies
           make setup.urls
-          setup.shared_preload_libraries
+          make setup.shared_preload_libraries
           rm -rf ./target/pgrx-test-data-* || true
       - name: unit-test
         run: |
