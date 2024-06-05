@@ -10,13 +10,13 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'README.md'
+      - "README.md"
       - docs/**
   push:
     branches:
       - main
     paths-ignore:
-      - 'README.md'
+      - "README.md"
       - docs/**
 
   release:
@@ -39,12 +39,12 @@ jobs:
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
-         cargo install pg-trunk
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
+          cargo install pg-trunk
 
       - name: Cache binaries
         uses: actions/cache@v2
@@ -156,12 +156,12 @@ jobs:
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
-         cargo install pg-trunk
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
+          cargo install pg-trunk
       - name: trunk build
         working-directory: ./extension
         # trunk does not support path dependencies in Cargo.toml that are not within the current working directory
@@ -180,7 +180,7 @@ jobs:
     needs:
       - publish
     env:
-      TARGET_PLATFORMS: linux/amd64,linux/arm64    
+      TARGET_PLATFORMS: linux/amd64,linux/arm64
     runs-on:
       - self-hosted
       - dind
@@ -198,11 +198,11 @@ jobs:
       - name: Install stoml and pg-trunk
         shell: bash
         run: |
-         set -xe
-         wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-         mv stoml_linux_amd64 stoml
-         chmod +x stoml
-         sudo mv stoml /usr/local/bin/
+          set -xe
+          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
+          mv stoml_linux_amd64 stoml
+          chmod +x stoml
+          sudo mv stoml /usr/local/bin/
       - name: Set version strings
         id: versions
         run: |
