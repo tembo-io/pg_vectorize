@@ -4,7 +4,7 @@ DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*
 PG_VERSION:=16
 DATABASE_URL:=postgres://${USER}:${USER}@localhost:288${PG_VERSION}/postgres
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
-UPGRADE_FROM_VER:=0.9.0
+UPGRADE_FROM_VER:=0.16.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 RUST_LOG:=debug
 
