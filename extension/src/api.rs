@@ -1,4 +1,5 @@
-use crate::chat::ops::call_chat;
+use crate::chat::ops::{call_chat, get_chat_response};
+use crate::chat::types::RenderedPrompt;
 use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
@@ -77,10 +78,10 @@ fn transform_embeddings(
 #[pg_extern]
 fn encode(
     input: &str,
-    model_name: default!(String, "'openai/text-embedding-ada-002'"),
+    model: default!(String, "'openai/text-embedding-ada-002'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>> {
-    let model = Model::new(&model_name)?;
+    let model = Model::new(&model)?;
     Ok(transform(input, &model, api_key).remove(0))
 }
 
@@ -158,9 +159,13 @@ fn generate(
     input: &str,
     model: default!(String, "'openai/gpt-3.5-turbo'"),
     api_key: default!(Option<String>, "NULL"),
-) -> Result<Vec<f64>> {
+) -> Result<String> {
     let model = Model::new(&model)?;
-    Ok(transform(input, &model, api_key).remove(0))
+    let prompt = RenderedPrompt {
+        sys_rendered: "".to_string(),
+        user_rendered: input.to_string(),
+    };
+    get_chat_response(prompt, &model, api_key)
 }
 
 #[pg_extern]
@@ -169,6 +174,6 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
         "SELECT current_setting($1)",
         vec![(PgBuiltInOids::TEXTOID.oid(), guc_name.into_datum())],
     )?
-    .expect(&format!("no value set for guc: {guc_name}"));
-    Ok(env_interpolate_string(&g)?)
+    .unwrap_or_else(|| panic!("no value set for guc: {guc_name}"));
+    env_interpolate_string(&g)
 }

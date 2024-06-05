@@ -9,12 +9,12 @@ pub fn get_env_interpolated_guc(requested: guc::VectorizeGuc) -> Result<String> 
     } else {
         match requested {
             guc::VectorizeGuc::EmbeddingServiceUrl => {
-                return Err(anyhow::anyhow!("vectorize.embedding_service_url not set"))
+                Err(anyhow::anyhow!("vectorize.embedding_service_url not set"))
             }
             guc::VectorizeGuc::OpenAIServiceUrl => {
-                return Err(anyhow::anyhow!("vectorize.openai_service_url not set"))
+                Err(anyhow::anyhow!("vectorize.openai_service_url not set"))
             }
-            _ => return Err(anyhow::anyhow!("GUC not found")),
+            _ => Err(anyhow::anyhow!("GUC not found")),
         }
     }
 }

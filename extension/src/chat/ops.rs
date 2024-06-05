@@ -123,20 +123,26 @@ pub fn call_chat(
     )?;
 
     // http request to chat completions
-    let chat_response = match chat_model.source {
-        ModelSource::OpenAI | ModelSource::Tembo => {
-            call_chat_completions(rendered_prompt, chat_model, api_key)?
-        }
-        ModelSource::SentenceTransformers => {
-            error!("SentenceTransformers not supported for chat completions");
-        }
-        ModelSource::Ollama => call_ollama_chat_completions(rendered_prompt, &chat_model.name)?,
-    };
+    let chat_response = get_chat_response(rendered_prompt, chat_model, api_key)?;
 
     Ok(ChatResponse {
         context: search_results,
         chat_response,
     })
+}
+
+pub fn get_chat_response(
+    prompt: RenderedPrompt,
+    model: &Model,
+    api_key: Option<String>,
+) -> Result<String> {
+    match model.source {
+        ModelSource::OpenAI | ModelSource::Tembo => call_chat_completions(prompt, model, api_key),
+        ModelSource::SentenceTransformers => {
+            error!("SentenceTransformers not supported for chat completions");
+        }
+        ModelSource::Ollama => call_ollama_chat_completions(prompt, &model.name),
+    }
 }
 
 fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -> Result<String> {
