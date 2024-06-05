@@ -66,8 +66,10 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
 
     match transformer.source {
-        ModelSource::Ollama => error!("Ollama transformer not implemented yet"),
-        ModelSource::OpenAI | ModelSource::SentenceTransformers | ModelSource::Tembo => {
+        ModelSource::Ollama | ModelSource::Tembo => {
+            error!("Ollama/Tembo transformer not implemented yet")
+        }
+        ModelSource::OpenAI | ModelSource::SentenceTransformers => {
             match runtime
                 .block_on(async { openai_embedding_request(embedding_request, timeout).await })
             {
