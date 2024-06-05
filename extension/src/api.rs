@@ -1,5 +1,6 @@
 use crate::chat::ops::call_chat;
 use crate::search::{self, init_table};
+use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
 
@@ -160,4 +161,14 @@ fn generate(
 ) -> Result<Vec<f64>> {
     let model = Model::new(&model)?;
     Ok(transform(input, &model, api_key).remove(0))
+}
+
+#[pg_extern]
+fn env_interpolate_guc(guc_name: &str) -> Result<String> {
+    let g: String = Spi::get_one_with_args(
+        "SELECT current_setting($1)",
+        vec![(PgBuiltInOids::TEXTOID.oid(), guc_name.into_datum())],
+    )?
+    .expect(&format!("no value set for guc: {guc_name}"));
+    Ok(env_interpolate_string(&g)?)
 }

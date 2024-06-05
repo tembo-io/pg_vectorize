@@ -79,7 +79,7 @@ impl Config {
 }
 
 /// source a variable from environment - use default if not exists
-fn from_env_default(key: &str, default: &str) -> String {
+pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 

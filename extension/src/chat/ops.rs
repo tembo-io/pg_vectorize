@@ -2,6 +2,7 @@ use std::env;
 
 use crate::guc;
 use crate::search;
+use crate::transformers::generic::get_env_interpolated_guc;
 use crate::util::get_vectorize_meta_spi;
 
 use anyhow::{anyhow, Result};
@@ -11,7 +12,6 @@ use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
 use vectorize_core::transformers::ollama::LLMFunctions;
 use vectorize_core::transformers::ollama::OllamaInstance;
-use vectorize_core::transformers::openai::OPENAI_BASE_URL;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -174,9 +174,10 @@ fn call_chat_completions(
     };
 
     let base_url = match model.source {
-        ModelSource::Tembo => guc::get_guc(guc::VectorizeGuc::TemboServiceUrl)
+        ModelSource::Tembo => get_env_interpolated_guc(guc::VectorizeGuc::TemboServiceUrl)
             .expect("vectorize.tembo_service_url must be set"),
-        ModelSource::OpenAI => OPENAI_BASE_URL.to_owned(),
+        ModelSource::OpenAI => get_env_interpolated_guc(guc::VectorizeGuc::OpenAIServiceUrl)
+            .expect("vectorize.openai_service_url must be set"),
         _ => {
             error!("API key not found for model source");
         }
@@ -210,6 +211,7 @@ fn call_chat_completions(
 
 fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<String> {
     // get url from guc
+
     let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
         Some(k) => k,
         None => {

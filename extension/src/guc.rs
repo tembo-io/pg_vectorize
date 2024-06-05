@@ -6,6 +6,10 @@ use anyhow::Result;
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
+pub static OPENAI_BASE_URL: GucSetting<Option<&CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(Some(unsafe {
+        CStr::from_bytes_with_nul_unchecked(b"https://api.openai.com/v1\0")
+    }));
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
 pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
@@ -31,6 +35,15 @@ pub fn init_guc() {
         "Target database for vectorize operations",
         "Specifies the target database for vectorize operations.",
         &VECTORIZE_DATABASE_NAME,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "vectorize.openai_service_url",
+        "Base url to the OpenAI Server",
+        "Url to any OpenAI compatible service.",
+        &OPENAI_BASE_URL,
         GucContext::Suset,
         GucFlags::default(),
     );
@@ -113,10 +126,11 @@ pub fn init_guc() {
 }
 
 // for handling of GUCs that can be error prone
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum VectorizeGuc {
     Host,
     DatabaseName,
+    OpenAIServiceUrl,
     OpenAIKey,
     TemboAIKey,
     EmbeddingServiceUrl,
@@ -134,6 +148,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::OllamaServiceUrl => OLLAMA_SERVICE_HOST.get(),
         VectorizeGuc::TemboServiceUrl => TEMBO_SERVICE_HOST.get(),
         VectorizeGuc::TemboAIKey => TEMBO_API_KEY.get(),
+        VectorizeGuc::OpenAIServiceUrl => OPENAI_BASE_URL.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {

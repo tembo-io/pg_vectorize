@@ -3,7 +3,7 @@ pub mod http_handler;
 pub mod openai;
 
 use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
-use generic::get_generic_svc_url;
+use generic::get_env_interpolated_guc;
 use pgrx::prelude::*;
 
 use vectorize_core::transformers::http_handler::openai_embedding_request;
@@ -49,7 +49,8 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
             }
         }
         ModelSource::SentenceTransformers => {
-            let url = get_generic_svc_url().expect("failed to get embedding service url from GUC");
+            let url = get_env_interpolated_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
+                .expect("failed to get embedding service url from GUC");
             let embedding_request = EmbeddingPayload {
                 input: vec![input.to_string()],
                 model: transformer.fullname.to_string(),
