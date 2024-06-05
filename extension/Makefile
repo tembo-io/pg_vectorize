@@ -45,6 +45,12 @@ setup: setup.dependencies setup.shared_preload_libraries setup.urls
 cat-logs:
 	cat ~/.pgrx/${PG_VERSION}.log
 
+# install dependencies from trunk (limited OS/arch)
+trunk-dependencies:
+	trunk install pgvector --pg-config ${PGRX_PG_CONFIG}
+	trunk install pgmq --pg-config ${PGRX_PG_CONFIG}
+	trunk install pg_cron --pg-config ${PGRX_PG_CONFIG}
+
 install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
 	cd pg_cron && \
