@@ -1,4 +1,4 @@
-FROM postgres:15.4-bookworm as builder
+FROM postgres:16-bookworm as builder
 
 ARG PGMQ_VER=1.1.1
 ARG VECTOR_VER=0.6.0
