@@ -30,7 +30,7 @@ pub fn prepare_openai_request(
         },
     };
     Ok(EmbeddingRequest {
-        url: format!("{OPENAI_BASE_URL}/embeddubgs"),
+        url: format!("{OPENAI_BASE_URL}/embeddings"),
         payload,
         api_key: Some(apikey),
     })
