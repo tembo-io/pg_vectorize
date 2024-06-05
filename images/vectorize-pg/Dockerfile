@@ -33,6 +33,13 @@ RUN git clone https://github.com/citusdata/pg_cron.git --branch v$CRON_VER && \
 	make && make install && \
     cd .. && rm -rf pg_cron
 
+# install pgmq
+RUN git clone https://github.com/tembo-io/pgmq.git && \
+	cd pgmq && \
+	make && \
+	make install && \
+	cd .. && rm -rf pgmq
+
 # Install Rust dependencies
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
@@ -40,19 +47,12 @@ RUN $HOME/.cargo/bin/rustup default stable
 # install pgrx
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
 
-# install pgmq
-RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
-
-RUN git clone https://github.com/tembo-io/pgmq.git && \
-    cd pgmq && $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config) && \
-    cd .. && rm -rf pgmq
-
 # install pg-vectorize
 COPY . .
 RUN cd extension && \
 	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
-FROM postgres:15.4-bookworm
+FROM postgres:16-bookworm
 
 COPY --from=builder /usr/share/postgresql/15/extension /usr/share/postgresql/15/extension
 COPY --from=builder /usr/lib/postgresql/15/lib /usr/lib/postgresql/15/lib
