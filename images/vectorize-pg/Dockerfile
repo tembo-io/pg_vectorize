@@ -54,13 +54,13 @@ RUN cd extension && \
 
 FROM postgres:16-bookworm
 
-COPY --from=builder /usr/share/postgresql/15/extension /usr/share/postgresql/15/extension
-COPY --from=builder /usr/lib/postgresql/15/lib /usr/lib/postgresql/15/lib
+COPY --from=builder /usr/share/postgresql/16/extension /usr/share/postgresql/16/extension
+COPY --from=builder /usr/lib/postgresql/16/lib /usr/lib/postgresql/16/lib
 
 RUN apt-get update \
     && apt-get install -y ca-certificates
 
-COPY images/vectorize-pg/postgresql.conf /usr/share/postgresql/15/postgresql.conf.sample
+COPY images/vectorize-pg/postgresql.conf /usr/share/postgresql/16/postgresql.conf.sample
 
 USER postgres
 CMD ["postgres"]
