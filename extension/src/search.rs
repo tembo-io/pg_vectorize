@@ -69,8 +69,8 @@ pub fn init_table(
             sync_get_model_info(&transformer.fullname, api_key.clone())
                 .context("transformer does not exist")?;
         }
-        ModelSource::Ollama => {
-            error!("Ollama not implemented for search yet");
+        ModelSource::Ollama | ModelSource::Tembo => {
+            error!("Ollama/Tembo not implemented for search yet");
         }
     }
 

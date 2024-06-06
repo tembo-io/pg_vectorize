@@ -1,7 +1,7 @@
 pub mod pg_bgw;
 
-use crate::guc::{EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
-use crate::transformers::generic::get_generic_svc_url;
+use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
+use crate::transformers::generic::get_env_interpolated_guc;
 
 use vectorize_core::transformers::types::PairedEmbeddings;
 use vectorize_core::transformers::{generic, http_handler, openai};
@@ -88,15 +88,17 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
             openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs, Some(apikey))
         }
         ModelSource::SentenceTransformers => {
-            let svc_host =
-                get_generic_svc_url().context("failed to get embedding service url from GUC")?;
+            let svc_host = get_env_interpolated_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
+                .context("failed to get embedding service url from GUC")?;
             generic::prepare_generic_embedding_request(
                 job_meta.clone(),
                 &msg.message.inputs,
                 svc_host,
             )
         }
-        ModelSource::Ollama => error!("pg-vectorize: Ollama transformer not implemented yet"),
+        ModelSource::Ollama | ModelSource::Tembo => {
+            error!("pg-vectorize: Ollama/Tembo transformer not implemented yet")
+        }
     }?;
 
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();

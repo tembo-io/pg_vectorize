@@ -79,7 +79,7 @@ impl Config {
 }
 
 /// source a variable from environment - use default if not exists
-fn from_env_default(key: &str, default: &str) -> String {
+pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
@@ -98,7 +98,9 @@ async fn execute_job(
             &msg.message.inputs,
             cfg.openai_api_key.clone(),
         )?,
-        ModelSource::Ollama => Err(anyhow::anyhow!("Ollama transformer not implemented yet"))?,
+        ModelSource::Ollama | &ModelSource::Tembo => Err(anyhow::anyhow!(
+            "Ollama/Tembo transformer not implemented yet"
+        ))?,
         ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
             job_meta.clone(),
             &msg.message.inputs,
