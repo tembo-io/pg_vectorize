@@ -1,7 +1,6 @@
 FROM postgres:16-bookworm as builder
 
-ARG PGMQ_VER=1.1.1
-ARG VECTOR_VER=0.6.0
+ARG VECTOR_VER=0.7.1
 ARG CRON_VER=1.6.2
 ARG PGRX_VER=0.11.3
 
@@ -15,7 +14,7 @@ RUN apt-get update \
 	libssl-dev \
 	make \
 	pkg-config \
-	postgresql-server-dev-15
+	postgresql-server-dev-16
 
 WORKDIR /vectorize
 
@@ -46,6 +45,7 @@ RUN $HOME/.cargo/bin/rustup default stable
 
 # install pgrx
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
+RUN $HOME/.cargo/bin/cargo pgrx init --pg16 $(which pg_config)
 
 # install pg-vectorize
 COPY . .
