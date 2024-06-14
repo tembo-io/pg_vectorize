@@ -1,6 +1,6 @@
 [package]
 name = "vectorize"
-version = "0.16.0"
+version = "0.17.0"
 edition = "2021"
 publish = false
 
@@ -22,7 +22,7 @@ lazy_static = "1.4.0"
 log = "0.4.21"
 openai-api-rs = "4.0.6"
 pgmq = "0.26.1"
-pgrx = "0.11.3"
+pgrx = "0.11.4"
 postgres-types = "0.2.5"
 regex = "1.9.2"
 reqwest = {version = "0.11.18", features = ["json"] }
@@ -41,7 +41,7 @@ url = "2.4.0"
 vectorize_core = { path = "../core", package = "vectorize-core" }
 
 [dev-dependencies]
-pgrx-tests = "0.11.3"
+pgrx-tests = "0.11.4"
 rand = "0.8.5"
 whoami = "1.4.1"
 
