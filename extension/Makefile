@@ -7,6 +7,8 @@ PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.16.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 RUST_LOG:=debug
+ARCH := $(shell uname -m)
+
 
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs docs
 
@@ -77,6 +79,12 @@ install-pgmq:
 	cd .. && rm -rf pgmq
 
 install-vectorscale:
+	@ARCH=$$(uname -m); \
+	if [ "$$ARCH" != "arm64" ]; then \
+		export RUSTFLAGS="-C target-feature=+avx2,+fma"; \
+	else \
+		echo "Running on arm64, no variable set"; \
+	fi; \
 	git clone https://github.com/timescale/pgvectorscale.git && \
 	cd pgvectorscale/pgvectorscale && \
 	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
