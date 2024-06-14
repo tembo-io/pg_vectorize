@@ -203,7 +203,7 @@ fn create_embedding_table(
 
 fn create_hnsw_l2_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_l2_idx ON {schema}.{table}
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS {job_name}_hnsw_l2_idx ON {schema}.{table}
         USING hnsw ({embedding_col} vector_l2_ops);
         ",
     )
@@ -211,7 +211,7 @@ fn create_hnsw_l2_index(job_name: &str, schema: &str, table: &str, embedding_col
 
 fn create_hnsw_ip_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_ip_idx ON {schema}.{table}
+        "CREATE INDEXCONCURRENTLY IF NOT EXISTS {job_name}_hnsw_ip_idx ON {schema}.{table}
         USING hnsw ({embedding_col} vector_ip_ops);
         ",
     )
@@ -224,7 +224,7 @@ fn create_hnsw_cosine_index(
     embedding_col: &str,
 ) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_cos_idx ON {schema}.{table}
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS {job_name}_hnsw_cos_idx ON {schema}.{table}
         USING hnsw ({embedding_col} vector_cosine_ops);
         ",
     )
@@ -232,7 +232,7 @@ fn create_hnsw_cosine_index(
 
 fn create_diskann_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_diskann_idx ON {schema}.{table}
+        "CREATE INDEX CONCURRENTLY IF NOT EXISTS {job_name}_diskann_idx ON {schema}.{table}
         USING diskann ({embedding_col});
         ",
     )
