@@ -50,6 +50,7 @@ pub enum IndexDist {
     pgv_hnsw_l2,
     pgv_hnsw_ip,
     pgv_hnsw_cosine,
+    vsc_diskann_cosine
 }
 
 impl Display for IndexDist {
@@ -58,6 +59,7 @@ impl Display for IndexDist {
             IndexDist::pgv_hnsw_l2 => write!(f, "pgv_hnsw_l2"),
             IndexDist::pgv_hnsw_ip => write!(f, "pgv_hnsw_ip"),
             IndexDist::pgv_hnsw_cosine => write!(f, "pgv_hnsw_cosine"),
+            IndexDist::vsc_diskann_cosine => write!(f, "vsc_diskann_cosine"),
         }
     }
 }
@@ -70,6 +72,7 @@ impl FromStr for IndexDist {
             "pgv_hnsw_l2" => Ok(IndexDist::pgv_hnsw_l2),
             "pgv_hnsw_ip" => Ok(IndexDist::pgv_hnsw_ip),
             "pgv_hnsw_cosine" => Ok(IndexDist::pgv_hnsw_cosine),
+            "vsc_diskann_cosine" => Ok(IndexDist::vsc_diskann_cosine),
             _ => Err(format!("Invalid value for IndexDist: {}", s)),
         }
     }
@@ -81,6 +84,7 @@ impl From<String> for IndexDist {
             "pgv_hnsw_l2" => IndexDist::pgv_hnsw_l2,
             "pgv_hnsw_ip" => IndexDist::pgv_hnsw_ip,
             "pgv_hnsw_cosine" => IndexDist::pgv_hnsw_cosine,
+            "vsc_diskann_cosine" => IndexDist::vsc_diskann_cosine,
             _ => panic!("Invalid value for IndexDist: {}", s),
         }
     }
