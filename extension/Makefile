@@ -84,7 +84,7 @@ install-vectorscale:
 	if [ "$$ARCH" != "arm64" ]; then \
 		export RUSTFLAGS="-C target-feature=+avx2,+fma"; \
 	else \
-		echo "Running on arm64, no variable set"; \
+		echo "Running on arm64, no compiler flags required."; \
 	fi; \
 	git clone https://github.com/timescale/pgvectorscale.git && \
 	cd pgvectorscale/pgvectorscale && \
