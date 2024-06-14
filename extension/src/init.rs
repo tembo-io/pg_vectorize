@@ -143,8 +143,11 @@ pub fn init_embedding_table_query(
         IndexDist::vsc_diskann_cosine => {
             create_diskann_index(job_name, &index_schema, &table_name, &embeddings_col)
         }
-        IndexDist::pgv_hnsw_l2 | IndexDist::pgv_hnsw_ip => {
-            error!("Index type not yet implemented")
+        IndexDist::pgv_hnsw_ip => {
+            create_hnsw_ip_index(job_name, &index_schema, &table_name, &embeddings_col)
+        }
+        IndexDist::pgv_hnsw_l2 => {
+            create_hnsw_l2_index(job_name, &index_schema, &table_name, &embeddings_col)
         }
     };
 
@@ -198,6 +201,22 @@ fn create_embedding_table(
     )
 }
 
+fn create_hnsw_l2_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_l2_idx ON {schema}.{table}
+        USING hnsw ({embedding_col} vector_l2_ops);
+        ",
+    )
+}
+
+fn create_hnsw_ip_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_ip_idx ON {schema}.{table}
+        USING hnsw ({embedding_col} vector_ip_ops);
+        ",
+    )
+}
+
 fn create_hnsw_cosine_index(
     job_name: &str,
     schema: &str,
@@ -205,7 +224,7 @@ fn create_hnsw_cosine_index(
     embedding_col: &str,
 ) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_idx ON {schema}.{table}
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_cos_idx ON {schema}.{table}
         USING hnsw ({embedding_col} vector_cosine_ops);
         ",
     )
