@@ -50,7 +50,7 @@ pub enum IndexDist {
     pgv_hnsw_l2,
     pgv_hnsw_ip,
     pgv_hnsw_cosine,
-    vsc_diskann_cosine
+    vsc_diskann_cosine,
 }
 
 impl Display for IndexDist {
