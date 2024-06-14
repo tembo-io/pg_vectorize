@@ -52,7 +52,7 @@ jobs:
           working-directory: ./extension
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-14
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev
           make setup
       - name: Test previous version (main))
         env:
