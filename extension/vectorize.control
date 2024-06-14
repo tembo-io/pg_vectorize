@@ -4,4 +4,4 @@ module_pathname = '$libdir/vectorize'
 relocatable = false
 superuser = true
 schema = 'vectorize'
-requires = 'pg_cron,pgmq,vector'
+requires = 'pg_cron,pgmq,vector,vectorscale'

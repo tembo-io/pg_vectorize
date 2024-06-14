@@ -34,7 +34,7 @@ pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
 clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
 
-setup.dependencies: install-pg_cron install-pgvector install-pgmq
+setup.dependencies: install-pg_cron install-pgvector install-pgmq install-vectorscale
 setup.shared_preload_libraries:
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 setup.urls:
@@ -75,6 +75,12 @@ install-pgmq:
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
 	cd .. && rm -rf pgmq
+
+install-vectorscale:
+	git clone https://github.com/timescale/pgvectorscale.git && \
+	cd pgvectorscale/pgvectorscale && \
+	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
+	cd ../.. && rm -rf pgvectorscale
 
 test-integration:
 	echo "\q" | make run
