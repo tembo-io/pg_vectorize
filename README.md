@@ -250,3 +250,38 @@ UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
 WHERE product_name = 'Hammock';
 ```
+
+## Directly Interact with LLMs
+
+Sometimes you want more control over the handling of embeddings.
+ For those situations you can directly call various LLM providers directly using SQL:
+
+For text generation:
+
+```sql
+select vectorize.generate(
+  input => 'Tell me the difference between a cat and a dog in 1 sentence',
+  model => 'openai/gpt-4o'
+);
+```
+
+```text
+                                                 generate                                                  
+-----------------------------------------------------------------------------------------------------------
+ Cats are generally more independent and solitary, while dogs tend to be more social and loyal companions.
+(1 row)
+```
+
+And for embedding generation:
+
+```sql
+select vectorize.encode(
+  input => 'Tell me the difference between a cat and a dog in 1 sentence',
+  model => 'openai/text-embedding-3-large'
+);
+```
+
+```text
+{0.0028769304,-0.005826319,-0.0035932811, ...}
+```
+
