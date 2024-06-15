@@ -254,7 +254,7 @@ WHERE product_name = 'Hammock';
 ## Directly Interact with LLMs
 
 Sometimes you want more control over the handling of embeddings.
- For those situations you can directly call various LLM providers directly using SQL:
+ For those situations you can directly call various LLM providers using SQL:
 
 For text generation:
 
