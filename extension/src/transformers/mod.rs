@@ -103,6 +103,10 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                     error!("error getting embeddings: {}", e);
                 }
             }
+        },
+
+        ModelSource::Tembo => {
+            error!("Embeddings support not added for Tembo yet!")
         }
     }
 }
