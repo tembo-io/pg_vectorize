@@ -70,6 +70,9 @@ pub fn init_table(
             sync_get_model_info(&transformer.fullname, api_key.clone())
                 .context("transformer does not exist")?;
         }
+        ModelSource::Tembo => {
+            error!("Ollama/Tembo not implemented for search yet");
+        }
         ModelSource::Ollama => {
             let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
                Some(k) => k,
