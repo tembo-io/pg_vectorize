@@ -1,5 +1,5 @@
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
-use log::info;
+
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
