@@ -21,7 +21,8 @@
             "PostgreSQL": "11.0.0",
             "pg_cron": "1.5.0",
             "pgmq": "1.1.0",
-            "pgvector": "1.5.0"
+            "pgvector": "1.5.0",
+            "vectorscale": "0.2.0"
          }
       }
    },

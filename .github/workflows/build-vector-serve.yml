@@ -6,14 +6,14 @@ on:
       - main
     paths:
       - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - "vector-serve/**"
 
   pull_request:
     branches:
       - main
     paths:
       - ".github/workflows/build-vector-serve.yml"
-      - "./vector-serve/**/*"
+      - "vector-serve/**"
 
 permissions:
   id-token: write
@@ -23,24 +23,24 @@ defaults:
   run:
     shell: bash
     working-directory: ./vector-serve/
-  
+
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11.1
-      uses: actions/setup-python@v5
-      with:
-        python-version: 3.11.1
-    - name: Setup
-      run: make setup
-    - name: Init Model Cache
-      run: make download.models
-    - name: Lints
-      run: make check
-    - name: Tests
-      run: make test
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11.1
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11.1
+      - name: Setup
+        run: make setup
+      - name: Init Model Cache
+        run: make download.models
+      - name: Lints
+        run: make check
+      - name: Tests
+        run: make test
   build_and_push:
     name: Build and push images
     needs: tests
@@ -59,7 +59,7 @@ jobs:
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-  
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -94,3 +94,27 @@ jobs:
           push: true
           tags: |
             quay.io/tembo/vector-serve:latest
+
+      - name: ECR Build and push -- Commit
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GHA_IAM_ROLE }}
+          role-session-name: images-gha-docker-build-and-push
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          file: ./vector-serve/Dockerfile
+          context: ./
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ secrets.ECR_REGISTRY }}/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          provenance: false

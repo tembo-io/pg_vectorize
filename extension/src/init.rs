@@ -8,11 +8,11 @@ use pgrx::prelude::*;
 use anyhow::{anyhow, Context, Result};
 use vectorize_core::{
     transformers::ollama::ollama_embedding_dim,
-    types::{JobParams, TableMethod},
+    types::{JobParams, TableMethod, VECTORIZE_SCHEMA},
 };
 use vectorize_core::{
     transformers::{openai::openai_embedding_dim, types::TransformerMetadata},
-    types::{Model, ModelSource},
+    types::{IndexDist, Model, ModelSource},
 };
 
 pub static VECTORIZE_QUEUE: &str = "vectorize_jobs";
@@ -92,10 +92,11 @@ pub fn init_embedding_table_query(
     job_name: &str,
     transformer: &Model,
     job_params: &JobParams,
+    index_type: &IndexDist,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
-    let schema = &job_params.schema;
-    let table = &job_params.table;
+    let src_schema = job_params.schema.clone();
+    let src_table = job_params.table.clone();
     let api_key = job_params.api_key.clone();
 
     let col_type = match transformer.source {
@@ -116,27 +117,58 @@ pub fn init_embedding_table_query(
             let dim = ollama_embedding_dim(&transformer.name);
             format!("vector({dim})")
         }
+        ModelSource::Tembo => error!("Tembo transformer not implemented yet"),
     };
-    match job_params.table_method {
+
+    let (index_schema, table_name, embeddings_col) = match job_params.table_method {
         TableMethod::append => {
-            let embeddings_col: String = format!("{job_name}_embeddings");
-            vec![
-                append_embedding_column(job_name, schema, table, &col_type),
-                create_hnsw_cosine_index(job_name, schema, table, &embeddings_col),
-            ]
+            let embeddings_col = format!("{job_name}_embeddings");
+            (src_schema.clone(), src_table.clone(), embeddings_col)
         }
         TableMethod::join => {
             let table_name = format!("_embeddings_{}", job_name);
+
+            (
+                VECTORIZE_SCHEMA.to_string(),
+                table_name.to_string(),
+                "embeddings".to_string(),
+            )
+        }
+    };
+
+    let index_stmt = match index_type {
+        IndexDist::pgv_hnsw_cosine => {
+            create_hnsw_cosine_index(job_name, &index_schema, &table_name, &embeddings_col)
+        }
+        IndexDist::vsc_diskann_cosine => {
+            create_diskann_index(job_name, &index_schema, &table_name, &embeddings_col)
+        }
+        IndexDist::pgv_hnsw_ip => {
+            create_hnsw_ip_index(job_name, &index_schema, &table_name, &embeddings_col)
+        }
+        IndexDist::pgv_hnsw_l2 => {
+            create_hnsw_l2_index(job_name, &index_schema, &table_name, &embeddings_col)
+        }
+    };
+
+    match job_params.table_method {
+        TableMethod::append => {
+            vec![
+                append_embedding_column(job_name, &src_schema, &src_table, &col_type),
+                index_stmt,
+            ]
+        }
+        TableMethod::join => {
             vec![
                 create_embedding_table(
                     job_name,
                     &job_params.primary_key,
                     &job_params.pkey_type,
                     &col_type,
-                    schema,
-                    table,
+                    &src_schema,
+                    &src_table,
                 ),
-                create_hnsw_cosine_index(job_name, "vectorize", &table_name, "embeddings"),
+                index_stmt,
                 // also create a view over the source table and the embedding table, for this project
                 create_project_view(job_name, job_params),
             ]
@@ -169,6 +201,22 @@ fn create_embedding_table(
     )
 }
 
+fn create_hnsw_l2_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_l2_idx ON {schema}.{table}
+        USING hnsw ({embedding_col} vector_l2_ops);
+        ",
+    )
+}
+
+fn create_hnsw_ip_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_ip_idx ON {schema}.{table}
+        USING hnsw ({embedding_col} vector_ip_ops);
+        ",
+    )
+}
+
 fn create_hnsw_cosine_index(
     job_name: &str,
     schema: &str,
@@ -176,7 +224,16 @@ fn create_hnsw_cosine_index(
     embedding_col: &str,
 ) -> String {
     format!(
-        "CREATE INDEX IF NOT EXISTS {job_name}_idx ON {schema}.{table} USING hnsw ({embedding_col} vector_cosine_ops);
+        "CREATE INDEX IF NOT EXISTS {job_name}_hnsw_cos_idx ON {schema}.{table}
+        USING hnsw ({embedding_col} vector_cosine_ops);
+        ",
+    )
+}
+
+fn create_diskann_index(job_name: &str, schema: &str, table: &str, embedding_col: &str) -> String {
+    format!(
+        "CREATE INDEX IF NOT EXISTS {job_name}_diskann_idx ON {schema}.{table}
+        USING diskann ({embedding_col});
         ",
     )
 }

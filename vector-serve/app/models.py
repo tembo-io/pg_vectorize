@@ -2,12 +2,13 @@ import os
 import logging
 
 from fastapi import FastAPI, HTTPException
-
 from sentence_transformers import SentenceTransformer
+
+from app.metrics import ML_MODEL_COUNT
 
 _HF_ORG = "sentence-transformers"
 
-MODELS_TO_CACHE = [f"{_HF_ORG}/all-MiniLM-L12-v2"]
+MODELS_TO_CACHE = [f"{_HF_ORG}/all-MiniLM-L6-v2"]
 
 cache_dir = "./models"
 
@@ -26,8 +27,7 @@ def parse_header(authorization: str) -> str | None:
 def load_model_cache(app: FastAPI) -> dict[str, SentenceTransformer]:
     model_cache = {}
     for m in MODELS_TO_CACHE:
-        saved_path = _model_dir(m)
-        model_cache[m] = SentenceTransformer(saved_path)
+        model_cache[m] = SentenceTransformer(m, cache_folder=cache_dir)
     app.state.model_cache = model_cache
 
 
@@ -35,21 +35,11 @@ def save_model_cache() -> None:
     """caches models to local storage"""
     for mod in MODELS_TO_CACHE:
         logging.debug(f"Caching model: {mod}")
-        model = SentenceTransformer(mod)
-        save_dir = _model_dir(mod)
-        model.save(save_dir)
-
-
-def _model_dir(model: str) -> str:
-    model_dir = model.replace("/", "_")
-    return f"{cache_dir}/{model_dir}"
+        SentenceTransformer(mod, cache_folder=cache_dir)
 
 
 def model_org_name(model_name: str) -> str:
     """prepends with the HF if the org is not specified"""
-    if model_name == "all_MiniLM_L12_v2":
-        model_name = "all-MiniLM-L12-v2"
-
     if "/" not in model_name:
         return f"{_HF_ORG}/{model_name}"
     else:
@@ -71,7 +61,9 @@ def get_model(
         logging.debug(f"Model: {model_name} not in cache.")
         try:
             logging.error("api_key: %s", api_key)
-            model = SentenceTransformer(model_name, use_auth_token=api_key)
+            model = SentenceTransformer(
+                model_name, use_auth_token=api_key, trust_remote_code=True
+            )
             # add model to cache
             model_cache[model_name] = model
             logging.debug(f"Added model: {model_name} to cache.")
@@ -80,6 +72,7 @@ def get_model(
                 logging.warning("No api_key provided for model: %s", model_name)
             logging.exception("Failed to load model %s", model_name)
             raise
+    ML_MODEL_COUNT.labels(model_name=model_name).inc()
     return model
 
 

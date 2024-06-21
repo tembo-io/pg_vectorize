@@ -1,5 +1,7 @@
-use crate::chat::ops::call_chat;
+use crate::chat::ops::{call_chat, get_chat_response};
+use crate::chat::types::RenderedPrompt;
 use crate::search::{self, init_table};
+use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
 
@@ -73,6 +75,16 @@ fn transform_embeddings(
     Ok(transform(input, &model, api_key).remove(0))
 }
 
+#[pg_extern]
+fn encode(
+    input: &str,
+    model: default!(String, "'openai/text-embedding-ada-002'"),
+    api_key: default!(Option<String>, "NULL"),
+) -> Result<Vec<f64>> {
+    let model = Model::new(&model)?;
+    Ok(transform(input, &model, api_key).remove(0))
+}
+
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn init_rag(
@@ -140,4 +152,28 @@ fn rag(
     )?;
     let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
     Ok(TableIterator::new(iter))
+}
+
+#[pg_extern]
+fn generate(
+    input: &str,
+    model: default!(String, "'openai/gpt-3.5-turbo'"),
+    api_key: default!(Option<String>, "NULL"),
+) -> Result<String> {
+    let model = Model::new(&model)?;
+    let prompt = RenderedPrompt {
+        sys_rendered: "".to_string(),
+        user_rendered: input.to_string(),
+    };
+    get_chat_response(prompt, &model, api_key)
+}
+
+#[pg_extern]
+fn env_interpolate_guc(guc_name: &str) -> Result<String> {
+    let g: String = Spi::get_one_with_args(
+        "SELECT current_setting($1)",
+        vec![(PgBuiltInOids::TEXTOID.oid(), guc_name.into_datum())],
+    )?
+    .unwrap_or_else(|| panic!("no value set for guc: {guc_name}"));
+    env_interpolate_string(&g)
 }

@@ -139,7 +139,8 @@ pub fn init_table(
     if ran.is_err() {
         error!("error creating job");
     }
-    let init_embed_q = init::init_embedding_table_query(job_name, transformer, &valid_params);
+    let init_embed_q =
+        init::init_embedding_table_query(job_name, transformer, &valid_params, &index_dist_type);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
@@ -209,14 +210,16 @@ pub fn search(
     match project_meta.index_dist_type {
         types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),
         types::IndexDist::pgv_hnsw_ip => error!("Not implemented."),
-        types::IndexDist::pgv_hnsw_cosine => cosine_similarity_search(
-            job_name,
-            &proj_params,
-            &return_columns,
-            num_results,
-            &embeddings[0],
-            where_clause,
-        ),
+        types::IndexDist::pgv_hnsw_cosine | types::IndexDist::vsc_diskann_cosine => {
+            cosine_similarity_search(
+                job_name,
+                &proj_params,
+                &return_columns,
+                num_results,
+                &embeddings[0],
+                where_clause,
+            )
+        }
     }
 }
 

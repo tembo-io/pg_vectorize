@@ -22,7 +22,7 @@ async fn test_scheduled_job() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => '* * * * *'
     );"
     ))
@@ -71,7 +71,7 @@ async fn test_scheduled_single_table() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         table_method => 'append',
         schedule => '* * * * *'
     );"
@@ -120,7 +120,7 @@ async fn test_realtime_append_fail() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         table_method => 'append',
         schedule => 'realtime'
     );"
@@ -149,7 +149,7 @@ async fn test_realtime_job() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name', 'description'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => 'realtime'
     );"
     ))
@@ -245,7 +245,7 @@ async fn test_rag() {
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',
             \"column\" => 'description',
-            transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2'
     );"
     ))
     .execute(&conn)
@@ -278,7 +278,7 @@ async fn test_rag_alternate_schema() {
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',
             \"column\" => 'description',
-            transformer => 'sentence-transformers/all-MiniLM-L12-v2'
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2'
     );"
     ))
     .execute(&conn)
@@ -312,7 +312,7 @@ async fn test_static() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name', 'description'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => 'realtime',
         table_method => 'join'
     );"
@@ -405,7 +405,7 @@ async fn test_realtime_tabled() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => 'realtime',
         table_method => 'join'
     );"
@@ -480,7 +480,7 @@ async fn test_filter_join() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => 'realtime',
         table_method => 'join'
     );"
@@ -539,7 +539,7 @@ async fn test_filter_append() {
         \"table\" => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         table_method => 'append'
     );"
     ))
@@ -580,7 +580,7 @@ async fn test_index_dist_type_hnsw_cosine() {
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         index_dist_type => '{dist_type}',
-        transformer => 'all-MiniLM-L12-v2',
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
         schedule => 'realtime'
     );",
         job_name = job_name,
@@ -637,7 +637,7 @@ async fn test_index_dist_type_hnsw_l2() {
             primary_key => 'product_id',
             columns => ARRAY['product_name'],
             index_dist_type => '{dist_type}',
-            transformer => 'all-MiniLM-L12-v2',
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
             schedule => 'realtime'
         );",
         job_name = job_name,
@@ -688,7 +688,7 @@ async fn test_index_dist_type_hnsw_ip() {
             primary_key => 'product_id',
             columns => ARRAY['product_name'],
             index_dist_type => '{dist_type}',
-            transformer => 'all-MiniLM-L12-v2',
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
             schedule => 'realtime'
         );",
         job_name = job_name,
@@ -766,4 +766,38 @@ async fn test_private_hf_model() {
     .expect("failed to select from test_table");
     // 3 rows returned
     assert_eq!(result.rows_affected(), 3);
+}
+
+#[ignore]
+#[tokio::test]
+async fn test_diskann_cosine() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_diskann_{}", test_num);
+
+    common::init_embedding_svc_url(&conn).await;
+    // initialize a job
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+        index_dist_type => 'vsc_diskann_cosine',
+        schedule => 'realtime'
+    );"
+    ))
+    .execute(&conn)
+    .await;
+    assert!(result.is_ok());
+
+    let search_results: Vec<common::SearchJSON> =
+        util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .unwrap();
+    assert_eq!(search_results.len(), 3);
 }

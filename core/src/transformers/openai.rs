@@ -6,7 +6,7 @@ use crate::types::{JobParams, VectorizeMeta};
 // max token length is 8192
 // however, depending on content of text, token count can be higher than
 pub const MAX_TOKEN_LEN: usize = 8192;
-pub const OPENAI_EMBEDDING_URL: &str = "https://api.openai.com/v1/embeddings";
+pub const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 
 pub fn prepare_openai_request(
     vect_meta: VectorizeMeta,
@@ -30,7 +30,7 @@ pub fn prepare_openai_request(
         },
     };
     Ok(EmbeddingRequest {
-        url: OPENAI_EMBEDDING_URL.to_owned(),
+        url: format!("{OPENAI_BASE_URL}/embeddings"),
         payload,
         api_key: Some(apikey),
     })
