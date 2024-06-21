@@ -21,7 +21,7 @@ else:
 
 class Batch(BaseModel):
     input: Vector
-    model: str = "all-MiniLM-L12-v2"
+    model: str = "all-MiniLM-L6-v2"
     normalize: bool = False
 
 

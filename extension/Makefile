@@ -1,12 +1,14 @@
 SQLX_OFFLINE:=true
-DATABASE_URL:=postgres://${USER}:${USER}@localhost:28815/postgres
 DISTNAME = $(shell grep -m 1 '^name' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
-PG_VERSION:=15
+PG_VERSION:=16
+DATABASE_URL:=postgres://${USER}:${USER}@localhost:288${PG_VERSION}/postgres
 PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
-UPGRADE_FROM_VER:=0.9.0
+UPGRADE_FROM_VER:=0.16.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 RUST_LOG:=debug
+ARCH := $(shell uname -m)
+
 
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs docs
 
@@ -34,16 +36,23 @@ pgxn-zip: $(DISTNAME)-$(DISTVERSION).zip
 clean:
 	@rm -rf META.json $(DISTNAME)-$(DISTVERSION).zip
 
-setup.dependencies: install-pg_cron install-pgvector install-pgmq
+setup.dependencies: install-pg_cron install-pgvector install-pgmq install-vectorscale
 setup.shared_preload_libraries:
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 setup.urls:
 	echo "vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 	echo "vectorize.ollama_service_url = 'http://localhost:3001'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
-setup: setup.dependencies setup.shared_preload_libraries
+setup: setup.dependencies setup.shared_preload_libraries setup.urls
 
 cat-logs:
 	cat ~/.pgrx/${PG_VERSION}.log
+
+# install dependencies from trunk (limited OS/arch)
+trunk-dependencies:
+	trunk install pgvector --pg-config ${PGRX_PG_CONFIG}
+	trunk install pgmq --pg-config ${PGRX_PG_CONFIG}
+	trunk install pg_cron --pg-config ${PGRX_PG_CONFIG}
+	trunk install vectorscale --pg-config ${PGRX_PG_CONFIG}
 
 install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
@@ -65,8 +74,22 @@ install-pgvector:
 install-pgmq:
 	git clone https://github.com/tembo-io/pgmq.git && \
 	cd pgmq && \
-	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
 	cd .. && rm -rf pgmq
+
+install-vectorscale:
+	@ARCH=$$(uname -m); \
+	if [ "$$ARCH" != "arm64" ]; then \
+		export RUSTFLAGS="-C target-feature=+avx2,+fma"; \
+	else \
+		echo "Running on arm64, no compiler flags required."; \
+	fi; \
+	git clone https://github.com/timescale/pgvectorscale.git && \
+	cd pgvectorscale/pgvectorscale && \
+	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
+	cd ../.. && rm -rf pgvectorscale
 
 test-integration:
 	echo "\q" | make run
@@ -84,5 +107,6 @@ test-version:
 
 test-update:
 	echo "\q" | make run
+	psql ${DATABASE_URL} -c "CREATE EXTENSION IF NOT EXISTS vectorscale"
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
 	make test-integration

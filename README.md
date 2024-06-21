@@ -27,7 +27,7 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 
 pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai/vectordb) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
 
-**API Documentation**: https://tembo-io.github.io/pg_vectorize/
+**API Documentation**: https://tembo.io/pg_vectorize/
 
 **Source**: https://github.com/tembo-io/pg_vectorize
 
@@ -133,7 +133,7 @@ SELECT vectorize.table(
     "table"     => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
-    transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',
+    transformer => 'sentence-transformers/all-MiniLM-L6-v2',
     schedule    => 'realtime'
 );
 ```
@@ -189,7 +189,7 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 ```
 
 Initialize the RAG project.
- We'll use the `sentence-transformers/all-MiniLM-L12-v2` model to generate embeddings on our source documents.
+ We'll use the `sentence-transformers/all-MiniLM-L6-v2` model to generate embeddings on our source documents.
 
 ```sql
 SELECT vectorize.init_rag(
@@ -197,7 +197,7 @@ SELECT vectorize.init_rag(
     table_name          => 'products',
     "column"            => 'context',
     unique_record_id    => 'product_id',
-    transformer         => 'sentence-transformers/all-MiniLM-L12-v2'
+    transformer         => 'sentence-transformers/all-MiniLM-L6-v2'
 );
 ```
 
@@ -250,3 +250,38 @@ UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
 WHERE product_name = 'Hammock';
 ```
+
+## Directly Interact with LLMs
+
+Sometimes you want more control over the handling of embeddings.
+ For those situations you can directly call various LLM providers using SQL:
+
+For text generation:
+
+```sql
+select vectorize.generate(
+  input => 'Tell me the difference between a cat and a dog in 1 sentence',
+  model => 'openai/gpt-4o'
+);
+```
+
+```text
+                                                 generate                                                  
+-----------------------------------------------------------------------------------------------------------
+ Cats are generally more independent and solitary, while dogs tend to be more social and loyal companions.
+(1 row)
+```
+
+And for embedding generation:
+
+```sql
+select vectorize.encode(
+  input => 'Tell me the difference between a cat and a dog in 1 sentence',
+  model => 'openai/text-embedding-3-large'
+);
+```
+
+```text
+{0.0028769304,-0.005826319,-0.0035932811, ...}
+```
+

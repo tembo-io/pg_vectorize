@@ -1,5 +1,5 @@
-use super::generic::get_generic_svc_url;
-use crate::guc::EMBEDDING_REQ_TIMEOUT_SEC;
+use super::generic::get_env_interpolated_guc;
+use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
 use anyhow::Result;
 
 use pgrx::prelude::*;
@@ -35,7 +35,7 @@ pub async fn get_model_info(
     model_name: &str,
     api_key: Option<String>,
 ) -> Result<TransformerMetadata> {
-    let svc_url = get_generic_svc_url()?;
+    let svc_url = get_env_interpolated_guc(guc::VectorizeGuc::EmbeddingServiceUrl)?;
     let info_url = svc_url.replace("/embeddings", "/info");
     let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
     let client = reqwest::Client::new();

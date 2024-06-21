@@ -1,9 +1,11 @@
-FROM postgres:15.4-bookworm as builder
+ARG PG_MAJ=16
+FROM postgres:$PG_MAJ-bookworm as builder
 
-ARG PGMQ_VER=1.1.1
-ARG VECTOR_VER=0.6.0
+ARG VECTOR_VER=0.7.1
+ARG VSCALE_VER=0.2.0
 ARG CRON_VER=1.6.2
 ARG PGRX_VER=0.11.3
+ARG PG_MAJ=16
 
 RUN apt-get update \
     && apt-get install -y \
@@ -15,7 +17,7 @@ RUN apt-get update \
 	libssl-dev \
 	make \
 	pkg-config \
-	postgresql-server-dev-15
+	postgresql-server-dev-$PG_MAJ
 
 WORKDIR /vectorize
 
@@ -33,34 +35,54 @@ RUN git clone https://github.com/citusdata/pg_cron.git --branch v$CRON_VER && \
 	make && make install && \
     cd .. && rm -rf pg_cron
 
+# install pgmq
+RUN git clone https://github.com/tembo-io/pgmq.git && \
+	cd pgmq && \
+	make && \
+	make install && \
+	cd .. && rm -rf pgmq
+
 # Install Rust dependencies
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
 # install pgrx
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
+RUN $HOME/.cargo/bin/cargo pgrx init --pg$PG_MAJ $(which pg_config)
 
-# install pgmq
-RUN $HOME/.cargo/bin/cargo pgrx init --pg15 $(which pg_config)
+# set pgrx to use the correct pg_config
+ARG PG_MAJ=16
+RUN $HOME/.cargo/bin/cargo pgrx init --pg${PG_MAJ} /usr/bin/pg_config
 
-RUN git clone https://github.com/tembo-io/pgmq.git && \
-    cd pgmq && $HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config) && \
-    cd .. && rm -rf pgmq
+# install vectorscale
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+        export RUSTFLAGS="-C target-feature=+avx2,+fma"; \
+    fi
+
+RUN git clone https://github.com/timescale/pgvectorscale.git && \
+	cd pgvectorscale/pgvectorscale && \
+	git fetch origin $VSCALE_VER && \
+	git checkout $VSCALE_VER && \
+	sed -i '/blas/d' Cargo.toml && \
+	sed -i '/blas_src/d' src/access_method/mod.rs && \
+	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
 # install pg-vectorize
 COPY . .
 RUN cd extension && \
 	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 
-FROM postgres:15.4-bookworm
+FROM postgres:$PG_MAJ-bookworm
 
-COPY --from=builder /usr/share/postgresql/15/extension /usr/share/postgresql/15/extension
-COPY --from=builder /usr/lib/postgresql/15/lib /usr/lib/postgresql/15/lib
+ARG PG_MAJ=16
+COPY --from=builder /usr/share/postgresql/$PG_MAJ/extension /usr/share/postgresql/$PG_MAJ/extension
+COPY --from=builder /usr/lib/postgresql/$PG_MAJ/lib /usr/lib/postgresql/$PG_MAJ/lib
 
 RUN apt-get update \
     && apt-get install -y ca-certificates
 
-COPY images/vectorize-pg/postgresql.conf /usr/share/postgresql/15/postgresql.conf.sample
+COPY images/vectorize-pg/postgresql.conf /usr/share/postgresql/$PG_MAJ/postgresql.conf.sample
 
 USER postgres
 CMD ["postgres"]
