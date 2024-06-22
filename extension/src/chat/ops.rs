@@ -236,7 +236,7 @@ fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<
         instance.pull_model();
     });
 
-    let _ = match res{
+    let _ = match res {
         Err(e) => error!("ERROR: {:?}", e.to_string()),
         _ => info!("Model pulled successfully!"),
     };
