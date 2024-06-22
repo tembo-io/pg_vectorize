@@ -75,16 +75,16 @@ pub fn init_table(
         }
         ModelSource::Ollama => {
             let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
-               Some(k) => k,
-               None => {
-                   error!("failed to get Ollama url from GUC");
-               }
+                Some(k) => k,
+                None => {
+                    error!("failed to get Ollama url from GUC");
+                }
             };
             let res = check_model_host(&url);
-            match res{
-                Ok(_) =>{
+            match res {
+                Ok(_) => {
                     info!("Model host active!")
-                },
+                }
                 Err(e) => {
                     error!("Error with model host: {:?}", e)
                 }

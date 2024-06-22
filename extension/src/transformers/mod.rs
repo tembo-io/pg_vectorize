@@ -7,10 +7,10 @@ use generic::get_env_interpolated_guc;
 use pgrx::prelude::*;
 
 use vectorize_core::transformers::http_handler::openai_embedding_request;
+use vectorize_core::transformers::ollama::generate_embeddings;
 use vectorize_core::transformers::openai::OPENAI_BASE_URL;
 use vectorize_core::transformers::types::{EmbeddingPayload, EmbeddingRequest};
 use vectorize_core::types::{Model, ModelSource};
-use vectorize_core::transformers::ollama::generate_embeddings;
 
 pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -78,7 +78,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
             EmbeddingRequest {
                 url,
                 payload: embedding_request,
-                api_key: None
+                api_key: None,
             }
         }
     };
@@ -88,11 +88,11 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
         ModelSource::Ollama => {
             // Call the embeddings generation function
             let embeddings = generate_embeddings(embedding_request);
-            match embeddings{
+            match embeddings {
                 Ok(k) => k,
-                Err(e) => error!("error getting embeddings: {}", e)
+                Err(e) => error!("error getting embeddings: {}", e),
             }
-        },
+        }
 
         ModelSource::OpenAI | ModelSource::SentenceTransformers => {
             match runtime
@@ -103,7 +103,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                     error!("error getting embeddings: {}", e);
                 }
             }
-        },
+        }
 
         ModelSource::Tembo => {
             error!("Embeddings support not added for Tembo yet!")
