@@ -169,7 +169,7 @@ pub enum ModelError {
 impl Model {
     pub fn new(input: &str) -> Result<Self, ModelError> {
         let mut parts: Vec<&str> = input.split('/').collect();
-        
+
         let missing_source = parts.len() < 2;
         if parts.len() > 3 {
             return Err(ModelError::InvalidFormat(input.to_string()));
