@@ -8,6 +8,7 @@ use crate::util;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
+use vectorize_core::transformers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
@@ -69,8 +70,25 @@ pub fn init_table(
             sync_get_model_info(&transformer.fullname, api_key.clone())
                 .context("transformer does not exist")?;
         }
-        ModelSource::Ollama | ModelSource::Tembo => {
+        ModelSource::Tembo => {
             error!("Ollama/Tembo not implemented for search yet");
+        }
+        ModelSource::Ollama => {
+            let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
+                Some(k) => k,
+                None => {
+                    error!("failed to get Ollama url from GUC");
+                }
+            };
+            let res = check_model_host(&url);
+            match res {
+                Ok(_) => {
+                    info!("Model host active!")
+                }
+                Err(e) => {
+                    error!("Error with model host: {:?}", e)
+                }
+            }
         }
     }
 
