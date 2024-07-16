@@ -43,8 +43,13 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
                 input: vec![input.to_string()],
                 model: transformer.name.to_string(),
             };
+
+            let url = match guc::get_guc(guc::VectorizeGuc::OpenAIServiceUrl) {
+                Some(k) => k,
+                None => OPENAI_BASE_URL.to_string(),
+            };
             EmbeddingRequest {
-                url: format!("{OPENAI_BASE_URL}/embeddings"),
+                url: format!("{url}/embeddings"),
                 payload: embedding_request,
                 api_key: Some(api_key.to_string()),
             }

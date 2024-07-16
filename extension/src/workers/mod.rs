@@ -51,7 +51,7 @@ pub async fn run_worker(
 
     // delete message from queue
     if delete_it {
-        match queue.archive(queue_name, msg_id).await {
+        match queue.delete(queue_name, msg_id).await {
             Ok(_) => {
                 info!("pg-vectorize: deleted message: {}", msg_id);
             }

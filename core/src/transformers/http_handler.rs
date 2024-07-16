@@ -1,8 +1,7 @@
-use anyhow::Result;
-
 use crate::transformers::types::{
     EmbeddingPayload, EmbeddingRequest, EmbeddingResponse, Inputs, PairedEmbeddings,
 };
+use anyhow::Result;
 pub async fn handle_response<T: for<'de> serde::Deserialize<'de>>(
     resp: reqwest::Response,
     method: &'static str,
@@ -26,22 +25,47 @@ pub async fn openai_embedding_request(
     timeout: i32,
 ) -> Result<Vec<Vec<f64>>> {
     let client = reqwest::Client::new();
-    let mut req = client
-        .post(request.url)
-        .timeout(std::time::Duration::from_secs(timeout as u64))
-        .json::<EmbeddingPayload>(&request.payload)
-        .header("Content-Type", "application/json");
-    if let Some(key) = request.api_key {
-        req = req.header("Authorization", format!("Bearer {}", key));
+
+    // openai request size limit is 2048 inputs
+    let number_inputs = request.payload.input.len();
+    let todo_requests: Vec<EmbeddingPayload> = if number_inputs > 2048 {
+        split_vector(request.payload.input, 2048)
+            .iter()
+            .map(|chunk| EmbeddingPayload {
+                input: chunk.clone(),
+                model: request.payload.model.clone(),
+            })
+            .collect()
+    } else {
+        vec![request.payload]
+    };
+
+    let mut all_embeddings: Vec<Vec<f64>> = Vec::with_capacity(number_inputs);
+
+    for request_payload in todo_requests.iter() {
+        let mut req = client
+            .post(&request.url)
+            .timeout(std::time::Duration::from_secs(timeout as u64))
+            .json::<EmbeddingPayload>(request_payload)
+            .header("Content-Type", "application/json");
+        if let Some(key) = request.api_key.as_ref() {
+            req = req.header("Authorization", format!("Bearer {}", key));
+        }
+        let resp = req.send().await?;
+        let embedding_resp: EmbeddingResponse =
+            handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
+        let embeddings: Vec<Vec<f64>> = embedding_resp
+            .data
+            .iter()
+            .map(|d| d.embedding.clone())
+            .collect();
+        all_embeddings.extend(embeddings);
     }
-    let resp = req.send().await?;
-    let embedding_resp = handle_response::<EmbeddingResponse>(resp, "embeddings").await?;
-    let embeddings = embedding_resp
-        .data
-        .iter()
-        .map(|d| d.embedding.clone())
-        .collect();
-    Ok(embeddings)
+    Ok(all_embeddings)
+}
+
+fn split_vector(vec: Vec<String>, chunk_size: usize) -> Vec<Vec<String>> {
+    vec.chunks(chunk_size).map(|chunk| chunk.to_vec()).collect()
 }
 
 // merges the vec of inputs with the embedding responses
