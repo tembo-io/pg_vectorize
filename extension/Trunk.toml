@@ -7,6 +7,7 @@ homepage = "https://github.com/tembo-io/pg_vectorize"
 documentation = "https://github.com/tembo-io/pg_vectorize"
 categories = ["orchestration", "machine_learning"]
 version = "0.17.0"
+loadable_libraries = [{ library_name = "vectorize", requires_restart = true }]
 
 [build]
 postgres_version = "15"
