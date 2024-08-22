@@ -8,20 +8,19 @@ use url::Url;
 pub const OLLAMA_BASE_URL: &str = "http://localhost:3001";
 
 pub struct OllamaProvider {
-    pub model_name: String,
     pub instance: Ollama,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ModelInfo {
-    model: String,
     embedding_dimension: u32,
     max_seq_len: u32,
 }
 
 impl OllamaProvider {
-    pub fn new(model_name: String, url: String) -> Self {
-        let parsed_url = Url::parse(&url).unwrap_or_else(|_| panic!("invalid url: {}", url));
+    pub fn new(url: Option<String>) -> Self {
+        let url_in = url.unwrap_or_else(|| OLLAMA_BASE_URL.to_string());
+        let parsed_url = Url::parse(&url_in).unwrap_or_else(|_| panic!("invalid url: {}", url_in));
         let instance = Ollama::new(
             format!(
                 "{}://{}",
@@ -30,10 +29,7 @@ impl OllamaProvider {
             ),
             parsed_url.port().expect("parsed port missing"),
         );
-        OllamaProvider {
-            model_name,
-            instance,
-        }
+        OllamaProvider { instance }
     }
 }
 
@@ -44,10 +40,11 @@ impl EmbeddingProvider for OllamaProvider {
         request: &'a GenericEmbeddingRequest,
     ) -> Result<GenericEmbeddingResponse, VectorizeError> {
         let mut all_embeddings: Vec<Vec<f64>> = Vec::with_capacity(request.input.len());
+        let model_name = request.model.clone();
         for ipt in request.input.iter() {
             let embed = self
                 .instance
-                .generate_embeddings(self.model_name.clone(), ipt.clone(), None)
+                .generate_embeddings(model_name.clone(), ipt.clone(), None)
                 .await?;
             all_embeddings.push(embed.embeddings);
         }
@@ -66,9 +63,36 @@ impl EmbeddingProvider for OllamaProvider {
 }
 
 impl OllamaProvider {
-    pub async fn generate_response(&self, prompt_text: String) -> Result<String, VectorizeError> {
-        let req = GenerationRequest::new(self.model_name.clone(), prompt_text);
+    pub async fn generate_response(
+        &self,
+        model_name: String,
+        prompt_text: &str,
+    ) -> Result<String, VectorizeError> {
+        let req = GenerationRequest::new(model_name, prompt_text.to_owned());
         let res = self.instance.generate(req).await?;
         Ok(res.response)
+    }
+}
+
+pub fn check_model_host(url: &str) -> Result<String, String> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| panic!("failed to initialize tokio runtime: {}", e));
+
+    runtime.block_on(async {
+        let response = reqwest::get(url).await.unwrap();
+        match response.status() {
+            reqwest::StatusCode::OK => Ok(format!("Success! {:?}", response)),
+            _ => Err(format!("Error! {:?}", response)),
+        }
+    })
+}
+
+pub fn ollama_embedding_dim(model_name: &str) -> i32 {
+    match model_name {
+        "llama2" => 5192,
+        _ => 1536,
     }
 }

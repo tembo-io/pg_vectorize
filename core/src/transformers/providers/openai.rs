@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::{EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
 use crate::errors::VectorizeError;
 use crate::transformers::http_handler::handle_response;
+use crate::transformers::providers;
 use crate::transformers::types::Inputs;
 use async_trait::async_trait;
 use std::env;
@@ -79,7 +80,7 @@ impl EmbeddingProvider for OpenAIProvider {
         let req = OpenAIEmbeddingBody::from(request.clone());
         let num_inputs = request.input.len();
         let todo_requests: Vec<OpenAIEmbeddingBody> = if num_inputs > 2048 {
-            split_vector(req.input, 2048)
+            providers::split_vector(req.input, 2048)
                 .iter()
                 .map(|chunk| OpenAIEmbeddingBody {
                     input: chunk.clone(),
@@ -126,10 +127,6 @@ pub fn openai_embedding_dim(model_name: &str) -> i32 {
         "text-embedding-ada-002" => 1536,
         _ => 1536,
     }
-}
-
-fn split_vector(vec: Vec<String>, chunk_size: usize) -> Vec<Vec<String>> {
-    vec.chunks(chunk_size).map(|chunk| chunk.to_vec()).collect()
 }
 
 #[cfg(test)]

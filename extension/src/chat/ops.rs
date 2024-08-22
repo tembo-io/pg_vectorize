@@ -10,8 +10,7 @@ use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
 use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
-use vectorize_core::transformers::ollama::LLMFunctions;
-use vectorize_core::transformers::ollama::OllamaInstance;
+use vectorize_core::transformers::providers::ollama::OllamaProvider;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -231,11 +230,13 @@ fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let instance = OllamaInstance::new(model.to_string(), url.to_string());
+    let ollama_provider = OllamaProvider::new(Some(url));
+
+    let prompt = prompts.sys_rendered + "\n" + &prompts.user_rendered;
 
     let response = runtime.block_on(async {
-        instance
-            .generate_reponse(prompts.sys_rendered + "\n" + &prompts.user_rendered)
+        ollama_provider
+            .generate_response(model.to_owned(), &prompt)
             .await
     });
 

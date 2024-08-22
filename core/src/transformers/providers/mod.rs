@@ -1,6 +1,7 @@
 pub mod cohere;
 pub mod ollama;
 pub mod openai;
+pub mod portkey;
 pub mod vector_serve;
 
 use anyhow::Result;
@@ -62,8 +63,13 @@ pub fn get_provider(
         ModelSource::SentenceTransformers => Ok(Box::new(
             providers::vector_serve::VectorServeProvider::new(url, api_key),
         )),
-        ModelSource::Ollama | ModelSource::Tembo => Err(anyhow::anyhow!(
+        ModelSource::Ollama => Ok(Box::new(providers::ollama::OllamaProvider::new(url))),
+        ModelSource::Tembo => Err(anyhow::anyhow!(
             "Ollama/Tembo transformer not implemented yet"
         ))?,
     }
+}
+
+fn split_vector(vec: Vec<String>, chunk_size: usize) -> Vec<Vec<String>> {
+    vec.chunks(chunk_size).map(|chunk| chunk.to_vec()).collect()
 }
