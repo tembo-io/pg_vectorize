@@ -107,6 +107,9 @@ jobs:
         with:
           working-directory: ./extension
       - name: Test Core
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CO_API_KEY: ${{ secrets.CO_API_KEY }}
         run: |
           cd ../core && cargo test
       - name: Restore cached binaries
