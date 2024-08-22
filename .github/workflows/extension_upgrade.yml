@@ -59,6 +59,8 @@ jobs:
       - name: Test previous version (main))
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CO_API_KEY: ${{ secrets.CO_API_KEY }}
         run: |
           git fetch --tags
           git checkout main
@@ -68,6 +70,8 @@ jobs:
         env:
           CI_BRANCH: ${{ steps.current-version.outputs.CI_BRANCH }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CO_API_KEY: ${{ secrets.CO_API_KEY }}
         run: |
           git checkout $CI_BRANCH
           make test-update

@@ -58,7 +58,7 @@ jobs:
 
   lint:
     name: Run linters
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust minimal nightly with clippy and rustfmt
@@ -67,15 +67,6 @@ jobs:
           profile: minimal
           toolchain: nightly
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "pg-vectorize-extension-lint"
-          workspaces: pg-vectorize/
-          # Additional directories to cache
-          cache-directories: /home/runner/.pgrx
-      - uses: ./.github/actions/pgx-init
-        with:
-          working-directory: ./extension
       - name: Cargo format
         run: cargo fmt --all --check
       - name: Clippy
