@@ -37,10 +37,10 @@ RUN git clone https://github.com/citusdata/pg_cron.git --branch v$CRON_VER && \
 
 # install pgmq
 RUN git clone https://github.com/tembo-io/pgmq.git && \
-	cd pgmq && \
+	cd pgmq/extension && \
 	make && \
 	make install && \
-	cd .. && rm -rf pgmq
+	cd ../.. && rm -rf pgmq
 
 # Install Rust dependencies
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

@@ -778,6 +778,10 @@ async fn test_diskann_cosine() {
     common::init_test_table(&test_table_name, &conn).await;
     let job_name = format!("job_diskann_{}", test_num);
 
+    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS vectorscale;")
+        .execute(&conn)
+        .await;
+
     common::init_embedding_svc_url(&conn).await;
     // initialize a job
     let result = sqlx::query(&format!(
