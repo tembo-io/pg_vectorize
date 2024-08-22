@@ -1,10 +1,11 @@
 use super::generic::get_env_interpolated_guc;
-use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC};
+use crate::guc;
 use anyhow::Result;
 
 use pgrx::prelude::*;
 
-use vectorize_core::transformers::http_handler::handle_response;
+use vectorize_core::transformers::providers::vector_serve::VectorServeProvider;
+use vectorize_core::transformers::providers::EmbeddingProvider;
 use vectorize_core::transformers::types::TransformerMetadata;
 
 #[pg_extern]
@@ -36,17 +37,11 @@ pub async fn get_model_info(
     api_key: Option<String>,
 ) -> Result<TransformerMetadata> {
     let svc_url = get_env_interpolated_guc(guc::VectorizeGuc::EmbeddingServiceUrl)?;
-    let info_url = svc_url.replace("/embeddings", "/info");
-    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
-    let client = reqwest::Client::new();
-    let mut req = client
-        .get(info_url)
-        .query(&[("model_name", model_name)])
-        .timeout(std::time::Duration::from_secs(timeout as u64));
-    if let Some(key) = api_key {
-        req = req.header("Authorization", format!("Bearer {}", key));
-    }
-    let resp = req.send().await?;
-    let meta_response = handle_response::<TransformerMetadata>(resp, "info").await?;
-    Ok(meta_response)
+    let provider = VectorServeProvider::new(Some(svc_url.clone()), api_key);
+    let dim = provider.model_dim(model_name).await?;
+    Ok(TransformerMetadata {
+        model: model_name.to_string(),
+        max_seq_len: 0,
+        embedding_dimension: dim as i32,
+    })
 }

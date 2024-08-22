@@ -2,6 +2,7 @@ use core::ffi::CStr;
 use pgrx::*;
 
 use anyhow::Result;
+use vectorize_core::types::ModelSource;
 
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
@@ -13,12 +14,15 @@ pub static OPENAI_BASE_URL: GucSetting<Option<&CStr>> =
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
 pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
+pub static EMBEDDING_SERVICE_API_KEY: GucSetting<Option<&CStr>> =
+    GucSetting::<Option<&CStr>>::new(None);
 pub static EMBEDDING_SERVICE_HOST: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
 pub static EMBEDDING_REQ_TIMEOUT_SEC: GucSetting<i32> = GucSetting::<i32>::new(120);
 pub static OLLAMA_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static TEMBO_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static TEMBO_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static COHERE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -84,6 +88,13 @@ pub fn init_guc() {
         &EMBEDDING_SERVICE_HOST,
         GucContext::Suset, GucFlags::default());
 
+    GucRegistry::define_string_guc(
+        "vectorize.embedding_service_api_key",
+        "API key for vector-serve container",
+        "Used for any models that require a Hugging Face API key in order to download into the vector-serve container. Not required.",
+        &EMBEDDING_SERVICE_API_KEY,
+        GucContext::Suset, GucFlags::default());
+
     GucRegistry::define_int_guc(
         "vectorize.num_bgw_proc",
         "Number of bgw processes",
@@ -123,6 +134,15 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.cohere_api_key",
+        "API Key for calling Cohere Service",
+        "API Key for calling Cohere Service",
+        &COHERE_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone
@@ -134,8 +154,10 @@ pub enum VectorizeGuc {
     OpenAIKey,
     TemboAIKey,
     EmbeddingServiceUrl,
+    EmbeddingServiceApiKey,
     OllamaServiceUrl,
     TemboServiceUrl,
+    CohereApiKey,
 }
 
 /// a convenience function to get this project's GUCs
@@ -149,6 +171,8 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::TemboServiceUrl => TEMBO_SERVICE_HOST.get(),
         VectorizeGuc::TemboAIKey => TEMBO_API_KEY.get(),
         VectorizeGuc::OpenAIServiceUrl => OPENAI_BASE_URL.get(),
+        VectorizeGuc::EmbeddingServiceApiKey => EMBEDDING_SERVICE_API_KEY.get(),
+        VectorizeGuc::CohereApiKey => COHERE_API_KEY.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
@@ -168,5 +192,36 @@ fn handle_cstr(cstr: &CStr) -> Result<String> {
         Ok(s.to_owned())
     } else {
         Err(anyhow::anyhow!("failed to convert CStr to str"))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ModelGucConfig {
+    pub api_key: Option<String>,
+    pub service_url: Option<String>,
+}
+
+pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {
+    match model_source {
+        ModelSource::OpenAI => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::OpenAIKey),
+            service_url: get_guc(VectorizeGuc::OpenAIServiceUrl),
+        },
+        ModelSource::Tembo => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::TemboAIKey),
+            service_url: get_guc(VectorizeGuc::TemboServiceUrl),
+        },
+        ModelSource::SentenceTransformers => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::EmbeddingServiceApiKey),
+            service_url: get_guc(VectorizeGuc::EmbeddingServiceUrl),
+        },
+        ModelSource::Cohere => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::CohereApiKey),
+            service_url: None,
+        },
+        ModelSource::Ollama => ModelGucConfig {
+            api_key: None,
+            service_url: get_guc(VectorizeGuc::OllamaServiceUrl),
+        },
     }
 }

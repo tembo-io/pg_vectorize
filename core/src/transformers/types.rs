@@ -8,7 +8,6 @@ pub struct EmbeddingResponse {
 
 #[derive(serde::Deserialize, Debug)]
 pub struct EmbeddingObject {
-    // object: String,
     pub index: usize,
     pub embedding: Vec<f64>,
 }

@@ -151,6 +151,19 @@ pub struct Model {
     pub name: String,
 }
 
+impl Model {
+    // the name to use when calling an API
+    pub fn api_name(&self) -> String {
+        match self.source {
+            ModelSource::OpenAI => self.name.clone(),
+            ModelSource::SentenceTransformers => self.fullname.clone(),
+            ModelSource::Ollama => self.name.clone(),
+            ModelSource::Tembo => self.name.clone(),
+            ModelSource::Cohere => self.name.clone(),
+        }
+    }
+}
+
 impl From<String> for Model {
     fn from(input: String) -> Self {
         let errmsg = format!("Invalid input string for Model: {}", input);
@@ -222,6 +235,7 @@ pub enum ModelSource {
     SentenceTransformers,
     Ollama,
     Tembo,
+    Cohere,
 }
 
 impl FromStr for ModelSource {
@@ -233,6 +247,7 @@ impl FromStr for ModelSource {
             "openai" => Ok(ModelSource::OpenAI),
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
             "tembo" => Ok(ModelSource::Tembo),
+            "cohere" => Ok(ModelSource::Cohere),
             _ => Ok(ModelSource::SentenceTransformers),
         }
     }
@@ -245,6 +260,7 @@ impl Display for ModelSource {
             ModelSource::OpenAI => write!(f, "openai"),
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
             ModelSource::Tembo => write!(f, "tembo"),
+            ModelSource::Cohere => write!(f, "cohere"),
         }
     }
 }
@@ -256,6 +272,7 @@ impl From<String> for ModelSource {
             "openai" => ModelSource::OpenAI,
             "sentence-transformers" => ModelSource::SentenceTransformers,
             "tembo" => ModelSource::Tembo,
+            "cohere" => ModelSource::Cohere,
             // other cases are assumed to be private sentence-transformer compatible model
             // and can be hot-loaded
             _ => ModelSource::SentenceTransformers,
