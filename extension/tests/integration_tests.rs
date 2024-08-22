@@ -801,3 +801,36 @@ async fn test_diskann_cosine() {
             .unwrap();
     assert_eq!(search_results.len(), 3);
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_cohere() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("cohere_{}", test_num);
+
+    common::init_embedding_svc_url(&conn).await;
+    // initialize a job
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'cohere/embed-multilingual-light-v3.0',
+        schedule => 'realtime'
+    );"
+    ))
+    .execute(&conn)
+    .await;
+    assert!(result.is_ok());
+
+    let search_results: Vec<common::SearchJSON> =
+        util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .unwrap();
+    assert_eq!(search_results.len(), 3);
+}

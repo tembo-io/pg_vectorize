@@ -1,7 +1,7 @@
 use crate::guc;
+use crate::guc::get_guc_configs;
 use crate::init;
 use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_job};
-use crate::transformers::http_handler::sync_get_model_info;
 use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
@@ -9,6 +9,7 @@ use crate::util;
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
 use vectorize_core::transformers::ollama::check_model_host;
+use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
@@ -18,7 +19,6 @@ pub fn init_table(
     table: &str,
     columns: Vec<String>,
     primary_key: &str,
-    args: Option<serde_json::Value>,
     update_col: Option<String>,
     index_dist_type: types::IndexDist,
     transformer: &Model,
@@ -34,44 +34,45 @@ pub fn init_table(
         error!("realtime schedule is only compatible with the join table method");
     }
 
-    let arguments = match serde_json::to_value(args) {
-        Ok(a) => a,
-        Err(e) => {
-            error!("invalid json for argument `args`: {}", e);
-        }
-    };
-
-    let api_key = match arguments.get("api_key") {
-        Some(k) => Some(serde_json::from_value::<String>(k.clone())?),
-        None => None,
-    };
-
     // get prim key type
     let pkey_type = init::get_column_datatype(schema, table, primary_key)?;
     init::init_pgmq()?;
 
+    let guc_configs = get_guc_configs(&transformer.source);
+    let provider = get_provider(
+        &transformer.source,
+        guc_configs.api_key.clone(),
+        guc_configs.service_url,
+    )?;
+
+    //synchronous
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+    let model_dim =
+        match runtime.block_on(async { provider.model_dim(&transformer.api_name()).await }) {
+            Ok(e) => e,
+            Err(e) => {
+                error!("error getting model dim: {}", e);
+            }
+        };
+
+    // validate API key where necessary
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
     match transformer.source {
         ModelSource::OpenAI => {
-            let openai_key = match api_key.clone() {
-                Some(k) => k,
-                None => match guc::get_guc(guc::VectorizeGuc::OpenAIKey) {
-                    Some(k) => k,
-                    None => {
-                        error!("failed to get API key from GUC");
-                    }
-                },
-            };
-            openai::validate_api_key(&openai_key)?;
-        }
-        ModelSource::SentenceTransformers => {
-            // make sure transformer exists
-            sync_get_model_info(&transformer.fullname, api_key.clone())
-                .context("transformer does not exist")?;
+            openai::validate_api_key(
+                &guc_configs
+                    .api_key
+                    .clone()
+                    .context("OpenAI key is required")?,
+            )?;
         }
         ModelSource::Tembo => {
-            error!("Ollama/Tembo not implemented for search yet");
+            error!("Tembo not implemented for search yet");
         }
         ModelSource::Ollama => {
             let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
@@ -90,6 +91,7 @@ pub fn init_table(
                 }
             }
         }
+        _ => (),
     }
 
     let valid_params = types::JobParams {
@@ -100,7 +102,7 @@ pub fn init_table(
         table_method: table_method.clone(),
         primary_key: primary_key.to_string(),
         pkey_type,
-        api_key: api_key.clone(),
+        api_key: guc_configs.api_key.clone(),
         schedule: schedule.to_string(),
     };
     let params =
@@ -139,11 +141,10 @@ pub fn init_table(
         }
         Ok(())
     });
-    if ran.is_err() {
-        error!("error creating job");
-    }
+    ran?;
+
     let init_embed_q =
-        init::init_embedding_table_query(job_name, transformer, &valid_params, &index_dist_type);
+        init::init_embedding_table_query(job_name, &valid_params, &index_dist_type, model_dim);
 
     let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {

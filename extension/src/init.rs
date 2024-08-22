@@ -1,19 +1,9 @@
-use crate::{
-    query::check_input,
-    transformers::http_handler::sync_get_model_info,
-    types::{self},
-};
+use crate::{query::check_input, types};
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
-use vectorize_core::{
-    transformers::ollama::ollama_embedding_dim,
-    types::{JobParams, TableMethod, VECTORIZE_SCHEMA},
-};
-use vectorize_core::{
-    transformers::{openai::openai_embedding_dim, types::TransformerMetadata},
-    types::{IndexDist, Model, ModelSource},
-};
+use vectorize_core::types::IndexDist;
+use vectorize_core::types::{JobParams, TableMethod, VECTORIZE_SCHEMA};
 
 pub static VECTORIZE_QUEUE: &str = "vectorize_jobs";
 
@@ -90,35 +80,15 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
 
 pub fn init_embedding_table_query(
     job_name: &str,
-    transformer: &Model,
     job_params: &JobParams,
     index_type: &IndexDist,
+    model_dim: u32,
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
     let src_table = job_params.table.clone();
-    let api_key = job_params.api_key.clone();
 
-    let col_type = match transformer.source {
-        // https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
-        // for anything but OpenAI, first call info endpoint to get the embedding dim of the model
-        ModelSource::OpenAI => {
-            let dim = openai_embedding_dim(&transformer.name);
-            format!("vector({dim})")
-        }
-        ModelSource::SentenceTransformers => {
-            let model_info: TransformerMetadata =
-                sync_get_model_info(&transformer.fullname, api_key)
-                    .expect("failed to call vectorize.embedding_service_url");
-            let dim = model_info.embedding_dimension;
-            format!("vector({dim})")
-        }
-        ModelSource::Ollama => {
-            let dim = ollama_embedding_dim(&transformer.name);
-            format!("vector({dim})")
-        }
-        ModelSource::Tembo => error!("Tembo transformer not implemented yet"),
-    };
+    let col_type = format!("vector({model_dim})");
 
     let (index_schema, table_name, embeddings_col) = match job_params.table_method {
         TableMethod::append => {

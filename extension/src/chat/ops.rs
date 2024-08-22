@@ -47,8 +47,8 @@ pub fn call_chat(
             // Using gpt-3.5-turbo tokenizer as placeholder for Llama3-8B-Instruct
             get_bpe_from_model("gpt-3.5-turbo").expect("failed to get BPE from model")
         }
-        ModelSource::SentenceTransformers => {
-            error!("SentenceTransformers not supported for chat completions")
+        ModelSource::SentenceTransformers | ModelSource::Cohere => {
+            error!("SentenceTransformers and Cohere not yet supported for chat completions")
         }
     };
 
@@ -138,10 +138,10 @@ pub fn get_chat_response(
 ) -> Result<String> {
     match model.source {
         ModelSource::OpenAI | ModelSource::Tembo => call_chat_completions(prompt, model, api_key),
-        ModelSource::SentenceTransformers => {
-            error!("SentenceTransformers not supported for chat completions");
-        }
         ModelSource::Ollama => call_ollama_chat_completions(prompt, &model.name),
+        ModelSource::SentenceTransformers | ModelSource::Cohere => {
+            error!("SentenceTransformers and Cohere not yet supported for chat completions");
+        }
     }
 }
 

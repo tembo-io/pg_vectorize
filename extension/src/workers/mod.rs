@@ -1,17 +1,16 @@
 pub mod pg_bgw;
 
-use crate::guc::{self, EMBEDDING_REQ_TIMEOUT_SEC, OPENAI_KEY};
-use crate::transformers::generic::get_env_interpolated_guc;
+use crate::guc::{get_guc_configs, ModelGucConfig};
 
-use vectorize_core::transformers::types::PairedEmbeddings;
-use vectorize_core::transformers::{generic, http_handler, openai};
-use vectorize_core::types::{self, ModelSource};
-use vectorize_core::worker::ops;
-
-use anyhow::{Context, Result};
+use anyhow::Result;
 use pgmq::{Message, PGMQueueExt};
 use pgrx::*;
 use sqlx::{Pool, Postgres};
+use vectorize_core::transformers::http_handler;
+use vectorize_core::transformers::providers;
+use vectorize_core::transformers::types::PairedEmbeddings;
+use vectorize_core::types;
+use vectorize_core::worker::ops;
 
 pub async fn run_worker(
     queue: PGMQueueExt,
@@ -67,45 +66,27 @@ pub async fn run_worker(
 
 async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) -> Result<()> {
     let job_meta = msg.message.job_meta;
-    let job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
+    let mut job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match job_meta.transformer.source {
-        ModelSource::OpenAI => {
-            info!("pg-vectorize: OpenAI transformer");
-            let apikey = match job_params.api_key.clone() {
-                Some(k) => k,
-                None => {
-                    let key = match OPENAI_KEY.get() {
-                        Some(k) => k.to_str()?.to_owned(),
-                        None => {
-                            warning!("pg-vectorize: Error getting API key from GUC");
-                            return Err(anyhow::anyhow!("failed to get API key"));
-                        }
-                    };
-                    key
-                }
-            };
-            openai::prepare_openai_request(job_meta.clone(), &msg.message.inputs, Some(apikey))
-        }
-        ModelSource::SentenceTransformers => {
-            let svc_host = get_env_interpolated_guc(guc::VectorizeGuc::EmbeddingServiceUrl)
-                .context("failed to get embedding service url from GUC")?;
-            generic::prepare_generic_embedding_request(
-                job_meta.clone(),
-                &msg.message.inputs,
-                svc_host,
-            )
-        }
-        ModelSource::Ollama | ModelSource::Tembo => {
-            error!("pg-vectorize: Ollama/Tembo transformer not implemented yet")
-        }
-    }?;
+    let embedding_request =
+        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs);
 
-    let timeout = EMBEDDING_REQ_TIMEOUT_SEC.get();
-    let embeddings = http_handler::openai_embedding_request(embedding_request, timeout).await?;
-    // TODO: validate returned embeddings order is same as the input order
+    let guc_configs: ModelGucConfig = get_guc_configs(&job_meta.transformer.source);
+
+    // if api_key found in GUC, then use that and re-assign
+    if let Some(k) = guc_configs.api_key {
+        job_params.api_key = Some(k);
+    }
+
+    let provider = providers::get_provider(
+        &job_meta.transformer.source,
+        job_params.api_key.clone(),
+        guc_configs.service_url,
+    )?;
+
+    let embedding_response = provider.generate_embedding(&embedding_request).await?;
     let paired_embeddings: Vec<PairedEmbeddings> =
-        http_handler::merge_input_output(msg.message.inputs, embeddings);
+        http_handler::merge_input_output(msg.message.inputs, embedding_response.embeddings);
 
     log!("pg-vectorize: embeddings size: {}", paired_embeddings.len());
     // write embeddings to result table

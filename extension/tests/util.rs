@@ -121,7 +121,8 @@ pub mod common {
 
     pub async fn init_embedding_svc_url(conn: &Pool<Postgres>) {
         let set_guc = format!(
-            "ALTER SYSTEM SET vectorize.embedding_service_url to 'http://0.0.0.0:3000/v1/embeddings';");
+            "ALTER SYSTEM SET vectorize.embedding_service_url to 'http://0.0.0.0:3000/v1';"
+        );
         let reload = "SELECT pg_reload_conf();".to_string();
         for q in vec![set_guc, reload] {
             sqlx::query(&q)
