@@ -1,11 +1,13 @@
-use crate::transformers::{generic, http_handler, openai};
-use crate::types::{JobMessage, JobParams, ModelSource};
+use crate::transformers::{http_handler, providers};
+use crate::types::{JobMessage, JobParams};
 use crate::worker::ops;
 use anyhow::Result;
-use log::{error, info};
+use log::error;
 use pgmq::{Message, PGMQueueExt};
 use sqlx::{Pool, Postgres};
 use std::env;
+
+use crate::types::VectorizeMeta;
 
 pub async fn poll_job(
     conn: &Pool<Postgres>,
@@ -87,34 +89,24 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 async fn execute_job(
     dbclient: &Pool<Postgres>,
     msg: Message<JobMessage>,
-    cfg: &Config,
+    _cfg: &Config,
 ) -> Result<()> {
-    let job_meta = msg.message.job_meta;
+    let job_meta: VectorizeMeta = msg.message.job_meta;
     let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
 
-    let embedding_request = match &job_meta.transformer.source {
-        ModelSource::OpenAI => openai::prepare_openai_request(
-            job_meta.clone(),
-            &msg.message.inputs,
-            cfg.openai_api_key.clone(),
-        )?,
-        ModelSource::Ollama | &ModelSource::Tembo => Err(anyhow::anyhow!(
-            "Ollama/Tembo transformer not implemented yet"
-        ))?,
-        ModelSource::SentenceTransformers => generic::prepare_generic_embedding_request(
-            job_meta.clone(),
-            &msg.message.inputs,
-            cfg.embedding_svc_url.clone(),
-        )?,
-    };
-    info!(
-        "pg-vectorize: embeddings request length: {}",
-        embedding_request.payload.input.len()
-    );
-    let embeddings =
-        http_handler::openai_embedding_request(embedding_request, cfg.embedding_request_timeout)
-            .await?;
-    let paired_embeddings = http_handler::merge_input_output(msg.message.inputs, embeddings);
+    let provider = providers::get_provider(
+        &job_meta.transformer.source,
+        job_params.api_key.clone(),
+        None,
+    )?;
+
+    let embedding_request =
+        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs);
+
+    let embeddings = provider.generate_embedding(&embedding_request).await?;
+
+    let paired_embeddings =
+        http_handler::merge_input_output(msg.message.inputs, embeddings.embeddings);
     match job_params.clone().table_method {
         crate::types::TableMethod::append => {
             ops::update_embeddings(

@@ -14,6 +14,7 @@ path = "src/bin/worker.rs"
 
 [dependencies]
 anyhow = "1.0.81"
+async-trait = "0.1.81"
 chrono = {version = "0.4.26", features = ["serde"] }
 env_logger = "0.11.3"
 lazy_static = "1.4.0"
