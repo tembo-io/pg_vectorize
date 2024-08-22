@@ -1,5 +1,6 @@
 use crate::chat::ops::{call_chat, get_chat_response};
 use crate::chat::types::RenderedPrompt;
+use crate::guc::get_guc_configs;
 use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
@@ -162,7 +163,11 @@ fn generate(
         sys_rendered: "".to_string(),
         user_rendered: input.to_string(),
     };
-    get_chat_response(prompt, &model, api_key)
+    let mut guc_configs = get_guc_configs(&model.source);
+    if let Some(api_key) = api_key {
+        guc_configs.api_key = Some(api_key);
+    }
+    get_chat_response(prompt, &model, &guc_configs)
 }
 
 #[pg_extern]

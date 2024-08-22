@@ -5,6 +5,7 @@ use crate::search;
 use crate::transformers::generic::get_env_interpolated_guc;
 use crate::util::get_vectorize_meta_spi;
 
+use anyhow::Context;
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use openai_api_rs::v1::api::Client;
@@ -48,6 +49,9 @@ pub fn call_chat(
         }
         ModelSource::SentenceTransformers | ModelSource::Cohere => {
             error!("SentenceTransformers and Cohere not yet supported for chat completions")
+        }
+        ModelSource::Portkey => {
+            get_bpe_from_model(&chat_model.name).expect("failed to get BPE from model")
         }
     };
 
@@ -122,7 +126,8 @@ pub fn call_chat(
     )?;
 
     // http request to chat completions
-    let chat_response = get_chat_response(rendered_prompt, chat_model, api_key)?;
+    let guc_configs = guc::get_guc_configs(&chat_model.source);
+    let chat_response = get_chat_response(rendered_prompt, chat_model, &guc_configs)?;
 
     Ok(ChatResponse {
         context: search_results,
@@ -133,10 +138,12 @@ pub fn call_chat(
 pub fn get_chat_response(
     prompt: RenderedPrompt,
     model: &Model,
-    api_key: Option<String>,
+    guc_configs: &guc::ModelGucConfig,
 ) -> Result<String> {
     match model.source {
-        ModelSource::OpenAI | ModelSource::Tembo => call_chat_completions(prompt, model, api_key),
+        ModelSource::OpenAI | ModelSource::Tembo | ModelSource::Portkey => {
+            call_chat_completions(prompt, model, &guc_configs)
+        }
         ModelSource::Ollama => call_ollama_chat_completions(prompt, &model.name),
         ModelSource::SentenceTransformers | ModelSource::Cohere => {
             error!("SentenceTransformers and Cohere not yet supported for chat completions");
@@ -157,38 +164,20 @@ fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -
 fn call_chat_completions(
     prompts: RenderedPrompt,
     model: &Model,
-    api_key: Option<String>,
+    guc_configs: &guc::ModelGucConfig,
 ) -> Result<String> {
-    let api_key = match api_key {
-        Some(k) => k.to_string(),
-        None => {
-            let this_guc = match model.source {
-                ModelSource::Tembo => guc::VectorizeGuc::TemboAIKey,
-                ModelSource::OpenAI => guc::VectorizeGuc::OpenAIKey,
-                _ => {
-                    error!("API key not found for model source");
-                }
-            };
-            match guc::get_guc(this_guc) {
-                Some(k) => k,
-                None => {
-                    error!("failed to get API key from GUC");
-                }
-            }
-        }
-    };
+    let base_url = guc_configs
+        .service_url
+        .clone()
+        .context("service url request for chat completions")?;
 
-    let base_url = match model.source {
-        ModelSource::Tembo => get_env_interpolated_guc(guc::VectorizeGuc::TemboServiceUrl)
-            .expect("vectorize.tembo_service_url must be set"),
-        ModelSource::OpenAI => get_env_interpolated_guc(guc::VectorizeGuc::OpenAIServiceUrl)
-            .expect("vectorize.openai_service_url must be set"),
-        _ => {
-            error!("API key not found for model source");
-        }
-    };
     // set the url for openai client
     env::set_var("OPENAI_API_BASE", base_url);
+    let api_key = if let Some(k) = guc_configs.api_key.clone() {
+        k
+    } else {
+        "None".to_owned()
+    };
     let client = Client::new(api_key);
     let sys_msg = chat_completion::ChatCompletionMessage {
         role: chat_completion::MessageRole::system,

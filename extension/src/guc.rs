@@ -4,6 +4,8 @@ use pgrx::*;
 use anyhow::Result;
 use vectorize_core::types::ModelSource;
 
+use crate::transformers::generic::env_interpolate_string;
+
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
@@ -23,6 +25,8 @@ pub static OLLAMA_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<
 pub static TEMBO_SERVICE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static TEMBO_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static COHERE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static PORTKEY_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static PORTKEY_VIRTUAL_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -143,6 +147,24 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.portkey_api_key",
+        "API Key for the Portkey platform",
+        "API Key for the Portkey platform",
+        &PORTKEY_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "vectorize.portkey_virtual_key",
+        "Virtual Key for the Portkey platform",
+        "Virtual Key for the Portkey platform",
+        &PORTKEY_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone
@@ -158,6 +180,8 @@ pub enum VectorizeGuc {
     OllamaServiceUrl,
     TemboServiceUrl,
     CohereApiKey,
+    PortkeyApiKey,
+    PortkeyVirtualKey,
 }
 
 /// a convenience function to get this project's GUCs
@@ -173,10 +197,13 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::OpenAIServiceUrl => OPENAI_BASE_URL.get(),
         VectorizeGuc::EmbeddingServiceApiKey => EMBEDDING_SERVICE_API_KEY.get(),
         VectorizeGuc::CohereApiKey => COHERE_API_KEY.get(),
+        VectorizeGuc::PortkeyApiKey => PORTKEY_API_KEY.get(),
+        VectorizeGuc::PortkeyVirtualKey => PORTKEY_VIRTUAL_KEY.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
-            Some(s)
+            let interpolated = env_interpolate_string(&s).unwrap();
+            Some(interpolated)
         } else {
             error!("failed to convert CStr to str");
         }
@@ -199,6 +226,7 @@ fn handle_cstr(cstr: &CStr) -> Result<String> {
 pub struct ModelGucConfig {
     pub api_key: Option<String>,
     pub service_url: Option<String>,
+    pub virtual_key: Option<String>,
 }
 
 pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {
@@ -206,22 +234,32 @@ pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {
         ModelSource::OpenAI => ModelGucConfig {
             api_key: get_guc(VectorizeGuc::OpenAIKey),
             service_url: get_guc(VectorizeGuc::OpenAIServiceUrl),
+            virtual_key: None,
         },
         ModelSource::Tembo => ModelGucConfig {
             api_key: get_guc(VectorizeGuc::TemboAIKey),
             service_url: get_guc(VectorizeGuc::TemboServiceUrl),
+            virtual_key: None,
         },
         ModelSource::SentenceTransformers => ModelGucConfig {
             api_key: get_guc(VectorizeGuc::EmbeddingServiceApiKey),
             service_url: get_guc(VectorizeGuc::EmbeddingServiceUrl),
+            virtual_key: None,
         },
         ModelSource::Cohere => ModelGucConfig {
             api_key: get_guc(VectorizeGuc::CohereApiKey),
             service_url: None,
+            virtual_key: None,
         },
         ModelSource::Ollama => ModelGucConfig {
             api_key: None,
             service_url: get_guc(VectorizeGuc::OllamaServiceUrl),
+            virtual_key: None,
+        },
+        ModelSource::Portkey => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::PortkeyApiKey),
+            service_url: None,
+            virtual_key: get_guc(VectorizeGuc::PortkeyVirtualKey),
         },
     }
 }
