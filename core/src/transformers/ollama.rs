@@ -35,7 +35,6 @@ impl LLMFunctions for OllamaInstance {
     }
     async fn generate_reponse(&self, prompt_text: String) -> Result<String, String> {
         let req = GenerationRequest::new(self.model_name.clone(), prompt_text);
-        println!("ollama instance: {:?}", self.instance);
         let res = self.instance.generate(req).await;
         match res {
             Ok(res) => Ok(res.response),

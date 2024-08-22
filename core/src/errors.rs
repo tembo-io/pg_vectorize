@@ -1,4 +1,5 @@
 use anyhow::Error as AnyhowError;
+use ollama_rs::error::OllamaError;
 use sqlx::error::Error as DbError;
 use thiserror::Error;
 
@@ -24,4 +25,6 @@ pub enum VectorizeError {
     InternalError(#[from] AnyhowError),
     #[error("model not found: {0}")]
     ModelNotFound(String),
+    #[error("ollama error: {0}")]
+    OllamaError(#[from] OllamaError),
 }

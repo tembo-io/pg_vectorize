@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use std::env;
 
 pub const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
+pub const MAX_TOKEN_LEN: usize = 8192;
 
 pub struct OpenAIProvider {
     pub url: String,
@@ -159,9 +160,6 @@ mod integration_tests {
         );
     }
 }
-
-pub const MAX_TOKEN_LEN: usize = 8192;
-// pub const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 
 // OpenAI embedding model has a limit of 8192 tokens per input
 // there can be a number of ways condense the inputs
