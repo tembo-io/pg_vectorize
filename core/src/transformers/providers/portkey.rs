@@ -1,13 +1,12 @@
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 
 use super::{EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
 use crate::errors::VectorizeError;
 use crate::transformers::http_handler::handle_response;
 use crate::transformers::providers;
 use crate::transformers::providers::openai;
-use crate::transformers::types::Inputs;
 use async_trait::async_trait;
+use serde::Deserialize;
 use std::env;
 
 pub const PORTKEY_BASE_URL: &str = "https://api.portkey.ai/v1";
@@ -16,10 +15,11 @@ pub const MAX_TOKEN_LEN: usize = 8192;
 pub struct PortkeyProvider {
     pub url: String,
     pub api_key: String,
+    pub virtual_key: String,
 }
 
 impl PortkeyProvider {
-    pub fn new(url: Option<String>, api_key: Option<String>) -> Self {
+    pub fn new(url: Option<String>, api_key: Option<String>, virtual_key: Option<String>) -> Self {
         let final_url = match url {
             Some(url) => url,
             None => PORTKEY_BASE_URL.to_string(),
@@ -28,9 +28,14 @@ impl PortkeyProvider {
             Some(api_key) => api_key,
             None => env::var("PORTKEY_API_KEY").expect("PORTKEY_API_KEY not set"),
         };
+        let final_virtual_key = match virtual_key {
+            Some(vkey) => vkey,
+            None => env::var("PORTKEY_VIRTUAL_KEY").expect("PORTKEY_VIRTUAL_KEY not set"),
+        };
         PortkeyProvider {
             url: final_url,
             api_key: final_api_key,
+            virtual_key: final_virtual_key,
         }
     }
 }
@@ -56,18 +61,19 @@ impl EmbeddingProvider for PortkeyProvider {
         } else {
             vec![req]
         };
+        let embeddings_url = format!("{}/embeddings", self.url);
 
         let mut all_embeddings: Vec<Vec<f64>> = Vec::with_capacity(num_inputs);
-
         for request_payload in todo_requests.iter() {
             let payload_val = serde_json::to_value(request_payload)?;
-            let embeddings_url = format!("{}/embeddings", self.url);
             let response = client
                 .post(&embeddings_url)
                 .timeout(std::time::Duration::from_secs(120_u64))
                 .header("Accept", "application/json")
                 .header("Content-Type", "application/json")
-                .header("Authorization", format!("Bearer {}", self.api_key))
+                .header("x-portkey-virtual-key", self.virtual_key.clone())
+                .header("x-portkey-api-key", &self.api_key)
+                // .header("x-portkey-provider", portkey_provider)
                 .json(&payload_val)
                 .send()
                 .await?;
@@ -93,14 +99,60 @@ impl EmbeddingProvider for PortkeyProvider {
     }
 }
 
+#[derive(Deserialize, Debug)]
+struct ChatResponse {
+    choices: Vec<Choice>,
+}
+
+#[derive(Deserialize, Debug)]
+struct Choice {
+    message: ChatMessage,
+}
+
+#[derive(Deserialize, Debug)]
+struct ChatMessage {
+    content: String,
+}
+
+impl PortkeyProvider {
+    pub async fn generate_response(
+        &self,
+        model_name: String,
+        prompt_text: &str,
+    ) -> Result<String, VectorizeError> {
+        let client = Client::new();
+        let message = serde_json::json!({
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt_text}],
+        });
+        let chat_url = format!("{}/chat/completions", self.url);
+        let response = client
+            .post(&chat_url)
+            .timeout(std::time::Duration::from_secs(120_u64))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("x-portkey-virtual-key", self.virtual_key.clone())
+            .header("x-portkey-api-key", &self.api_key)
+            // .header("x-portkey-provider", portkey_provider)
+            .json(&message)
+            .send()
+            .await?;
+        let chat_response = handle_response::<ChatResponse>(response, "embeddings").await?;
+        Ok(chat_response.choices[0].message.content.clone())
+    }
+}
+
 #[cfg(test)]
-mod integration_tests {
+mod portkey_integration_tests {
     use super::*;
     use tokio::test as async_test;
 
     #[async_test]
-    async fn test_generate_embedding() {
-        let provider = PortkeyProvider::new(Some(PORTKEY_BASE_URL.to_string()), None);
+    async fn test_portkey_openai() {
+        let portkey_api_key = env::var("PORTKEY_API_KEY").expect("PORTKEY_API_KEY not set");
+        let portkey_virtual_key =
+            env::var("PORTKEY_VIRTUAL_KEY_OPENAI").expect("PORTKEY_VIRTUAL_KEY_OPENAI not set");
+        let provider = PortkeyProvider::new(None, Some(portkey_api_key), Some(portkey_virtual_key));
         let request = GenericEmbeddingRequest {
             model: "text-embedding-ada-002".to_string(),
             input: vec!["hello world".to_string()],
@@ -119,98 +171,14 @@ mod integration_tests {
             embeddings.embeddings[0].len() == 1536,
             "Embeddings should have length 1536"
         );
-    }
-}
 
-// OpenAI embedding model has a limit of 8192 tokens per input
-// there can be a number of ways condense the inputs
-pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
-    inputs
-        .iter()
-        .map(|input| {
-            if input.token_estimate as usize > MAX_TOKEN_LEN {
-                // not example taking tokens, but naive way to trim input
-                let tokens: Vec<&str> = input.inputs.split_whitespace().collect();
-                tokens
-                    .into_iter()
-                    .take(MAX_TOKEN_LEN)
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            } else {
-                input.inputs.clone()
-            }
-        })
-        .collect()
-}
+        let dim = provider.model_dim("text-embedding-ada-002").await.unwrap();
+        assert_eq!(dim, 1536);
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_trim_inputs_no_trimming_required() {
-        let data = vec![
-            Inputs {
-                record_id: "1".to_string(),
-                inputs: "token1 token2".to_string(),
-                token_estimate: 2,
-            },
-            Inputs {
-                record_id: "2".to_string(),
-                inputs: "token3 token4".to_string(),
-                token_estimate: 2,
-            },
-        ];
-
-        let trimmed = trim_inputs(&data);
-        assert_eq!(trimmed, vec!["token1 token2", "token3 token4"]);
-    }
-
-    #[test]
-    fn test_trim_inputs_trimming_required() {
-        let token_len = 1000000;
-        let long_input = (0..token_len)
-            .map(|i| format!("token{}", i))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let num_tokens = long_input.split_whitespace().count();
-        assert_eq!(num_tokens, token_len);
-
-        let data = vec![Inputs {
-            record_id: "1".to_string(),
-            inputs: long_input.clone(),
-            token_estimate: token_len as i32,
-        }];
-
-        let trimmed = trim_inputs(&data);
-        let trimmed_input = trimmed[0].clone();
-        let trimmed_length = trimmed_input.split_whitespace().count();
-        assert_eq!(trimmed_length, MAX_TOKEN_LEN);
-    }
-
-    #[test]
-    fn test_trim_inputs_mixed_cases() {
-        let num_tokens_in = 1000000;
-        let long_input = (0..num_tokens_in)
-            .map(|i| format!("token{}", i))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let data = vec![
-            Inputs {
-                record_id: "1".to_string(),
-                inputs: "token1 token2".to_string(),
-                token_estimate: 2,
-            },
-            Inputs {
-                record_id: "2".to_string(),
-                inputs: long_input.clone(),
-                token_estimate: num_tokens_in,
-            },
-        ];
-
-        let trimmed = trim_inputs(&data);
-        assert_eq!(trimmed[0].split_whitespace().count(), 2);
-        assert_eq!(trimmed[1].split_whitespace().count(), MAX_TOKEN_LEN);
+        let response = provider
+            .generate_response("gpt-3.5-turbo".to_string(), "Hello-World")
+            .await
+            .unwrap();
+        assert!(!response.is_empty(), "Response should not be empty");
     }
 }

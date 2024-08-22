@@ -76,7 +76,6 @@ impl EmbeddingProvider for OpenAIProvider {
         request: &'a GenericEmbeddingRequest,
     ) -> Result<GenericEmbeddingResponse, VectorizeError> {
         let client = Client::new();
-
         let req = OpenAIEmbeddingBody::from(request.clone());
         let num_inputs = request.input.len();
         let todo_requests: Vec<OpenAIEmbeddingBody> = if num_inputs > 2048 {

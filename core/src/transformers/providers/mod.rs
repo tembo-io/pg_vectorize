@@ -60,6 +60,9 @@ pub fn get_provider(
         ModelSource::Cohere => Ok(Box::new(providers::cohere::CohereProvider::new(
             url, api_key,
         ))),
+        ModelSource::Portkey => Ok(Box::new(providers::portkey::PortkeyProvider::new(
+            url, api_key, None,
+        ))),
         ModelSource::SentenceTransformers => Ok(Box::new(
             providers::vector_serve::VectorServeProvider::new(url, api_key),
         )),

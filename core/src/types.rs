@@ -160,6 +160,7 @@ impl Model {
             ModelSource::Ollama => self.name.clone(),
             ModelSource::Tembo => self.name.clone(),
             ModelSource::Cohere => self.name.clone(),
+            ModelSource::Portkey => self.name.clone(),
         }
     }
 }
@@ -236,6 +237,7 @@ pub enum ModelSource {
     Ollama,
     Tembo,
     Cohere,
+    Portkey,
 }
 
 impl FromStr for ModelSource {
@@ -248,6 +250,7 @@ impl FromStr for ModelSource {
             "sentence-transformers" => Ok(ModelSource::SentenceTransformers),
             "tembo" => Ok(ModelSource::Tembo),
             "cohere" => Ok(ModelSource::Cohere),
+            "portkey" => Ok(ModelSource::Portkey),
             _ => Ok(ModelSource::SentenceTransformers),
         }
     }
@@ -261,6 +264,7 @@ impl Display for ModelSource {
             ModelSource::SentenceTransformers => write!(f, "sentence-transformers"),
             ModelSource::Tembo => write!(f, "tembo"),
             ModelSource::Cohere => write!(f, "cohere"),
+            ModelSource::Portkey => write!(f, "portkey"),
         }
     }
 }
@@ -273,6 +277,7 @@ impl From<String> for ModelSource {
             "sentence-transformers" => ModelSource::SentenceTransformers,
             "tembo" => ModelSource::Tembo,
             "cohere" => ModelSource::Cohere,
+            "portkey" => ModelSource::Portkey,
             // other cases are assumed to be private sentence-transformer compatible model
             // and can be hot-loaded
             _ => ModelSource::SentenceTransformers,
@@ -284,6 +289,15 @@ impl From<String> for ModelSource {
 #[cfg(test)]
 mod model_tests {
     use super::*;
+
+    #[test]
+    fn test_portkey_parsing() {
+        let model = Model::new("portkey/openai/text-embedding-ada-002").unwrap();
+        assert_eq!(model.source, ModelSource::Portkey);
+        assert_eq!(model.fullname, "portkey/openai/text-embedding-ada-002");
+        assert_eq!(model.name, "text-embedding-ada-002");
+        assert_eq!(model.api_name(), "text-embedding-ada-002");
+    }
 
     #[test]
     fn test_tembo_parsing() {
