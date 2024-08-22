@@ -733,6 +733,15 @@ async fn test_private_hf_model() {
 
     let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
 
+    let mut tx = conn.begin().await.unwrap();
+
+    sqlx::query(&format!(
+        "set vectorize.embedding_service_api_key to '{hf_api_key}'"
+    ))
+    .execute(&mut *tx)
+    .await
+    .unwrap();
+
     // initialize a job
     let created = sqlx::query(&format!(
         "SELECT vectorize.table(
@@ -741,12 +750,13 @@ async fn test_private_hf_model() {
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'chuckhend/private-model',
-        schedule => 'realtime',
-        args => '{{\"api_key\": \"{hf_api_key}\"}}'
+        schedule => 'realtime'
     );"
     ))
-    .execute(&conn)
+    .execute(&mut *tx)
     .await;
+
+    tx.commit().await.unwrap();
 
     assert!(created.is_ok(), "Failed with error: {:?}", created);
 
@@ -816,6 +826,15 @@ async fn test_cohere() {
     common::init_test_table(&test_table_name, &conn).await;
     let job_name = format!("cohere_{}", test_num);
 
+    let hf_api_key = std::env::var("CO_API_KEY").expect("CO_API_KEY must be set");
+
+    let mut tx = conn.begin().await.unwrap();
+
+    sqlx::query(&format!("set vectorize.cohere_api_key to '{hf_api_key}'"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+
     common::init_embedding_svc_url(&conn).await;
     // initialize a job
     let result = sqlx::query(&format!(
@@ -828,8 +847,9 @@ async fn test_cohere() {
         schedule => 'realtime'
     );"
     ))
-    .execute(&conn)
+    .execute(&mut *tx)
     .await;
+    tx.commit().await.unwrap();
     assert!(result.is_ok());
 
     let search_results: Vec<common::SearchJSON> =
