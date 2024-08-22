@@ -9,7 +9,7 @@ use crate::{
     types,
 };
 
-use crate::transformers::openai::trim_inputs;
+use crate::transformers::providers::openai::trim_inputs;
 
 lazy_static! {
     static ref REGEX: Regex = Regex::new(r"\$\{([^}]+)\}").expect("Invalid regex");

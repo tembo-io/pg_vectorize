@@ -1,4 +1,5 @@
 pub mod cohere;
+pub mod ollama;
 pub mod openai;
 pub mod vector_serve;
 
@@ -6,7 +7,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use super::{openai::trim_inputs, types::Inputs};
+use super::types::Inputs;
 use crate::errors::VectorizeError;
 use crate::transformers::providers;
 use crate::types::Model;
@@ -38,7 +39,7 @@ pub fn prepare_generic_embedding_request(
     model: &Model,
     inputs: &[Inputs],
 ) -> GenericEmbeddingRequest {
-    let text_inputs = trim_inputs(inputs);
+    let text_inputs = providers::openai::trim_inputs(inputs);
 
     GenericEmbeddingRequest {
         input: text_inputs,
