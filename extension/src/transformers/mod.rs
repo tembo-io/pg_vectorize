@@ -23,8 +23,13 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
         guc_configs.api_key
     };
 
-    let provider = providers::get_provider(&transformer.source, api_key, guc_configs.service_url)
-        .expect("failed to get provider");
+    let provider = providers::get_provider(
+        &transformer.source,
+        api_key,
+        guc_configs.service_url,
+        guc_configs.virtual_key,
+    )
+    .expect("failed to get provider");
     let input = Inputs {
         record_id: "".to_string(),
         inputs: input.to_string(),

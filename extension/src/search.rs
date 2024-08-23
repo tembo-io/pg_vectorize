@@ -8,8 +8,8 @@ use crate::util;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
-use vectorize_core::transformers::ollama::check_model_host;
 use vectorize_core::transformers::providers::get_provider;
+use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
@@ -43,6 +43,7 @@ pub fn init_table(
         &transformer.source,
         guc_configs.api_key.clone(),
         guc_configs.service_url,
+        None,
     )?;
 
     //synchronous

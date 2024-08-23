@@ -98,6 +98,7 @@ async fn execute_job(
         &job_meta.transformer.source,
         job_params.api_key.clone(),
         None,
+        None,
     )?;
 
     let embedding_request =

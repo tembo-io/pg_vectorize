@@ -1,9 +1,13 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use super::{EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
+use super::{
+    ChatMessageRequest, ChatResponse, EmbeddingProvider, GenericEmbeddingRequest,
+    GenericEmbeddingResponse,
+};
 use crate::errors::VectorizeError;
 use crate::transformers::http_handler::handle_response;
+use crate::transformers::providers;
 use crate::transformers::types::Inputs;
 use async_trait::async_trait;
 use std::env;
@@ -75,11 +79,10 @@ impl EmbeddingProvider for OpenAIProvider {
         request: &'a GenericEmbeddingRequest,
     ) -> Result<GenericEmbeddingResponse, VectorizeError> {
         let client = Client::new();
-
         let req = OpenAIEmbeddingBody::from(request.clone());
         let num_inputs = request.input.len();
         let todo_requests: Vec<OpenAIEmbeddingBody> = if num_inputs > 2048 {
-            split_vector(req.input, 2048)
+            providers::split_vector(req.input, 2048)
                 .iter()
                 .map(|chunk| OpenAIEmbeddingBody {
                     input: chunk.clone(),
@@ -128,8 +131,51 @@ pub fn openai_embedding_dim(model_name: &str) -> i32 {
     }
 }
 
-fn split_vector(vec: Vec<String>, chunk_size: usize) -> Vec<Vec<String>> {
-    vec.chunks(chunk_size).map(|chunk| chunk.to_vec()).collect()
+impl OpenAIProvider {
+    pub async fn generate_response(
+        &self,
+        model_name: String,
+        messages: &[ChatMessageRequest],
+    ) -> Result<String, VectorizeError> {
+        let client = Client::new();
+        let chat_url = format!("{}/chat/completions", self.url);
+        let message = serde_json::json!({
+            "model": model_name,
+            "messages": messages,
+        });
+        let response = client
+            .post(&chat_url)
+            .timeout(std::time::Duration::from_secs(120_u64))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("Authorization", &format!("Bearer {}", self.api_key))
+            .json(&message)
+            .send()
+            .await?;
+        let chat_response = handle_response::<ChatResponse>(response, "embeddings").await?;
+        Ok(chat_response.choices[0].message.content.clone())
+    }
+}
+
+// OpenAI embedding model has a limit of 8192 tokens per input
+// there can be a number of ways condense the inputs
+pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
+    inputs
+        .iter()
+        .map(|input| {
+            if input.token_estimate as usize > MAX_TOKEN_LEN {
+                // not example taking tokens, but naive way to trim input
+                let tokens: Vec<&str> = input.inputs.split_whitespace().collect();
+                tokens
+                    .into_iter()
+                    .take(MAX_TOKEN_LEN)
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            } else {
+                input.inputs.clone()
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -159,27 +205,6 @@ mod integration_tests {
             "Embeddings should have length 1536"
         );
     }
-}
-
-// OpenAI embedding model has a limit of 8192 tokens per input
-// there can be a number of ways condense the inputs
-pub fn trim_inputs(inputs: &[Inputs]) -> Vec<String> {
-    inputs
-        .iter()
-        .map(|input| {
-            if input.token_estimate as usize > MAX_TOKEN_LEN {
-                // not example taking tokens, but naive way to trim input
-                let tokens: Vec<&str> = input.inputs.split_whitespace().collect();
-                tokens
-                    .into_iter()
-                    .take(MAX_TOKEN_LEN)
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            } else {
-                input.inputs.clone()
-            }
-        })
-        .collect()
 }
 
 #[cfg(test)]
