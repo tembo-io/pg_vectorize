@@ -3,12 +3,11 @@ DISTNAME = $(shell grep -m 1 '^name' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0
 DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 PG_VERSION:=16
 DATABASE_URL:=postgres://${USER}:${USER}@localhost:288${PG_VERSION}/postgres
-PGRX_PG_CONFIG =$(shell cargo pgrx info pg-config pg${PG_VERSION})
+PGRX_PG_CONFIG:=$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.16.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 RUST_LOG:=debug
 ARCH := $(shell uname -m)
-
 
 .PHONY: install-pg_cron install-pg_vector install-pgmq run setup test-integration test-unit test-version test-branch test-upgrade cat-logs docs
 
@@ -58,13 +57,12 @@ install-pg_cron:
 	git clone https://github.com/citusdata/pg_cron.git && \
 	cd pg_cron && \
 	sed -i.bak 's/-Werror//g' Makefile && \
-	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
 	cd .. && rm -rf pg_cron
 
 install-pgvector:
-	git clone --branch v0.6.0 https://github.com/pgvector/pgvector.git && \
+	git clone https://github.com/pgvector/pgvector.git && \
 	cd pgvector && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
@@ -75,6 +73,7 @@ install-pgmq:
 	git clone https://github.com/tembo-io/pgmq.git && \
 	cd pgmq/pgmq-extension && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
 	cd .. && rm -rf pgmq
 
