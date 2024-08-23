@@ -135,6 +135,8 @@ jobs:
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+          PORTKEY_VIRTUAL_KEY: ${{ secrets.PORTKEY_VIRTUAL_KEY }}
         run: |
           echo "\q" | make run
           make test-integration
