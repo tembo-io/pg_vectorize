@@ -15,7 +15,7 @@ vectorize.init_rag(
     "unique_record_id" TEXT,
     "column" TEXT,
     "schema" TEXT DEFAULT 'public',
-    "transformer" TEXT DEFAULT 'meta-llama/Meta-Llama-3-8B-Instruct',
+    "transformer" TEXT DEFAULT 'tembo/meta-llama/Meta-Llama-3-8B-Instruct',
     "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
     "table_method" vectorize.TableMethod DEFAULT 'append'
 ) RETURNS TEXT

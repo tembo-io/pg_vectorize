@@ -14,7 +14,7 @@ vectorize."table"(
     "primary_key" TEXT,
     "schema" TEXT DEFAULT 'public',
     "update_col" TEXT DEFAULT 'last_updated_at',
-    "transformer" TEXT DEFAULT 'meta-llama/Meta-Llama-3-8B-Instruct',
+    "transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
     "table_method" vectorize.TableMethod DEFAULT 'join',
     "schedule" TEXT DEFAULT '* * * * *'
