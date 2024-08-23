@@ -27,6 +27,7 @@ pub static TEMBO_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>
 pub static COHERE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static PORTKEY_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static PORTKEY_VIRTUAL_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static PORTKEY_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -149,6 +150,15 @@ pub fn init_guc() {
     );
 
     GucRegistry::define_string_guc(
+        "vectorize.portkey_service_url",
+        "Base url for the Portkey platform",
+        "Base url for the Portkey platform",
+        &PORTKEY_SERVICE_URL,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
         "vectorize.portkey_api_key",
         "API Key for the Portkey platform",
         "API Key for the Portkey platform",
@@ -161,7 +171,7 @@ pub fn init_guc() {
         "vectorize.portkey_virtual_key",
         "Virtual Key for the Portkey platform",
         "Virtual Key for the Portkey platform",
-        &PORTKEY_API_KEY,
+        &PORTKEY_VIRTUAL_KEY,
         GucContext::Suset,
         GucFlags::default(),
     );
@@ -182,6 +192,7 @@ pub enum VectorizeGuc {
     CohereApiKey,
     PortkeyApiKey,
     PortkeyVirtualKey,
+    PortkeyServiceUrl,
 }
 
 /// a convenience function to get this project's GUCs
@@ -199,6 +210,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::CohereApiKey => COHERE_API_KEY.get(),
         VectorizeGuc::PortkeyApiKey => PORTKEY_API_KEY.get(),
         VectorizeGuc::PortkeyVirtualKey => PORTKEY_VIRTUAL_KEY.get(),
+        VectorizeGuc::PortkeyServiceUrl => PORTKEY_SERVICE_URL.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
@@ -258,7 +270,7 @@ pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {
         },
         ModelSource::Portkey => ModelGucConfig {
             api_key: get_guc(VectorizeGuc::PortkeyApiKey),
-            service_url: None,
+            service_url: get_guc(VectorizeGuc::PortkeyServiceUrl),
             virtual_key: get_guc(VectorizeGuc::PortkeyVirtualKey),
         },
     }

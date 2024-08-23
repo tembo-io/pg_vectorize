@@ -43,6 +43,7 @@ pub fn init_table(
         &transformer.source,
         guc_configs.api_key.clone(),
         guc_configs.service_url,
+        None,
     )?;
 
     //synchronous

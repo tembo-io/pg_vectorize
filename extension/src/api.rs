@@ -1,4 +1,4 @@
-use crate::chat::ops::{call_chat, get_chat_response};
+use crate::chat::ops::{call_chat, call_chat_completions};
 use crate::chat::types::RenderedPrompt;
 use crate::guc::get_guc_configs;
 use crate::search::{self, init_table};
@@ -167,7 +167,7 @@ fn generate(
     if let Some(api_key) = api_key {
         guc_configs.api_key = Some(api_key);
     }
-    get_chat_response(prompt, &model, &guc_configs)
+    call_chat_completions(prompt, &model, &guc_configs)
 }
 
 #[pg_extern]

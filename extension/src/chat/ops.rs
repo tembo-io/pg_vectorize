@@ -1,17 +1,14 @@
-use std::env;
-
 use crate::guc;
 use crate::search;
-use crate::transformers::generic::get_env_interpolated_guc;
 use crate::util::get_vectorize_meta_spi;
 
-use anyhow::Context;
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
-use openai_api_rs::v1::api::Client;
-use openai_api_rs::v1::chat_completion::{self, ChatCompletionRequest};
 use pgrx::prelude::*;
 use vectorize_core::transformers::providers::ollama::OllamaProvider;
+use vectorize_core::transformers::providers::openai::OpenAIProvider;
+use vectorize_core::transformers::providers::portkey::PortkeyProvider;
+use vectorize_core::transformers::providers::ChatMessageRequest;
 use vectorize_core::types::Model;
 use vectorize_core::types::ModelSource;
 
@@ -127,28 +124,12 @@ pub fn call_chat(
 
     // http request to chat completions
     let guc_configs = guc::get_guc_configs(&chat_model.source);
-    let chat_response = get_chat_response(rendered_prompt, chat_model, &guc_configs)?;
+    let chat_response = call_chat_completions(rendered_prompt, chat_model, &guc_configs)?;
 
     Ok(ChatResponse {
         context: search_results,
         chat_response,
     })
-}
-
-pub fn get_chat_response(
-    prompt: RenderedPrompt,
-    model: &Model,
-    guc_configs: &guc::ModelGucConfig,
-) -> Result<String> {
-    match model.source {
-        ModelSource::OpenAI | ModelSource::Tembo | ModelSource::Portkey => {
-            call_chat_completions(prompt, model, &guc_configs)
-        }
-        ModelSource::Ollama => call_ollama_chat_completions(prompt, &model.name),
-        ModelSource::SentenceTransformers | ModelSource::Cohere => {
-            error!("SentenceTransformers and Cohere not yet supported for chat completions");
-        }
-    }
 }
 
 fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -> Result<String> {
@@ -161,80 +142,60 @@ fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -
     Ok(user_rendered)
 }
 
-fn call_chat_completions(
+pub fn call_chat_completions(
     prompts: RenderedPrompt,
     model: &Model,
     guc_configs: &guc::ModelGucConfig,
 ) -> Result<String> {
-    let base_url = guc_configs
-        .service_url
-        .clone()
-        .context("service url request for chat completions")?;
-
-    // set the url for openai client
-    env::set_var("OPENAI_API_BASE", base_url);
-    let api_key = if let Some(k) = guc_configs.api_key.clone() {
-        k
-    } else {
-        "None".to_owned()
-    };
-    let client = Client::new(api_key);
-    let sys_msg = chat_completion::ChatCompletionMessage {
-        role: chat_completion::MessageRole::system,
-        content: chat_completion::Content::Text(prompts.sys_rendered),
-        name: None,
-    };
-    let usr_msg = chat_completion::ChatCompletionMessage {
-        role: chat_completion::MessageRole::user,
-        content: chat_completion::Content::Text(prompts.user_rendered),
-        name: None,
-    };
-
-    let req = ChatCompletionRequest::new(model.name.clone(), vec![sys_msg, usr_msg]);
-    let result = client.chat_completion(req)?;
-    // currently we only support single query, and not a conversation
-    // so we can safely select the first response for now
-    let responses = &result.choices[0];
-    let chat_response: String = responses
-        .message
-        .content
-        .clone()
-        .expect("no response from chat model");
-    Ok(chat_response)
-}
-
-fn call_ollama_chat_completions(prompts: RenderedPrompt, model: &str) -> Result<String> {
-    // get url from guc
-
-    let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
-        Some(k) => k,
-        None => {
-            error!("failed to get Ollama url from GUC");
-        }
-    };
-
+    let messages = vec![
+        ChatMessageRequest {
+            role: "system".to_owned(),
+            content: prompts.sys_rendered.clone(),
+        },
+        ChatMessageRequest {
+            role: "user".to_owned(),
+            content: prompts.user_rendered.clone(),
+        },
+    ];
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let ollama_provider = OllamaProvider::new(Some(url));
-
-    let prompt = prompts.sys_rendered + "\n" + &prompts.user_rendered;
-
-    let response = runtime.block_on(async {
-        ollama_provider
-            .generate_response(model.to_owned(), &prompt)
-            .await
-    });
-
-    match response {
-        Ok(k) => Ok(k),
-        Err(k) => {
-            error!("Unable to generate response. Error: {k}");
+    let chat_response: String = runtime.block_on(async {
+        match model.source {
+            ModelSource::OpenAI | ModelSource::Tembo => {
+                let provider = OpenAIProvider::new(
+                    guc_configs.service_url.clone(),
+                    guc_configs.api_key.clone(),
+                );
+                provider
+                    .generate_response(model.api_name(), &messages)
+                    .await
+            }
+            ModelSource::Portkey => {
+                let provider = PortkeyProvider::new(
+                    guc_configs.service_url.clone(),
+                    guc_configs.api_key.clone(),
+                    guc_configs.virtual_key.clone(),
+                );
+                provider
+                    .generate_response(model.api_name(), &messages)
+                    .await
+            }
+            ModelSource::Ollama => {
+                let provider = OllamaProvider::new(guc_configs.service_url.clone());
+                provider
+                    .generate_response(model.api_name(), &messages)
+                    .await
+            }
+            ModelSource::SentenceTransformers | ModelSource::Cohere => {
+                error!("SentenceTransformers and Cohere not yet supported for chat completions")
+            }
         }
-    }
+    })?;
+    Ok(chat_response)
 }
 
 // Trims the context to fit within the token limit when force_trim = True

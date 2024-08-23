@@ -82,6 +82,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
         &job_meta.transformer.source,
         job_params.api_key.clone(),
         guc_configs.service_url,
+        guc_configs.virtual_key,
     )?;
 
     let embedding_response = provider.generate_embedding(&embedding_request).await?;
