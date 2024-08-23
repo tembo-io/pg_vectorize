@@ -20,7 +20,7 @@ fn table(
     schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
     index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
-    transformer: default!(&str, "'openai/text-embedding-ada-002'"),
+    transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
     // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
@@ -67,7 +67,7 @@ fn search(
 #[pg_extern]
 fn transform_embeddings(
     input: &str,
-    model_name: default!(String, "'openai/text-embedding-ada-002'"),
+    model_name: default!(String, "'sentence-transformers/all-MiniLM-L6-v2'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>> {
     let model = Model::new(&model_name)?;
@@ -77,7 +77,7 @@ fn transform_embeddings(
 #[pg_extern]
 fn encode(
     input: &str,
-    model: default!(String, "'openai/text-embedding-ada-002'"),
+    model: default!(String, "'sentence-transformers/all-MiniLM-L6-v2'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<Vec<f64>> {
     let model = Model::new(&model)?;
@@ -95,7 +95,7 @@ fn init_rag(
     schema: default!(&str, "'public'"),
     index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     // transformer model to use in vector-search
-    transformer: default!(&str, "'openai/text-embedding-ada-002'"),
+    transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
     // similarity algorithm to use in vector-search
     // search_alg is now deprecated
     search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
@@ -126,10 +126,7 @@ fn init_rag(
 fn rag(
     agent_name: &str,
     query: &str,
-    // chat models: currently only supports gpt 3.5 and 4
-    // https://platform.openai.com/docs/models/gpt-3-5-turbo
-    // https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
-    chat_model: default!(String, "'openai/gpt-3.5-turbo'"),
+    chat_model: default!(String, "'tembo/meta-llama/Meta-Llama-3-8B-Instruct'"),
     // points to the type of prompt template to use
     task: default!(String, "'question_answer'"),
     api_key: default!(Option<String>, "NULL"),
@@ -155,7 +152,7 @@ fn rag(
 #[pg_extern]
 fn generate(
     input: &str,
-    model: default!(String, "'openai/gpt-3.5-turbo'"),
+    model: default!(String, "'tembo/meta-llama/Meta-Llama-3-8B-Instruct'"),
     api_key: default!(Option<String>, "NULL"),
 ) -> Result<String> {
     let model = Model::new(&model)?;

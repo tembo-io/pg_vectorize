@@ -7,9 +7,9 @@ Transforms a block of text to embeddings using the specified transformer.
 Requires the `vector-serve` container to be set via `vectorize.embedding_service_url`, or an OpenAI key to be set if using OpenAI embedding models.
 
 ```sql
-vectorize."transform_embeddings"(
+vectorize."encode"(
     "input" TEXT,
-    "model_name" TEXT DEFAULT 'openai/text-embedding-ada-002',
+    "model_name" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     "api_key" TEXT DEFAULT NULL
 ) RETURNS double precision[]
 ```
@@ -25,7 +25,7 @@ vectorize."transform_embeddings"(
 ### Example
 
 ```sql
-select vectorize.transform_embeddings(
+select vectorize.encode(
     input       => 'the quick brown fox jumped over the lazy dogs',
     model_name  => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1'
 );

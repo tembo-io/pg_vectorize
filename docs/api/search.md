@@ -12,10 +12,9 @@ vectorize."table"(
     "columns" TEXT[],
     "job_name" TEXT,
     "primary_key" TEXT,
-    "args" json DEFAULT '{}',
     "schema" TEXT DEFAULT 'public',
     "update_col" TEXT DEFAULT 'last_updated_at',
-    "transformer" TEXT DEFAULT 'openai/text-embedding-ada-002',
+    "transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
     "table_method" vectorize.TableMethod DEFAULT 'join',
     "schedule" TEXT DEFAULT '* * * * *'

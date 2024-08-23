@@ -1,23 +1,6 @@
 use anyhow::Result;
 
-use crate::guc;
 use vectorize_core::transformers::generic::{find_placeholders, interpolate};
-
-pub fn get_env_interpolated_guc(requested: guc::VectorizeGuc) -> Result<String> {
-    if let Some(url) = guc::get_guc(requested.clone()) {
-        env_interpolate_string(&url)
-    } else {
-        match requested {
-            guc::VectorizeGuc::EmbeddingServiceUrl => {
-                Err(anyhow::anyhow!("vectorize.embedding_service_url not set"))
-            }
-            guc::VectorizeGuc::OpenAIServiceUrl => {
-                Err(anyhow::anyhow!("vectorize.openai_service_url not set"))
-            }
-            _ => Err(anyhow::anyhow!("GUC not found")),
-        }
-    }
-}
 
 /// Interpolates environment variables into a string
 /// if env var is missing, the placeholder is left as a raw string
