@@ -1,4 +1,6 @@
-use super::{ChatMessageRequest, EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
+use super::{
+    ChatMessageRequest, EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse,
+};
 use crate::errors::VectorizeError;
 use async_trait::async_trait;
 use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
