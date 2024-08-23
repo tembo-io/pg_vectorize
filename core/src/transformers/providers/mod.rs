@@ -52,6 +52,7 @@ pub fn get_provider(
     model_source: &ModelSource,
     api_key: Option<String>,
     url: Option<String>,
+    virtual_key: Option<String>,
 ) -> Result<Box<dyn EmbeddingProvider>, VectorizeError> {
     match model_source {
         ModelSource::OpenAI => Ok(Box::new(providers::openai::OpenAIProvider::new(
@@ -61,7 +62,9 @@ pub fn get_provider(
             url, api_key,
         ))),
         ModelSource::Portkey => Ok(Box::new(providers::portkey::PortkeyProvider::new(
-            url, api_key, None,
+            url,
+            api_key,
+            virtual_key,
         ))),
         ModelSource::SentenceTransformers => Ok(Box::new(
             providers::vector_serve::VectorServeProvider::new(url, api_key),
@@ -75,4 +78,25 @@ pub fn get_provider(
 
 fn split_vector(vec: Vec<String>, chunk_size: usize) -> Vec<Vec<String>> {
     vec.chunks(chunk_size).map(|chunk| chunk.to_vec()).collect()
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChatMessageRequest {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct ChatResponse {
+    choices: Vec<Choice>,
+}
+
+#[derive(Deserialize, Debug)]
+struct Choice {
+    message: ResponseMessage,
+}
+
+#[derive(Deserialize, Debug)]
+struct ResponseMessage {
+    content: String,
 }

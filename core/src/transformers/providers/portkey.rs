@@ -1,12 +1,14 @@
 use reqwest::Client;
 
-use super::{EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
+use super::{
+    ChatMessageRequest, ChatResponse, EmbeddingProvider, GenericEmbeddingRequest,
+    GenericEmbeddingResponse,
+};
 use crate::errors::VectorizeError;
 use crate::transformers::http_handler::handle_response;
 use crate::transformers::providers;
 use crate::transformers::providers::openai;
 use async_trait::async_trait;
-use serde::Deserialize;
 use std::env;
 
 pub const PORTKEY_BASE_URL: &str = "https://api.portkey.ai/v1";
@@ -73,7 +75,6 @@ impl EmbeddingProvider for PortkeyProvider {
                 .header("Content-Type", "application/json")
                 .header("x-portkey-virtual-key", self.virtual_key.clone())
                 .header("x-portkey-api-key", &self.api_key)
-                // .header("x-portkey-provider", portkey_provider)
                 .json(&payload_val)
                 .send()
                 .await?;
@@ -99,31 +100,16 @@ impl EmbeddingProvider for PortkeyProvider {
     }
 }
 
-#[derive(Deserialize, Debug)]
-struct ChatResponse {
-    choices: Vec<Choice>,
-}
-
-#[derive(Deserialize, Debug)]
-struct Choice {
-    message: ChatMessage,
-}
-
-#[derive(Deserialize, Debug)]
-struct ChatMessage {
-    content: String,
-}
-
 impl PortkeyProvider {
     pub async fn generate_response(
         &self,
         model_name: String,
-        prompt_text: &str,
+        messages: &[ChatMessageRequest],
     ) -> Result<String, VectorizeError> {
         let client = Client::new();
         let message = serde_json::json!({
             "model": model_name,
-            "messages": [{"role": "user", "content": prompt_text}],
+            "messages": messages,
         });
         let chat_url = format!("{}/chat/completions", self.url);
         let response = client
@@ -175,8 +161,12 @@ mod portkey_integration_tests {
         let dim = provider.model_dim("text-embedding-ada-002").await.unwrap();
         assert_eq!(dim, 1536);
 
+        let chatmessage = ChatMessageRequest {
+            role: "user".to_string(),
+            content: "hello world".to_string(),
+        };
         let response = provider
-            .generate_response("gpt-3.5-turbo".to_string(), "Hello-World")
+            .generate_response("gpt-3.5-turbo".to_string(), &[chatmessage])
             .await
             .unwrap();
         assert!(!response.is_empty(), "Response should not be empty");

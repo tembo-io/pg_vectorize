@@ -1,4 +1,4 @@
-use super::{EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
+use super::{ChatMessageRequest, EmbeddingProvider, GenericEmbeddingRequest, GenericEmbeddingResponse};
 use crate::errors::VectorizeError;
 use async_trait::async_trait;
 use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
@@ -66,9 +66,14 @@ impl OllamaProvider {
     pub async fn generate_response(
         &self,
         model_name: String,
-        prompt_text: &str,
+        prompt_text: &[ChatMessageRequest],
     ) -> Result<String, VectorizeError> {
-        let req = GenerationRequest::new(model_name, prompt_text.to_owned());
+        let single_prompt: String = prompt_text
+            .iter()
+            .map(|x| x.content.clone())
+            .collect::<Vec<String>>()
+            .join("\n\n");
+        let req = GenerationRequest::new(model_name, single_prompt.to_owned());
         let res = self.instance.generate(req).await?;
         Ok(res.response)
     }
