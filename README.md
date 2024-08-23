@@ -45,6 +45,7 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
+- [Directly Interact with LLMs](#directly-interact-with-llms)
 
 ## Installation
 
