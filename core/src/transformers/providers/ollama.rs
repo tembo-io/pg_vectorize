@@ -56,11 +56,14 @@ impl EmbeddingProvider for OllamaProvider {
     }
 
     async fn model_dim(&self, model_name: &str) -> Result<u32, VectorizeError> {
-        let dim = match model_name {
-            "llama2" => 5192,
-            _ => 1536,
+        // determine embedding dim by generating an embedding and getting length of array
+        let req = GenericEmbeddingRequest {
+            input: vec!["hello world".to_string()],
+            model: model_name.to_string(),
         };
-        Ok(dim)
+        let embedding = self.generate_embedding(&req).await?;
+        let dim = embedding.embeddings[0].len();
+        Ok(dim as u32)
     }
 }
 
