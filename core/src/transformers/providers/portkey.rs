@@ -119,7 +119,6 @@ impl PortkeyProvider {
             .header("Content-Type", "application/json")
             .header("x-portkey-virtual-key", self.virtual_key.clone())
             .header("x-portkey-api-key", &self.api_key)
-            // .header("x-portkey-provider", portkey_provider)
             .json(&message)
             .send()
             .await?;
