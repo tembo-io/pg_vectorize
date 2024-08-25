@@ -72,8 +72,8 @@ install-pgvector:
 install-pgmq:
 	git clone https://github.com/tembo-io/pgmq.git && \
 	cd pgmq/pgmq-extension && \
-	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
+	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
 	cd .. && rm -rf pgmq
 
