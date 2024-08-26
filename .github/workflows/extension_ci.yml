@@ -104,6 +104,9 @@ jobs:
           workspaces: pg-vectorize
           # Additional directories to cache
           cache-directories: /home/runner/.pgrx
+      - name: Install sys dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
@@ -126,10 +129,7 @@ jobs:
             ${{ runner.os }}-bins-
       - name: setup-tests
         run: |
-          make trunk-dependencies
-          make setup.urls
-          make setup.shared_preload_libraries
-          rm -rf ./target/pgrx-test-data-* || true
+          make setup
       - name: unit-test
         run: |
           make test-unit
