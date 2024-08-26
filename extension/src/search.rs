@@ -39,31 +39,11 @@ pub fn init_table(
     init::init_pgmq()?;
 
     let guc_configs = get_guc_configs(&transformer.source);
-    let provider = get_provider(
-        &transformer.source,
-        guc_configs.api_key.clone(),
-        guc_configs.service_url,
-        None,
-    )?;
-
-    //synchronous
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-    let model_dim =
-        match runtime.block_on(async { provider.model_dim(&transformer.api_name()).await }) {
-            Ok(e) => e,
-            Err(e) => {
-                error!("error getting model dim: {}", e);
-            }
-        };
-
-    // validate API key where necessary
+    info!("guc_configs: {:?}", guc_configs);
+    // validate API key where necessary and collect any optional arguments
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error
-    match transformer.source {
+    let optional_args = match transformer.source {
         ModelSource::OpenAI => {
             openai::validate_api_key(
                 &guc_configs
@@ -71,6 +51,7 @@ pub fn init_table(
                     .clone()
                     .context("OpenAI key is required")?,
             )?;
+            None
         }
         ModelSource::Tembo => {
             error!("Tembo not implemented for search yet");
@@ -85,15 +66,40 @@ pub fn init_table(
             let res = check_model_host(&url);
             match res {
                 Ok(_) => {
-                    info!("Model host active!")
+                    info!("Model host active!");
+                    None
                 }
                 Err(e) => {
                     error!("Error with model host: {:?}", e)
                 }
             }
         }
-        _ => (),
-    }
+        ModelSource::Portkey => Some(serde_json::json!({
+            "virtual_key": guc_configs.virtual_key.clone().expect("Portkey virtual key is required")
+        })),
+        _ => None,
+    };
+
+    let provider = get_provider(
+        &transformer.source,
+        guc_configs.api_key.clone(),
+        guc_configs.service_url.clone(),
+        guc_configs.virtual_key.clone(),
+    )?;
+
+    // synchronous
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+    let model_dim =
+        match runtime.block_on(async { provider.model_dim(&transformer.api_name()).await }) {
+            Ok(e) => e,
+            Err(e) => {
+                error!("error getting model dim: {}", e);
+            }
+        };
 
     let valid_params = types::JobParams {
         schema: schema.to_string(),
@@ -105,6 +111,7 @@ pub fn init_table(
         pkey_type,
         api_key: guc_configs.api_key.clone(),
         schedule: schedule.to_string(),
+        args: optional_args,
     };
     let params =
         pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));

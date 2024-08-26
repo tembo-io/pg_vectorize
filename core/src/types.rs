@@ -114,6 +114,7 @@ pub struct JobParams {
     pub api_key: Option<String>,
     #[serde(default = "default_schedule")]
     pub schedule: String,
+    pub args: Option<serde_json::Value>,
 }
 
 fn default_schedule() -> String {

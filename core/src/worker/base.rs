@@ -94,11 +94,17 @@ async fn execute_job(
     let job_meta: VectorizeMeta = msg.message.job_meta;
     let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
 
+    let virtual_key = if let Some(args) = job_params.args.clone() {
+        args.get("virtual_key").map(|v| v.to_string())
+    } else {
+        None
+    };
+
     let provider = providers::get_provider(
         &job_meta.transformer.source,
         job_params.api_key.clone(),
         None,
-        None,
+        virtual_key,
     )?;
 
     let embedding_request =
