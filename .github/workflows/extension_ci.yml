@@ -25,7 +25,7 @@ on:
 jobs:
   dependencies:
     name: Install dependencies
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v2
 
@@ -85,7 +85,7 @@ jobs:
   test:
     name: Run tests
     needs: dependencies
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     services:
       # Label used to access the service container
       vector-serve:
@@ -100,10 +100,15 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "pg-vectorize-extension-test"
-          workspaces: pg-vectorize
+          prefix-key: "extension-test"
+          workspaces: |
+            vectorize
           # Additional directories to cache
-          cache-directories: /home/runner/.pgrx
+          cache-directories: |
+            /home/runner/.pgrx
+      - name: Install sys dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
@@ -126,10 +131,7 @@ jobs:
             ${{ runner.os }}-bins-
       - name: setup-tests
         run: |
-          make trunk-dependencies
-          make setup.urls
-          make setup.shared_preload_libraries
-          rm -rf ./target/pgrx-test-data-* || true
+          make setup
       - name: unit-test
         run: |
           make test-unit
@@ -146,7 +148,7 @@ jobs:
   publish:
     if: github.event_name == 'release'
     name: trunk publish
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         pg-version: [14, 15, 16]
