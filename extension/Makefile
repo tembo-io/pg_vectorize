@@ -75,7 +75,7 @@ install-pgmq:
 	PG_CONFIG=${PGRX_PG_CONFIG} make clean && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make && \
 	PG_CONFIG=${PGRX_PG_CONFIG} make install && \
-	cd .. && rm -rf pgmq
+	cd ../.. && rm -rf pgmq
 
 install-vectorscale:
 	@ARCH=$$(uname -m); \
