@@ -63,10 +63,6 @@ pub mod common {
             28815
         } else if cfg!(feature = "pg14") {
             28814
-        } else if cfg!(feature = "pg13") {
-            28813
-        } else if cfg!(feature = "pg12") {
-            28812
         } else {
             5432
         }
