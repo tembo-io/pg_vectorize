@@ -22,7 +22,10 @@ on:
 jobs:
   test:
     name: Upgrade Test
-    runs-on: ubuntu-24.04
+    runs-on:
+      - self-hosted
+      - dind
+      - xlarge-16x16
     services:
       vector-serve:
         image: quay.io/tembo/vector-serve:latest

@@ -793,7 +793,7 @@ async fn test_diskann_cosine() {
         .await
         .expect("failed to drop vectorscale extension");
 
-    let _executed = sqlx::query("CREATE EXTENSION EXISTS vectorscale;")
+    let _executed = sqlx::query("CREATE EXTENSION IF EXISTS vectorscale;")
         .execute(&conn)
         .await
         .expect("failed to create vectorscale extension");
