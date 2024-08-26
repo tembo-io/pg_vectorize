@@ -788,7 +788,7 @@ async fn test_diskann_cosine() {
     common::init_test_table(&test_table_name, &conn).await;
     let job_name = format!("job_diskann_{}", test_num);
 
-    let _executed = sqlx::query("DROP EXTENSION IF EXISTS vectorscale;")
+    let _executed = sqlx::query("DROP EXTENSION IF EXISTS vectorscale CASCADE;")
         .execute(&conn)
         .await
         .expect("failed to drop vectorscale extension");
