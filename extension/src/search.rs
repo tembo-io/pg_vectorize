@@ -39,7 +39,6 @@ pub fn init_table(
     init::init_pgmq()?;
 
     let guc_configs = get_guc_configs(&transformer.source);
-    info!("guc_configs: {:?}", guc_configs);
     // validate API key where necessary and collect any optional arguments
     // certain embedding services require an API key, e.g. openAI
     // key can be set in a GUC, so if its required but not provided in args, and not in GUC, error

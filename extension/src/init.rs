@@ -14,10 +14,10 @@ pub fn init_pgmq() -> Result<()> {
     ))?
     .context("error checking if queue exists")?;
     if queue_exists {
-        info!("queue already exists");
+        debug1!("queue already exists");
         return Ok(());
     } else {
-        info!("creating queue;");
+        debug1!("creating queue;");
         let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
             let _r = c.update(
                 &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),

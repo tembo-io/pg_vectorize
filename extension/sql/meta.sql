@@ -14,6 +14,14 @@ CREATE TABLE vectorize.prompts (
     user_prompt TEXT NOT NULL
 );
 
+-- allow pg_monitor to read from vectorize schema
+GRANT USAGE ON SCHEMA vectorize TO pg_monitor;
+GRANT SELECT ON ALL TABLES IN SCHEMA vectorize TO pg_monitor;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA vectorize TO pg_monitor;
+ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON TABLES TO pg_monitor;
+ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON SEQUENCES TO pg_monitor;
+
+
 INSERT INTO vectorize.prompts (prompt_type, sys_prompt, user_prompt)
 VALUES (
     'question_answer',
