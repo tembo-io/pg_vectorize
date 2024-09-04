@@ -220,7 +220,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
             error!("failed to convert CStr to str");
         }
     } else {
-        info!("no value set for GUC: {:?}", guc);
+        debug1!("no value set for GUC: {:?}", guc);
         None
     }
 }
