@@ -451,7 +451,7 @@ async fn test_realtime_tabled() {
 
     // `join` method must have a view created
     let select = format!(
-        "SELECT product_id, product_name, description, embeddings, embeddings_updated_at FROM vectorize.{job_name}"
+        "SELECT product_id, product_name, description, embeddings, embeddings_updated_at FROM vectorize.{job_name}_view"
     );
     let result = sqlx::query(&select)
         .fetch_all(&conn)

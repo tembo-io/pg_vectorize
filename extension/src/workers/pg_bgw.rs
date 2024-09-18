@@ -36,9 +36,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     // specify database
     let (conn, queue) = runtime.block_on(async {
         let con = get_pg_conn().await.expect("failed to connect to database");
-        let queue = pgmq::PGMQueueExt::new_with_pool(con.clone())
-            .await
-            .expect("failed to init db connection");
+        let queue = pgmq::PGMQueueExt::new_with_pool(con.clone()).await;
         (con, queue)
     });
 
@@ -48,7 +46,7 @@ pub extern "C" fn background_worker_main(_arg: pg_sys::Datum) {
     let mut wait_duration: Duration = Duration::from_secs(6);
     while BackgroundWorker::wait_latch(Some(wait_duration)) {
         if !ext_ready {
-            warning!("pg-vectorize: waiting for CREATE EXTENSION vectorize CASCADE;");
+            debug5!("pg-vectorize-bgw: waiting for first pg-vectorize job to be created");
             runtime.block_on(async {
                 ext_ready = ready(&conn).await;
             });

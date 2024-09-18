@@ -3,7 +3,11 @@ use super::{
 };
 use crate::errors::VectorizeError;
 use async_trait::async_trait;
-use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
+use ollama_rs::{
+    generation::completion::request::GenerationRequest,
+    generation::embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest},
+    Ollama,
+};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -41,18 +45,20 @@ impl EmbeddingProvider for OllamaProvider {
         &self,
         request: &'a GenericEmbeddingRequest,
     ) -> Result<GenericEmbeddingResponse, VectorizeError> {
-        let mut all_embeddings: Vec<Vec<f64>> = Vec::with_capacity(request.input.len());
         let model_name = request.model.clone();
-        for ipt in request.input.iter() {
-            let embed = self
-                .instance
-                .generate_embeddings(model_name.clone(), ipt.clone(), None)
-                .await?;
-            all_embeddings.push(embed.embeddings);
-        }
-        Ok(GenericEmbeddingResponse {
-            embeddings: all_embeddings,
-        })
+
+        let embedding_input = EmbeddingsInput::Multiple(request.input.clone());
+        let req = GenerateEmbeddingsRequest::new(model_name.clone(), embedding_input);
+
+        let embed = self.instance.generate_embeddings(req).await?;
+
+        let embed = embed
+            .embeddings
+            .iter()
+            .map(|x| x.iter().map(|y| *y as f64).collect())
+            .collect();
+
+        Ok(GenericEmbeddingResponse { embeddings: embed })
     }
 
     async fn model_dim(&self, model_name: &str) -> Result<u32, VectorizeError> {
