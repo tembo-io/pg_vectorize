@@ -62,10 +62,17 @@ pub fn init_job_query() -> String {
     )
 }
 
+fn drop_project_view(job_name: &str) -> String {
+    format!(
+        "DROP VIEW IF EXISTS vectorize.{job_name};",
+        job_name = job_name
+    )
+}
+
 /// creates a project view over a source table and the embeddings table
 fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     format!(
-        "CREATE OR REPLACE VIEW vectorize.{job_name} as 
+        "CREATE VIEW vectorize.{job_name}_view as 
         SELECT t0.*, t1.embeddings, t1.updated_at as embeddings_updated_at
         FROM {schema}.{table} t0
         INNER JOIN vectorize._embeddings_{job_name} t1
@@ -140,6 +147,7 @@ pub fn init_embedding_table_query(
                 ),
                 index_stmt,
                 // also create a view over the source table and the embedding table, for this project
+                drop_project_view(job_name),
                 create_project_view(job_name, job_params),
             ]
         }
