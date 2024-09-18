@@ -64,7 +64,7 @@ pub fn init_job_query() -> String {
 
 fn drop_project_view(job_name: &str) -> String {
     format!(
-        "DROP VIEW IF EXISTS vectorize.{job_name};",
+        "DROP VIEW IF EXISTS vectorize.{job_name}_view;",
         job_name = job_name
     )
 }
