@@ -58,8 +58,7 @@ fn job_execute(job_name: String) {
             .await
             .unwrap_or_else(|e| error!("pg-vectorize: failed to establish db connection: {}", e));
         let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
-            .await
-            .unwrap_or_else(|e| error!("failed to init db connection: {}", e));
+            .await;
         let meta = get_vectorize_meta(&job_name, &conn)
             .await
             .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));

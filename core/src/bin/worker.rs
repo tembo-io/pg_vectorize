@@ -20,9 +20,7 @@ async fn main() {
         .await
         .expect("unable to initialize extension");
 
-    let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone())
-        .await
-        .unwrap();
+    let queue = pgmq::PGMQueueExt::new_with_pool(conn.clone()).await;
 
     loop {
         match poll_job(&conn, &queue, &cfg).await {
