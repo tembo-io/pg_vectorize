@@ -20,3 +20,4 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
     poetry run python -m app.models
 
 CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]
+
