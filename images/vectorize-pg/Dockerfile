@@ -1,5 +1,5 @@
 ARG PG_MAJ=17
-FROM postgres:$PG_MAJ-bookworm AS builder
+FROM postgres:$PG_MAJ AS builder
 
 ARG PG_MAJ=17
 
@@ -11,7 +11,6 @@ RUN apt-get update \
 	gcc \
 	git \
 	libssl-dev \
-	lld \
 	make \
 	pkg-config \
 	postgresql-server-dev-$PG_MAJ
