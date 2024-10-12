@@ -190,10 +190,7 @@ jobs:
     name: Build and push images
     env:
       TARGET_PLATFORMS: linux/amd64,linux/arm64
-    runs-on:
-      - self-hosted
-      - dind
-      - xlarge-16x16
+    runs-on: ubuntu-24.04
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
