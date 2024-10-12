@@ -239,7 +239,7 @@ jobs:
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           working-directory: ./
           file: ./images/vectorize-pg/Dockerfile
@@ -250,7 +250,7 @@ jobs:
             quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         if: github.event_name == 'release'
         with:
           file: ./images/vectorize-pg/Dockerfile
