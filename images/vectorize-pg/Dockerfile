@@ -15,7 +15,6 @@ RUN apt-get update \
 	gcc \
 	git \
 	libssl-dev \
-	libssh2-sys \
 	make \
 	pkg-config \
 	postgresql-server-dev-$PG_MAJ
