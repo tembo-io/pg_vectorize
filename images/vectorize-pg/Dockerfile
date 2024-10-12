@@ -5,7 +5,7 @@ ARG VECTOR_VER=0.7.4
 ARG VSCALE_VER=0.3.0
 ARG CRON_VER=1.6.4
 ARG PGRX_VER=0.12.5
-ARG PG_MAJ=16
+ARG PG_MAJ=17
 
 RUN apt-get update \
     && apt-get install -y \
