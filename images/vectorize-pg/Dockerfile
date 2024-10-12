@@ -1,10 +1,6 @@
 ARG PG_MAJ=17
 FROM postgres:$PG_MAJ-bookworm AS builder
 
-ARG VECTOR_VER=0.7.4
-ARG VSCALE_VER=0.3.0
-ARG CRON_VER=1.6.4
-ARG PGRX_VER=0.12.5
 ARG PG_MAJ=17
 
 RUN apt-get update \
@@ -15,6 +11,7 @@ RUN apt-get update \
 	gcc \
 	git \
 	libssl-dev \
+	lld \
 	make \
 	pkg-config \
 	postgresql-server-dev-$PG_MAJ
@@ -26,6 +23,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
 # install pgrx
+ARG PGRX_VER=0.12.5
 RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg$PG_MAJ $(which pg_config)
 
@@ -37,7 +35,9 @@ COPY . .
 
 # install dependencies
 ARG PG_MAJ=17
-RUN export PATH="${HOME}/.cargo/bin:$PATH" && cd extension && make setup.dependencies PGRX_PG_CONFIG=$(cargo pgrx info pg-config pg${PG_MAJ})
+RUN export PATH="${HOME}/.cargo/bin:$PATH" && \
+	cd extension && \
+	make setup.dependencies PGRX_PG_CONFIG=$(which pg_config)
 
 # install pg-vectorize
 RUN cd extension && \
