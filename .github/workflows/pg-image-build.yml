@@ -62,6 +62,30 @@ jobs:
           registry: quay.io/tembo
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+      - name: Build and push -- Commit
+        # push commit build when not a release
+        if: github.event_name != 'release'
+        uses: docker/build-push-action@v6
+        with:
+          working-directory: ./
+          file: ./images/vectorize-pg/Dockerfile
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+
+      - name: Build and push
+        if: github.event_name == 'release'
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/vectorize-pg/Dockerfile
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64
+            quay.io/tembo/vectorize-pg:latest-amd64
 
   build_and_push_arm64:
     name: Build and push ARM64 images
