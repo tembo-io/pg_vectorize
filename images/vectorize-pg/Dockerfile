@@ -1,5 +1,5 @@
 ARG PG_MAJ=17
-FROM postgres:$PG_MAJ AS builder
+FROM postgres:$PG_MAJ-bookworm AS builder
 
 ARG PG_MAJ=17
 
@@ -36,7 +36,7 @@ COPY . .
 ARG PG_MAJ=17
 RUN export PATH="${HOME}/.cargo/bin:$PATH" && \
 	cd extension && \
-	make setup.dependencies PGRX_PG_CONFIG=$(which pg_config)
+	make setup.dependencies PGRX_PG_CONFIG=$(cargo pgrx info pg-config pg${PG_MAJ})
 
 # install pg-vectorize
 RUN cd extension && \

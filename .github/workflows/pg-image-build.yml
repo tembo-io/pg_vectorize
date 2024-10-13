@@ -61,13 +61,16 @@ jobs:
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
-        run: |
-           docker build \
-                -f ./images/vectorize-pg/Dockerfile \
-                -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 .
-            docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/vectorize-pg/Dockerfile
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
 
-      - name: Build and push
+      - name: Build and push -- Release
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
@@ -122,13 +125,16 @@ jobs:
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
-        run: |
-           docker build \
-                -f ./images/vectorize-pg/Dockerfile \
-                -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
-            docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
+        uses: docker/build-push-action@v5
+        with:
+          file: ./images/vectorize-pg/Dockerfile
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
 
-      - name: Build and push
+      - name: Build and push -- Release
         if: github.event_name == 'release'
         uses: docker/build-push-action@v5
         with:
@@ -142,8 +148,6 @@ jobs:
 
   create_manifest:
     name: Create and Push Manifest
-    # only create manifest on releases (latest and semver tagged images)
-    # if: github.event_name == 'release'
 
     runs-on: ubuntu-latest
     needs: [build_and_push_arm64, build_and_push_amd64]
@@ -181,7 +185,8 @@ jobs:
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
 
-      - name: Create and push Docker manifest
+      - name: Create and push Docker manifest -- Commit
+        if: github.event_name != 'release'
         run: |
           docker manifest create quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} \
             quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
@@ -190,3 +195,22 @@ jobs:
           docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 --arch arm64 --os linux
           docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 --arch amd64 --os linux
           docker manifest push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: Create and push Docker manifest -- Release
+        if: github.event_name == 'release'
+        run: |
+          docker manifest create quay.io/tembo/vectorize-pg:latest \
+            quay.io/tembo/vectorize-pg:latest-arm64 \
+            quay.io/tembo/vectorize-pg:latest-amd64
+        
+          docker manifest annotate quay.io/tembo/vectorize-pg:latest quay.io/tembo/vectorize-pg:latest-arm64 --arch arm64 --os linux
+          docker manifest annotate quay.io/tembo/vectorize-pg:latest quay.io/tembo/vectorize-pg:latest-amd64 --arch amd64 --os linux
+          docker manifest push quay.io/tembo/vectorize-pg:latest
+
+          docker manifest create quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} \
+            quay.io/tembo/vectorize-pg:latest-arm64 \
+            quay.io/tembo/vectorize-pg:latest-amd64
+        
+          docker manifest annotate quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 --arch arm64 --os linux
+          docker manifest annotate quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64 --arch amd64 --os linux
+          docker manifest push quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}
