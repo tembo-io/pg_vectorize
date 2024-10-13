@@ -65,15 +65,11 @@ jobs:
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
-        uses: docker/build-push-action@v6
-        with:
-          working-directory: ./
-          file: ./images/vectorize-pg/Dockerfile
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: |
-            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+        run: |
+            docker buildx build \
+                --platform linux/amd64 \
+                --tag quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 \
+                --push .
 
       - name: Build and push
         if: github.event_name == 'release'
@@ -130,15 +126,11 @@ jobs:
       - name: Build and push -- Commit
         # push commit build when not a release
         if: github.event_name != 'release'
-        uses: docker/build-push-action@v6
-        with:
-          working-directory: ./
-          file: ./images/vectorize-pg/Dockerfile
-          context: .
-          platforms: linux/arm64
-          push: true
-          tags: |
-            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
+        run: |
+            docker buildx build \
+                --platform linux/arm64 \
+                --tag quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
+                --push .
 
       - name: Build and push
         if: github.event_name == 'release'
