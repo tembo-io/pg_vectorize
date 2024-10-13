@@ -3,7 +3,6 @@ name: Build Postgres with pg_vectorize
 defaults:
   run:
     shell: bash
-    working-directory: ./extension
 
 on:
   pull_request:
