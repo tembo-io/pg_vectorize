@@ -79,7 +79,7 @@ install-pgmq:
 
 install-vectorscale:
 	@ARCH=$$(uname -m); \
-	if [ "$$ARCH" != "arm64" ]; then \
+	if [ "$$ARCH" != "aarch64" ]; then \
 		export RUSTFLAGS="-C target-feature=+avx2,+fma"; \
 	else \
 		echo "Running on arm64, no compiler flags required."; \
