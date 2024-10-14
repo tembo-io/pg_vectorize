@@ -47,8 +47,7 @@ jobs:
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -104,8 +103,7 @@ jobs:
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -196,9 +194,9 @@ jobs:
           docker manifest push quay.io/tembo/vectorize-pg:latest
 
           docker manifest create quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} \
-            quay.io/tembo/vectorize-pg:latest-arm64 \
-            quay.io/tembo/vectorize-pg:latest-amd64
+            quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 \
+            quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64
         
           docker manifest annotate quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 --arch arm64 --os linux
           docker manifest annotate quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }} quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64 --arch amd64 --os linux
-          docker manifest push quay.io/tembo/vectorize-pg:latest
+          docker manifest push quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}
