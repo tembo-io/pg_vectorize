@@ -120,6 +120,7 @@ jobs:
         run: |
             docker build \
                 -f ./images/vectorize-pg/Dockerfile \
+                --platform linux/arm64 \
                 -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
             docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
 
@@ -128,6 +129,7 @@ jobs:
         run: |
             docker build \
                 -f ./images/vectorize-pg/Dockerfile \
+                --platform linux/arm64 \
                 -t quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 \
                 -t quay.io/tembo/vectorize-pg:latest-arm64 .
             docker push quay.io/tembo/vectorize-pg
