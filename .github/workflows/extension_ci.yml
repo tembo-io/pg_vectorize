@@ -25,16 +25,13 @@ on:
 jobs:
   dependencies:
     name: Install dependencies
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # rust needed to install trunk
       - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          cache-directories: /home/runner/.pgrx
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install stoml and pg-trunk
         shell: bash
@@ -61,13 +58,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Rust minimal nightly with clippy and rustfmt
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt, clippy
+        uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "pg-vectorize-extension-lint"
@@ -93,11 +86,9 @@ jobs:
         ports:
           - 3000:3000
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "extension-test"
@@ -155,9 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "pg-vectorize-extension-test"
