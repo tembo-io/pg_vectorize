@@ -26,7 +26,9 @@ jobs:
   build_and_push_amd64:
     name: Build and push AMD64 images
     runs-on:
-      - ubuntu-latest
+      - self-hosted
+      - dind
+      - large-8x8
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
