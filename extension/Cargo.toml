@@ -26,7 +26,7 @@ handlebars = "5.1.0"
 lazy_static = "1.4.0"
 log = "0.4.21"
 pgmq = "0.29"
-pgrx = "0.12.5"
+pgrx = "=0.12.5"
 postgres-types = "0.2.5"
 regex = "1.9.2"
 reqwest = {version = "0.11.18", features = ["json"] }
@@ -45,7 +45,7 @@ url = "2.4.0"
 vectorize_core = { path = "../core", package = "vectorize-core" }
 
 [dev-dependencies]
-pgrx-tests = "0.12.5"
+pgrx-tests = "=0.12.5"
 rand = "0.8.5"
 whoami = "1.4.1"
 
