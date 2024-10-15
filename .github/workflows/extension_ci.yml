@@ -25,7 +25,7 @@ on:
 jobs:
   dependencies:
     name: Install dependencies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -142,7 +142,7 @@ jobs:
   publish:
     if: github.event_name == 'release'
     name: trunk publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         pg-version: [14, 15, 16]
