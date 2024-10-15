@@ -12,17 +12,11 @@ on:
     paths:
       - ".github/workflows/extension_upgrade.yml"
       - "extension/**"
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/extension_upgrade.yml"
-      - "extension/**"
 
 jobs:
   test:
     name: Upgrade Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     services:
       vector-serve:
         image: quay.io/tembo/vector-serve:latest

@@ -78,7 +78,10 @@ jobs:
   test:
     name: Run tests
     needs: dependencies
-    runs-on: ubuntu-24.04
+    runs-on:
+      - dind
+      - self-hosted
+      - large-8x8
     services:
       # Label used to access the service container
       vector-serve:
@@ -139,7 +142,7 @@ jobs:
   publish:
     if: github.event_name == 'release'
     name: trunk publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         pg-version: [14, 15, 16]
