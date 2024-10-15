@@ -8,16 +8,17 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "README.md"
-      - docs/**
+    paths:
+      - "./extension/**"
+      - "./images/vectorize-pg/**"
+      - "./.github/workflows/pg-image-build.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "README.md"
-      - docs/**
-
+    paths:
+      - "./extension/**"
+      - "./images/vectorize-pg/**"
+      - "./.github/workflows/pg-image-build.yml"
   release:
     types:
       - created
