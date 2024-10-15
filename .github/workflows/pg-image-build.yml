@@ -25,9 +25,7 @@ jobs:
   build_and_push_amd64:
     name: Build and push AMD64 images
     runs-on:
-      - self-hosted
-      - dind
-      - xlarge-16x16
+      - amd64-4x16
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -78,10 +76,7 @@ jobs:
   build_and_push_arm64:
     name: Build and push ARM64 images
     runs-on:
-      - debug-arm
-    #   - self-hosted
-    #   - dind
-    #   - arm64
+      - arm64-4x16
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
