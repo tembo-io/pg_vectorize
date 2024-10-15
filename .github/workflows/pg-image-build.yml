@@ -9,16 +9,16 @@ on:
     branches:
       - main
     paths:
-      - "./extension/**"
-      - "./images/vectorize-pg/**"
-      - "./.github/workflows/pg-image-build.yml"
+      - "extension/**"
+      - "images/vectorize-pg/**"
+      - ".github/workflows/pg-image-build.yml"
   push:
     branches:
       - main
     paths:
-      - "./extension/**"
-      - "./images/vectorize-pg/**"
-      - "./.github/workflows/pg-image-build.yml"
+      - "extension/**"
+      - "images/vectorize-pg/**"
+      - ".github/workflows/pg-image-build.yml"
   release:
     types:
       - created
@@ -26,7 +26,7 @@ jobs:
   build_and_push_amd64:
     name: Build and push AMD64 images
     runs-on:
-      - amd64-4x16
+      - ubuntu-latest
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
