@@ -25,7 +25,7 @@ on:
 jobs:
   dependencies:
     name: Install dependencies
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -78,10 +78,7 @@ jobs:
   test:
     name: Run tests
     needs: dependencies
-    runs-on:
-      - dind
-      - self-hosted
-      - large-8x8
+    runs-on: ubuntu-24.04
     services:
       # Label used to access the service container
       vector-serve:
