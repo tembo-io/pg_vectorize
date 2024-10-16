@@ -15,6 +15,7 @@ cache_dir = "./models"
 try:
     MULTI_MODEL = int(os.getenv("MULTI_MODEL", 1))
 except Exception:
+    logging.exception("Failed to parse MULTI_MODEL env var")
     MULTI_MODEL = 1
 
 

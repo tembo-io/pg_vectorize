@@ -1,4 +1,4 @@
-FROM python:3.12.3-slim-bookworm
+FROM python:3.12.7-slim-bookworm
 
 RUN apt-get update && \
     apt-get install -y curl make && \
@@ -19,4 +19,4 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 -
     find $POETRY_HOME -type d -name "__pycache__" -exec rm -rf {} + && \
     poetry run python -m app.models
 
-CMD ["poetry", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]
+CMD ["poetry", "run", "fastapi", "run", "app/app.py", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]
