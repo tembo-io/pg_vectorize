@@ -47,7 +47,7 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(/usr/local/bin/stoml extension/Cargo.toml package.version)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -58,23 +58,24 @@ jobs:
           registry: quay.io/tembo
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
-      - name: Build and push -- Commit
-        # push commit build when not a release
-        if: github.event_name != 'release'
-        run: |
-            docker build \
-                -f ./images/vectorize-pg/Dockerfile \
-                -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 .
-            docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+      # - name: Build and push -- Commit
+      #   # push commit build when not a release
+      #   if: github.event_name != 'release'
+      #   run: |
+      #       docker build \
+      #           -f ./images/vectorize-pg/Dockerfile \
+      #           -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 .
+      #       docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
 
       - name: Build and push -- Release
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
         run: |
             docker build \
                 -f ./images/vectorize-pg/Dockerfile \
                 -t quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64 \
                 -t quay.io/tembo/vectorize-pg:latest-amd64 .
-            docker push quay.io/tembo/vectorize-pg
+            docker push  quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64
+            docker push  quay.io/tembo/vectorize-pg:latest-amd64
 
   build_and_push_arm64:
     name: Build and push ARM64 images
@@ -101,7 +102,7 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(/usr/local/bin/stoml extension/Cargo.toml package.version)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -113,25 +114,26 @@ jobs:
           username: ${{ secrets.QUAY_USER_TEMBO }}
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
-      - name: Build and push -- Commit
-        # push commit build when not a release
-        if: github.event_name != 'release'
-        run: |
-            docker build \
-                -f ./images/vectorize-pg/Dockerfile \
-                --platform linux/arm64 \
-                -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
-            docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
+      # - name: Build and push -- Commit
+      #   # push commit build when not a release
+      #   if: github.event_name != 'release'
+      #   run: |
+      #       docker build \
+      #           -f ./images/vectorize-pg/Dockerfile \
+      #           --platform linux/arm64 \
+      #           -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
+      #       docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64
 
       - name: Build and push -- Release
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
         run: |
             docker build \
                 -f ./images/vectorize-pg/Dockerfile \
                 --platform linux/arm64 \
                 -t quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 \
                 -t quay.io/tembo/vectorize-pg:latest-arm64 .
-            docker push quay.io/tembo/vectorize-pg
+            docker push quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64
+            docker push quay.io/tembo/vectorize-pg:latest-arm64
 
   create_manifest:
     name: Create and Push Manifest
@@ -170,21 +172,21 @@ jobs:
         id: versions
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "TAG_VER=$(/usr/local/bin/stoml Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "TAG_VER=$(/usr/local/bin/stoml extension/Cargo.toml package.version)" >> $GITHUB_OUTPUT
 
-      - name: Create and push Docker manifest -- Commit
-        if: github.event_name != 'release'
-        run: |
-          docker manifest create quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} \
-            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
-            quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+      # - name: Create and push Docker manifest -- Commit
+      #   if: github.event_name != 'release'
+      #   run: |
+      #     docker manifest create quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} \
+      #       quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
+      #       quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
         
-          docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 --arch arm64 --os linux
-          docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 --arch amd64 --os linux
-          docker manifest push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}
+      #     docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 --arch arm64 --os linux
+      #     docker manifest annotate quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 --arch amd64 --os linux
+      #     docker manifest push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Create and push Docker manifest -- Release
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
         run: |
           docker manifest create quay.io/tembo/vectorize-pg:latest \
             quay.io/tembo/vectorize-pg:latest-arm64 \
