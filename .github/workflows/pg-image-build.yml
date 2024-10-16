@@ -15,6 +15,7 @@ on:
   push:
     branches:
       - main
+      - patch-pgrelease-build
     paths:
       - "extension/**"
       - "images/vectorize-pg/**"
