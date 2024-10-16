@@ -186,7 +186,7 @@ jobs:
           docker manifest push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}
 
       - name: Create and push Docker manifest -- Release
-        # if: github.event_name == 'release'
+        if: github.event_name == 'release'
         run: |
           docker manifest create quay.io/tembo/vectorize-pg:latest \
             quay.io/tembo/vectorize-pg:latest-arm64 \
