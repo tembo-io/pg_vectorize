@@ -39,6 +39,8 @@ jobs:
         shell: bash
         run: |
           set -xe
+          sudo apt-get update
+          sudo apt-get install -y wget
           wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
           mv stoml_linux_amd64 stoml
           chmod +x stoml
@@ -94,6 +96,8 @@ jobs:
         shell: bash
         run: |
           set -xe
+          sudo apt-get update
+          sudo apt-get install -y wget
           wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_armv7 &> /dev/null
           mv stoml_linux_armv7 stoml
           chmod +x stoml
@@ -164,6 +168,8 @@ jobs:
         shell: bash
         run: |
           set -xe
+          sudo apt-get update
+          sudo apt-get install -y wget
           wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
           mv stoml_linux_amd64 stoml
           chmod +x stoml
