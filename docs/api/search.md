@@ -76,7 +76,12 @@ select vectorize.table(
 
 ## Search a table
 
-Search a table initialized with `vectorize.table`. The search results are sorted in descending order according to similarity. You can use the `where_sql` parameter to apply additional filtering to the search results based on SQL conditions. The `query` is transformed to embeddings using the same `transformer` configured during `vectorize.table`.
+Search a table initialized with `vectorize.table`. The search results are sorted in descending order according to similarity. 
+
+
+The `query` is transformed to embeddings using the same `transformer` configured during `vectorize.table`.
+
+The `where_sql` parameter is used to apply additional filtering to the search results based on SQL conditions. 
 
 ```sql
 vectorize."search"(
