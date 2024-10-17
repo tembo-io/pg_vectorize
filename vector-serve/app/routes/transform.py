@@ -3,8 +3,10 @@ import os
 from typing import TYPE_CHECKING, Any, List
 
 from app.models import model_org_name, get_model, parse_header
+from app.utils.chunking import recursive_text_chunk
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, conlist
+
 
 router = APIRouter(tags=["transform"])
 
@@ -40,6 +42,13 @@ def batch_transform(
     request: Request, payload: Batch, authorization: str = Header(None)
 ) -> ResponseModel:
     logging.info({"batch-predict-len": len(payload.input)})
+
+    chunked_input = []
+    for doc in payload.input:
+        chunked_input.extend(
+            recursive_text_chunk(doc, chunk_size=1000, chunk_overlap=200)
+        )
+
     batches = chunk_list(payload.input, BATCH_SIZE)
     num_batches = len(batches)
     responses: list[list[float]] = []
