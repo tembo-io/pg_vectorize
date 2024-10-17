@@ -6,6 +6,34 @@ from app.models import model_org_name, get_model, parse_header
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, conlist
 
+# Chunking functions
+def chunk_text(text, max_length):
+    """Splits text into smaller chunks based on a maximum character length."""
+    import re
+    sentences = re.split(r'(?<=[.!?])\s+', text)  # Split by sentence or paragraph boundaries
+    chunks = []
+    current_chunk = ""
+    
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) <= max_length:
+            current_chunk += sentence + " "
+        else:
+            chunks.append(current_chunk.strip())
+            current_chunk = sentence + " "
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+
+def chunk_table(input_data, max_length):
+    """Chunk each item in a list of texts into smaller pieces."""
+    chunked_data = []
+    for text in input_data:
+        chunks = chunk_text(text, max_length)
+        chunked_data.extend(chunks)
+    return chunked_data
+
+
 router = APIRouter(tags=["transform"])
 
 logging.basicConfig(level=logging.DEBUG)
@@ -40,13 +68,17 @@ def batch_transform(
     request: Request, payload: Batch, authorization: str = Header(None)
 ) -> ResponseModel:
     logging.info({"batch-predict-len": len(payload.input)})
-    batches = chunk_list(payload.input, BATCH_SIZE)
+    
+    # Preprocess by chunking large texts in payload.input
+    chunked_input = chunk_table(payload.input, max_length=500)  # You can adjust the max_length as needed
+    batches = chunk_list(chunked_input, BATCH_SIZE)
+    
     num_batches = len(batches)
     responses: list[list[float]] = []
 
     requested_model = model_org_name(payload.model)
 
-    api_key = parse_header(authorization)
+    api_key = parse_header(authorization)    
     try:
         model = get_model(
             model_name=requested_model,
