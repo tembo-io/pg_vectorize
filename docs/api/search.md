@@ -77,7 +77,8 @@ select vectorize.table(
 ## Search a table
 
 Search a table initialized with `vectorize.table`. The search results are sorted in descending order according to similarity.
- The `query` is transformed to embeddings using the same `transformer` configured during `vectorize.table`.
+ The `query` is transformed to embeddings using the same `transformer` configured during `vectorize.table`. The `where_sql` parameter
+  can be used to filter the search results.
 
 ```sql
 vectorize."search"(
@@ -85,7 +86,8 @@ vectorize."search"(
     "query" TEXT,
     "api_key" TEXT DEFAULT NULL,
     "return_columns" TEXT[] DEFAULT ARRAY['*']::text[],
-    "num_results" INT DEFAULT 10
+    "num_results" INT DEFAULT 10,
+    "where_sql" TEXT DEFAULT NULL
 ) RETURNS TABLE (
     "search_results" jsonb
 )
