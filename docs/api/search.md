@@ -102,7 +102,7 @@ vectorize."search"(
 | api_key | text | API key for the specified chat model. If OpenAI, this value overrides the config `vectorize.openai_key` |
 | return_columns | text[] | The columns to return in the search results. Defaults to all columns. |
 | num_results | int | The number of results to return. Sorted in descending order according to similarity. Defaults to 10. |
-| where | text | Additional where clause to filter the search results. |
+| where_sql | text | Additional where clause to filter the search results. |
 
 ### Example
 
@@ -112,7 +112,7 @@ SELECT * FROM vectorize.search(
     query           => 'mobile electronic devices',
     return_columns  => ARRAY['product_id', 'product_name'],
     num_results     => 3,
-    where           => 'product_id < 100'
+    where_sql       => 'product_id < 100'
 );
 ```
 
