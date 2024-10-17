@@ -81,7 +81,7 @@ Search a table initialized with `vectorize.table`. The search results are sorted
 
 The `query` is transformed to embeddings using the same `transformer` configured during `vectorize.table`.
 
-The `where_sql` parameter is used to apply additional filtering to the search results based on SQL conditions. 
+The `where` parameter is used to apply additional filtering to the search results based on SQL conditions. 
 
 ```sql
 vectorize."search"(
@@ -90,7 +90,7 @@ vectorize."search"(
     "api_key" TEXT DEFAULT NULL,
     "return_columns" TEXT[] DEFAULT ARRAY['*']::text[],
     "num_results" INT DEFAULT 10
-    "where_sql" TEXT DEFAULT NULL
+    "where" TEXT DEFAULT NULL
 ) RETURNS TABLE (
     "search_results" jsonb
 )
@@ -105,7 +105,7 @@ vectorize."search"(
 | api_key | text | API key for the specified chat model. If OpenAI, this value overrides the config `vectorize.openai_key` |
 | return_columns | text[] | The columns to return in the search results. Defaults to all columns. |
 | num_results | int | The number of results to return. Sorted in descending order according to similarity. Defaults to 10. |
-| where_sql | text | An optional SQL condition to filter the search results. This condition is applied after the similarity search. |
+| where | text | An optional SQL condition to filter the search results. This condition is applied after the similarity search. |
 
 ### Example
 
@@ -131,7 +131,7 @@ SELECT * FROM vectorize.search(
 
 ## Filtering Search Results
 
-The `where_sql` parameter allows to apply SQL-based filtering after performing the vector similarity search. This feature is useful when you want to narrow down the search results based on certain conditions such as `product category` or `price`.
+The `where` parameter allows to apply SQL-based filtering after performing the vector similarity search. This feature is useful when you want to narrow down the search results based on certain conditions such as `product category` or `price`.
 
 ### Example
 
@@ -141,7 +141,7 @@ SELECT * FROM vectorize.search(
     query           => 'mobile electronic devices',
     return_columns  => ARRAY['product_id', 'product_name'],
     num_results     => 3,
-    where_sql       => 'product_category = ''electronics'' AND price > 100'
+    where       => 'product_category = ''electronics'' AND price > 100'
 );
 ```
 
@@ -149,7 +149,7 @@ In the above example, the results are filtered where the `product_category` is `
 
 ## Optimizing Searches with Partial Indices
 
-For improving performance when using filters, you can create partial indices. This will speed up the execution of queries with frequent conditions in the `where_sql` parameter.
+For improving performance when using filters, you can create partial indices. This will speed up the execution of queries with frequent conditions in the `where` parameter.
 
 ### Example
 
@@ -159,4 +159,4 @@ CREATE INDEX idx_product_price ON products (product_name) WHERE price > 100;
 
 This index optimizes queries that search for products where the `price` is greater than 100.
 
-By combining the `where_sql` filtering feature with partial indices, you can efficiently narrow down search results and improve query performance.
+By combining the `where` filtering feature with partial indices, you can efficiently narrow down search results and improve query performance.
