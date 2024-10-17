@@ -21,8 +21,6 @@ fn table(
     update_col: default!(String, "'last_updated_at'"),
     index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
-    // search_alg is now deprecated
-    search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'* * * * *'"),
@@ -37,8 +35,6 @@ fn table(
         Some(update_col),
         index_dist_type.into(),
         &model,
-        // search_alg is now deprecated
-        search_alg.into(),
         table_method.into(),
         schedule,
     )
@@ -96,9 +92,6 @@ fn init_rag(
     index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     // transformer model to use in vector-search
     transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
-    // similarity algorithm to use in vector-search
-    // search_alg is now deprecated
-    search_alg: default!(types::SimilarityAlg, "'pgv_cosine_similarity'"),
     table_method: default!(types::TableMethod, "'join'"),
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
@@ -114,14 +107,12 @@ fn init_rag(
         None,
         index_dist_type.into(),
         &transformer_model,
-        // search_alg is now deprecated
-        search_alg.into(),
         table_method.into(),
         schedule,
     )
 }
 
-/// creates an table indexed with embeddings for chat completion workloads
+/// creates a table indexed with embeddings for chat completion workloads
 #[pg_extern]
 fn rag(
     agent_name: &str,
