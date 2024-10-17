@@ -100,6 +100,7 @@ vectorize."search"(
 | api_key | text | API key for the specified chat model. If OpenAI, this value overrides the config `vectorize.openai_key` |
 | return_columns | text[] | The columns to return in the search results. Defaults to all columns. |
 | num_results | int | The number of results to return. Sorted in descending order according to similarity. Defaults to 10. |
+| where | text | Additional where clause to filter the search results. |
 
 ### Example
 
@@ -108,7 +109,8 @@ SELECT * FROM vectorize.search(
     job_name        => 'product_search',
     query           => 'mobile electronic devices',
     return_columns  => ARRAY['product_id', 'product_name'],
-    num_results     => 3
+    num_results     => 3,
+    where           => 'product_id < 100'
 );
 ```
 
@@ -122,3 +124,13 @@ SELECT * FROM vectorize.search(
  {"product_id": 4, "product_name": "Bluetooth Speaker", "similarity_score": 0.8250355616233103}
 (3 rows)
 ```
+
+## Partial Indexing
+
+We can also add partial indices to the table to speed up the search.
+
+```sql
+CREATE INDEX idx_products_name ON products (product_name) WHERE product_id < 1000;
+```
+
+This will speed up the search for products with `product_id < 1000`.
