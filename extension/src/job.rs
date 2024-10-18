@@ -128,8 +128,6 @@ pub fn initalize_table_job(
     job_params: &JobParams,
     index_dist_type: IndexDist,
     transformer: &Model,
-    // search_alg is now deprecated
-    search_alg: SimilarityAlg,
 ) -> Result<()> {
     // start with initial batch load
     let rows_need_update_query: String = match job_params.table_method {
@@ -166,8 +164,6 @@ pub fn initalize_table_job(
         params: serde_json::to_value(job_params.clone()).unwrap(),
         index_dist_type: index_dist_type.clone(),
         transformer: transformer.clone(),
-        // search_alg is now deprecated
-        search_alg: search_alg.clone(),
         last_completion: None,
     };
     for b in batches {

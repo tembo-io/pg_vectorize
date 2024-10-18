@@ -22,8 +22,6 @@ pub fn init_table(
     update_col: Option<String>,
     index_dist_type: types::IndexDist,
     transformer: &Model,
-    // search_alg is now deprecated
-    search_alg: types::SimilarityAlg,
     table_method: types::TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: &str,
@@ -133,11 +131,6 @@ pub fn init_table(
                     PgBuiltInOids::TEXTOID.oid(),
                     transformer.to_string().into_datum(),
                 ),
-                (
-                    PgBuiltInOids::TEXTOID.oid(),
-                    // search_alg is now deprecated
-                    search_alg.to_string().into_datum(),
-                ),
                 (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
             ]),
         ) {
@@ -183,14 +176,7 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    initalize_table_job(
-        job_name,
-        &valid_params,
-        index_dist_type,
-        transformer,
-        // search_alg is now deprecated
-        search_alg,
-    )?;
+    initalize_table_job(job_name, &valid_params, index_dist_type, transformer)?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 

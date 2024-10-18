@@ -3,7 +3,6 @@ CREATE TABLE vectorize.job (
     name TEXT NOT NULL UNIQUE,
     index_dist_type TEXT NOT NULL DEFAULT 'pgv_hsnw_cosine',
     transformer TEXT NOT NULL,
-    search_alg TEXT NOT NULL,
     params jsonb NOT NULL,
     last_completion TIMESTAMP WITH TIME ZONE
 );

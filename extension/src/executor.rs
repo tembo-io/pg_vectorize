@@ -110,7 +110,7 @@ pub async fn get_vectorize_meta(
         VectorizeMeta,
         "
         SELECT 
-            job_id, name, index_dist_type, transformer, search_alg, params, last_completion
+            job_id, name, index_dist_type, transformer, params, last_completion
         FROM vectorize.job
         WHERE name = $1
         ",
