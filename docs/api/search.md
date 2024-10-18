@@ -158,4 +158,6 @@ CREATE INDEX idx_product_price ON products (product_name) WHERE price > 100;
 
 This index optimizes queries that search for products where the `price` is greater than 100.
 
+> **Note:** Partial indices improve performance by only indexing rows that meet the specified condition. This reduces the amount of data the database needs to scan, making queries with the same filter more efficient since only relevant rows are included in the index.
+
 By combining the `where` filtering feature with partial indices, you can efficiently narrow down search results and improve query performance.
