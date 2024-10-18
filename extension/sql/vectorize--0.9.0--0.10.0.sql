@@ -38,7 +38,7 @@ CREATE  FUNCTION vectorize."init_rag"(
         "column" TEXT, /* &str */
         "schema" TEXT DEFAULT 'public', /* &str */
         "transformer" TEXT DEFAULT 'text-embedding-ada-002', /* &str */
-        "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
+        "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
         "table_method" vectorize.TableMethod DEFAULT 'append' /* vectorize::types::TableMethod */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
 STRICT

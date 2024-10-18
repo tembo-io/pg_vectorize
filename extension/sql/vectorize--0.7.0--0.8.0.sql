@@ -11,7 +11,7 @@ CREATE  FUNCTION vectorize."table"(
         "schema" TEXT DEFAULT 'public', /* alloc::string::String */
         "update_col" TEXT DEFAULT 'last_updated_at', /* alloc::string::String */
         "transformer" TEXT DEFAULT 'text-embedding-ada-002', /* alloc::string::String */
-        "search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
+        "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
         "table_method" vectorize.TableMethod DEFAULT 'append', /* vectorize::types::TableMethod */
         "schedule" TEXT DEFAULT '* * * * *' /* alloc::string::String */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */

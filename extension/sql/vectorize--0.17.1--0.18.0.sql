@@ -54,7 +54,6 @@ CREATE  FUNCTION vectorize."table"(
 	"update_col" TEXT DEFAULT 'last_updated_at', /* alloc::string::String */
 	"index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine', /* vectorize::types::IndexDist */
 	"transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2', /* &str */
-	"search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
 	"table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
 	"schedule" TEXT DEFAULT '* * * * *' /* &str */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
@@ -72,7 +71,6 @@ CREATE  FUNCTION vectorize."init_rag"(
 	"schema" TEXT DEFAULT 'public', /* &str */
 	"index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine', /* vectorize::types::IndexDist */
 	"transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2', /* &str */
-	"search_alg" vectorize.SimilarityAlg DEFAULT 'pgv_cosine_similarity', /* vectorize::types::SimilarityAlg */
 	"table_method" vectorize.TableMethod DEFAULT 'join', /* vectorize::types::TableMethod */
 	"schedule" TEXT DEFAULT '* * * * *' /* &str */
 ) RETURNS TEXT /* core::result::Result<alloc::string::String, anyhow::Error> */
