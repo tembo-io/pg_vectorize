@@ -4,7 +4,7 @@ use crate::init;
 use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_job};
 use crate::transformers::openai;
 use crate::transformers::transform;
-use crate::util;
+use crate::util::*;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
@@ -15,8 +15,7 @@ use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
     job_name: &str,
-    schema: &str,
-    table: &str,
+    table_name: PgOid,
     columns: Vec<String>,
     primary_key: &str,
     update_col: Option<String>,
@@ -26,6 +25,8 @@ pub fn init_table(
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: &str,
 ) -> Result<String> {
+    let table_name_str = pg_oid_to_table_name(table_name);
+
     // validate table method
     // realtime is only compatible with the join method
     if schedule == "realtime" && table_method != TableMethod::join {
@@ -33,7 +34,7 @@ pub fn init_table(
     }
 
     // get prim key type
-    let pkey_type = init::get_column_datatype(schema, table, primary_key)?;
+    let pkey_type = init::get_column_datatype(&table_name_str, primary_key)?;
     init::init_pgmq()?;
 
     let guc_configs = get_guc_configs(&transformer.source);

@@ -5,9 +5,9 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
+use crate::util::pg_oid_to_table_name;
 
 use anyhow::Result;
-use pgrx::pg_sys::PgOid;
 use pgrx::prelude::*;
 use vectorize_core::types::Model;
 
@@ -26,7 +26,7 @@ fn table(
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     let model = Model::new(transformer)?;
-    let table_name_str = table_name.to_regclass()?.to_string();
+    let table_name_str = pg_oid_to_table_name(table_name);
     init_table(
         job_name,
         &table_name_str,

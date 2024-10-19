@@ -1,9 +1,11 @@
 use anyhow::Result;
+use pgrx::pg_sys::{regclassout, Oid};
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
 use std::env;
+use std::ffi::CStr;
 use url::{ParseError, Url};
 
 use crate::guc;
@@ -192,6 +194,13 @@ pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
             let url = Url::parse(&cfg.pg_conn_str)?;
             get_pgc_tcp_opt(url)
         }
+    }
+}
+
+pub fn pg_oid_to_table_name(oid: PgOid) -> String {
+    unsafe {
+        let regclass_cstring = regclassout(oid.value() as Oid);
+        CStr::from_ptr(regclass_cstring).to_string_lossy().into_owned()
     }
 }
 
