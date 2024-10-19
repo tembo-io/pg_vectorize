@@ -253,14 +253,14 @@ pub fn get_column_datatype(table: &str, column: &str) -> Result<String> {
     )
     .map_err(|_| {
         anyhow!(
-            "One of schema:`{}`, table:`{}`, column:`{}` does not exist.",
+            "One of table:`{}`, column:`{}` does not exist.",
             table,
             column
         )
     })?
     .ok_or_else(|| {
         anyhow!(
-            "An unknown error occurred while fetching the data type for column `{}` in `{}.{}`.",
+            "An unknown error occurred while fetching the data type for column `{}` in `{}`.",
             table,
             column
         )

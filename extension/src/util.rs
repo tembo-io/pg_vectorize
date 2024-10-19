@@ -5,7 +5,6 @@ use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
 use std::env;
-use std::ffi::CStr;
 use url::{ParseError, Url};
 
 use crate::guc;
@@ -198,12 +197,14 @@ pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
 }
 
 pub fn pg_oid_to_table_name(oid: PgOid) -> String {
-    unsafe {
-        let regclass_cstring = regclassout(oid.value() as Oid);
-        CStr::from_ptr(regclass_cstring)
-            .to_string_lossy()
-            .into_owned()
-    }
+    let query = "SELECT relname FROM pg_class WHERE oid = $1";
+    let table_name: String = Spi::get_one_with_args(
+        query, 
+        vec![(PgBuiltInOids::REGCLASSOID.oid(), oid.into_datum())]
+    )
+    .expect("Failed to fetch table name from oid")
+    .unwrap_or_else(|| panic!("Table name not found for oid: {}", oid.value()));
+    table_name
 }
 
 pub async fn ready(conn: &Pool<Postgres>) -> bool {

@@ -1,5 +1,6 @@
 use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
 
+use pgrx::pg_sys::Oid;
 use serde::{Deserialize, Serialize};
 use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
@@ -103,8 +104,7 @@ pub enum TableMethod {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, FromRow)]
 pub struct JobParams {
-    pub schema: String,
-    pub table: String,
+    pub table: PgOid,
     pub columns: Vec<String>,
     pub update_time_col: Option<String>,
     pub table_method: TableMethod,

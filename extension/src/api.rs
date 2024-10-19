@@ -5,7 +5,6 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
-use crate::util::pg_oid_to_table_name;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -26,10 +25,10 @@ fn table(
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     let model = Model::new(transformer)?;
-    let table_name_str = pg_oid_to_table_name(table_name);
+
     init_table(
         job_name,
-        &table_name_str,
+        table_name,
         columns,
         primary_key,
         Some(update_col),
@@ -100,7 +99,6 @@ fn init_rag(
     let transformer_model = Model::new(transformer)?;
     init_table(
         agent_name,
-        schema,
         table_name,
         columns,
         unique_record_id,
