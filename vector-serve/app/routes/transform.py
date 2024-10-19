@@ -69,8 +69,17 @@ def batch_transform(
 ) -> ResponseModel:
     logging.info({"batch-predict-len": len(payload.input)})
     
+    # Check if the input is empty or contains only empty strings
+    if all(not text.strip() for text in payload.input):
+        logging.warning("Received empty input.")
+        return ResponseModel(data=[], model=payload.model)  # Return empty response
+    
     # Preprocess by chunking large texts in payload.input
     chunked_input = chunk_table(payload.input, max_length=500)  # You can adjust the max_length as needed
+    if not chunked_input:
+        logging.warning("No valid chunks created from input.")
+        return ResponseModel(data=[], model=payload.model)  # Return empty response if chunking results in no data
+    
     batches = chunk_list(chunked_input, BATCH_SIZE)
     
     num_batches = len(batches)
@@ -98,10 +107,14 @@ def batch_transform(
                 sentences=batch, normalize_embeddings=payload.normalize
             ).tolist()
         )
+    
     logging.info("Completed %s batches", num_batches)
+    
+    # Construct the embedding response
     embeds = [
         Embedding(embedding=embedding, index=i) for i, embedding in enumerate(responses)
     ]
+    
     return ResponseModel(
         data=embeds,
         model=requested_model,
