@@ -200,7 +200,9 @@ pub fn get_pg_options(cfg: Config) -> Result<PgConnectOptions> {
 pub fn pg_oid_to_table_name(oid: PgOid) -> String {
     unsafe {
         let regclass_cstring = regclassout(oid.value() as Oid);
-        CStr::from_ptr(regclass_cstring).to_string_lossy().into_owned()
+        CStr::from_ptr(regclass_cstring)
+            .to_string_lossy()
+            .into_owned()
     }
 }
 
