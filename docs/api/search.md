@@ -8,11 +8,10 @@ Initialize a table for vector search. Generates embeddings and index. Creates tr
 
 ```sql
 vectorize."table"(
-    "table" TEXT,
+    "table_name" REGCLASS,
     "columns" TEXT[],
     "job_name" TEXT,
     "primary_key" TEXT,
-    "schema" TEXT DEFAULT 'public',
     "update_col" TEXT DEFAULT 'last_updated_at',
     "transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
@@ -23,12 +22,11 @@ vectorize."table"(
 
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
-| table | text | The name of the table to be initialized. |
+| table_name | regclass | The name of the table to be initialized. Automatically includes schema information. |
 | columns | text | The name of the columns that contains the content that is used for context for RAG. Multiple columns are concatenated. |
 | job_name | text | A unique name for the project. |
 | primary_key | text | The name of the column that contains the unique record id. |
 | args | json | Additional arguments for the transformer. Defaults to '{}'. |
-| schema | text | The name of the schema where the table is located. Defaults to 'public'. |
 | update_col | text | Column specifying the last time the record was updated. Required for cron-like schedule. Defaults to `last_updated_at` |
 | transformer | text | The name of the transformer to use for the embeddings. Defaults to 'text-embedding-ada-002'. |
 | index_dist_type | IndexDist | The name of index type to build. Defaults to 'pgv_hnsw_cosine'. |
