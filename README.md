@@ -131,7 +131,7 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 ```sql
 SELECT vectorize.table(
     job_name    => 'product_search_hf',
-    "table"     => 'products',
+    "table_name"     => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
     transformer => 'sentence-transformers/all-MiniLM-L6-v2',
