@@ -891,5 +891,9 @@ async fn test_drop_table_triggers_job_deletion() {
         .expect("failed to drop table");
 
     let rowcount_after = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(rowcount_after, rowcount_before - 1, "Job was not deleted after table drop");
+    assert_eq!(
+        rowcount_after,
+        rowcount_before - 1,
+        "Job was not deleted after table drop"
+    );
 }
