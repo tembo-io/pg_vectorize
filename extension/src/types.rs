@@ -1,5 +1,7 @@
 use pgrx::*;
-use vectorize_core::types::{IndexDist as CoreIndexDist, TableMethod as CoreTableMethod};
+use vectorize_core::types::{
+    IndexDist as CoreIndexDist, SimilarityAlg as CoreSimilarityAlg, TableMethod as CoreTableMethod,
+};
 
 use serde::{Deserialize, Serialize};
 pub const VECTORIZE_SCHEMA: &str = "vectorize";

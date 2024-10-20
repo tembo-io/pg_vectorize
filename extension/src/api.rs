@@ -105,7 +105,7 @@ fn init_rag(
         columns,
         unique_record_id,
         None,
-        index_dist_type,
+        index_dist_type.into(),
         &transformer_model,
         table_method.into(),
         schedule,
