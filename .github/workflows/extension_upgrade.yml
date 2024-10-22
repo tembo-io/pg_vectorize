@@ -16,7 +16,7 @@ on:
 jobs:
   test:
     name: Upgrade Test
-    runs-on: ubuntu-latest
+    runs-on:  ubuntu-24.04
     services:
       vector-serve:
         image: quay.io/tembo/vector-serve:latest
@@ -43,7 +43,7 @@ jobs:
         run: echo "CI_BRANCH=$(git name-rev --name-only HEAD)" >> $GITHUB_OUTPUT
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-15 libopenblas-dev libreadline-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
