@@ -16,7 +16,7 @@ on:
 jobs:
   test:
     name: Upgrade Test
-    runs-on: ubuntu-latest
+    runs-on:  ubuntu-24.04
     services:
       vector-serve:
         image: quay.io/tembo/vector-serve:latest
