@@ -9,8 +9,8 @@ Alternatively, `schedule => 'realtime` creates triggers on the source table and 
 Statements below would will result in new embeddings being generated either immediately (`schedule => 'realtime'`) or within the cron schedule set in the `schedule` parameter.
 
 ```sql
-INSERT INTO products (product_id, product_name, description)
-VALUES (12345, 'pizza', 'dish of Italian origin consisting of a flattened disk of bread');
+INSERT INTO products (product_id, product_name, description, product_category, price)
+VALUES (12345, 'pizza', 'dish of Italian origin consisting of a flattened disk of bread', 'food', 5.99);
 
 UPDATE products
 SET description = 'sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'
