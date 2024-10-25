@@ -25,6 +25,7 @@ nav:
       - 'examples/openai_embeddings.md'
       - 'examples/scheduling.md'
   - Model Providers: 'models/index.md'
+  - Extension Configuration: 'configuration.md'
 markdown_extensions:
 - toc:
     permalink: true
