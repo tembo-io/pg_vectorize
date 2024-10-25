@@ -23,7 +23,7 @@ SELECT pg_reload_conf();
 
 ## Changing the batch job size
 
-Text data from Postgres is transformed into embeddings via HTTP requests made from the pg_vectorize background worker. Requests are made to the specified embedding service in batch (multiple inputs per request). The number of inputs per request is determined by the `vectorize.batch_size` GUC.
+Text data stored in Postgres is transformed into embeddings via HTTP requests made from the pg_vectorize background worker. Requests are made to the specified embedding service in batch (multiple inputs per request). The number of inputs per request is determined by the `vectorize.batch_size` GUC. This has no impact on transformations that occur during `vectorize.search()`, `vectorize.encode()` and `vectorize.rag()` which are always batch size 1 since those APIs accept only a single input (the raw text query).
 
 ```sql
 ALTER SYSTEM SET vectorize.batch_size to 100;
