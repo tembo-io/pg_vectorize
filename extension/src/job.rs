@@ -8,9 +8,7 @@ use crate::util;
 use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 use vectorize_core::transformers::types::Inputs;
-use vectorize_core::types::{
-    IndexDist, JobMessage, JobParams, Model, SimilarityAlg, TableMethod, VectorizeMeta,
-};
+use vectorize_core::types::{IndexDist, JobMessage, JobParams, Model, TableMethod, VectorizeMeta};
 
 /// called by the trigger function when a table is updated
 /// handles enqueueing the embedding transform jobs

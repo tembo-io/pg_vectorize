@@ -28,6 +28,8 @@ pub static COHERE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr
 pub static PORTKEY_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static PORTKEY_VIRTUAL_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static PORTKEY_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static VOYAGE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static VOYAGE_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -175,6 +177,24 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.voyage_service_url",
+        "Base url for the Voyage AI platform",
+        "Base url for the Voyage AI platform",
+        &VOYAGE_SERVICE_URL,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_string_guc(
+        "vectorize.voyage_api_key",
+        "API Key for the Voyage AI platform",
+        "API Key for the Voyage AI platform",
+        &VOYAGE_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone
@@ -193,6 +213,8 @@ pub enum VectorizeGuc {
     PortkeyApiKey,
     PortkeyVirtualKey,
     PortkeyServiceUrl,
+    VoyageApiKey,
+    VoyageServiceUrl,
 }
 
 /// a convenience function to get this project's GUCs
@@ -211,6 +233,8 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::PortkeyApiKey => PORTKEY_API_KEY.get(),
         VectorizeGuc::PortkeyVirtualKey => PORTKEY_VIRTUAL_KEY.get(),
         VectorizeGuc::PortkeyServiceUrl => PORTKEY_SERVICE_URL.get(),
+        VectorizeGuc::VoyageApiKey => VOYAGE_API_KEY.get(),
+        VectorizeGuc::VoyageServiceUrl => VOYAGE_SERVICE_URL.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
@@ -272,6 +296,11 @@ pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {
             api_key: get_guc(VectorizeGuc::PortkeyApiKey),
             service_url: get_guc(VectorizeGuc::PortkeyServiceUrl),
             virtual_key: get_guc(VectorizeGuc::PortkeyVirtualKey),
+        },
+        ModelSource::Voyage => ModelGucConfig {
+            api_key: get_guc(VectorizeGuc::VoyageApiKey),
+            service_url: get_guc(VectorizeGuc::VoyageServiceUrl),
+            virtual_key: None,
         },
     }
 }
