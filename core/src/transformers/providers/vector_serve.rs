@@ -128,7 +128,7 @@ mod integration_tests {
         );
         assert!(
             embeddings.embeddings[0].len() == 384,
-            "Embeddings should have length 1536"
+            "Embeddings should have dimension 1536"
         );
 
         let model_dim = provider
