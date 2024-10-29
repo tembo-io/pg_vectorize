@@ -20,6 +20,24 @@ GRANT SELECT ON ALL SEQUENCES IN SCHEMA vectorize TO pg_monitor;
 ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON TABLES TO pg_monitor;
 ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON SEQUENCES TO pg_monitor;
 
+CREATE OR REPLACE FUNCTION handle_table_drop() 
+RETURNS event_trigger AS $$
+DECLARE
+    obj RECORD;
+BEGIN
+    FOR obj IN SELECT * FROM pg_event_trigger_dropped_objects() LOOP
+        IF obj.object_type = 'table' AND obj.object_schema = 'vectorize' THEN
+            DELETE FROM vectorize.job 
+            WHERE name = obj.object_name;
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE EVENT TRIGGER vectorize_job_drop_trigger
+ON sql_drop
+WHEN TAG IN ('DROP TABLE')
+EXECUTE FUNCTION handle_table_drop();
 
 INSERT INTO vectorize.prompts (prompt_type, sys_prompt, user_prompt)
 VALUES (
