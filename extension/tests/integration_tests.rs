@@ -868,7 +868,6 @@ async fn test_drop_table_triggers_job_deletion() {
     let mut rng = rand::thread_rng();
     let test_num = rng.gen_range(1..100000);
     let test_table_name = format!("drop_test_table_{}", test_num);
-    let job_name = format!("job_{}", test_num);
 
     common::init_test_table(&test_table_name, &conn).await;
 
@@ -881,19 +880,35 @@ async fn test_drop_table_triggers_job_deletion() {
         .await
         .expect("failed to insert job");
 
+    // Check row count in vectorize.job before dropping the table
     let rowcount_before = common::row_count("vectorize.job", &conn).await;
     assert!(rowcount_before >= 1);
 
+    // Drop the test table
     let drop_table_query = format!("DROP TABLE {test_table_name};");
     sqlx::query(&drop_table_query)
         .execute(&conn)
         .await
         .expect("failed to drop table");
 
+    // Check row count in vectorize.job after dropping the table
     let rowcount_after = common::row_count("vectorize.job", &conn).await;
     assert_eq!(
         rowcount_after,
         rowcount_before - 1,
         "Job was not deleted after table drop"
+    );
+
+    // Verify the specific job no longer exists in vectorize.job
+    let job_exists = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{test_table_name}');"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to check job existence");
+
+    assert!(
+        !job_exists,
+        "Job associated with table `{test_table_name}` was not deleted after table drop"
     );
 }
