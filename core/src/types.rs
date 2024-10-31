@@ -137,8 +137,6 @@ pub struct VectorizeMeta {
     pub name: String,
     pub index_dist_type: IndexDist,
     pub transformer: Model,
-    // search_alg and SimilarityAlg are now deprecated
-    pub search_alg: SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,

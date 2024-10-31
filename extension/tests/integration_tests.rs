@@ -166,8 +166,8 @@ async fn test_realtime_job() {
     let random_product_id = rng.gen_range(0..100000);
 
     let insert_query = format!(
-        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
-        VALUES ({random_product_id}, 'car tester', $$a product for testing car's components$$);"
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description, product_category, price)
+        VALUES ({random_product_id}, 'car tester', $$a product for testing car's components$$, 'electronics', 10.99);"
     );
 
     // insert a new row
@@ -198,8 +198,8 @@ async fn test_realtime_job() {
     let random_product_id = rng.gen_range(0..100000);
 
     let insert_query = format!(
-        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
-        VALUES ({random_product_id}, 'messy-product', $DELIM$the $$quick brown fox jump's over the lazy dog$DELIM$);"
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description, product_category, price)
+        VALUES ({random_product_id}, 'messy-product', $DELIM$the $$quick brown fox jump's over the lazy dog$DELIM$, 'product', 10.99);"
     );
 
     // insert a new row
@@ -332,8 +332,8 @@ async fn test_static() {
     let random_product_id = rng.gen_range(1..100000);
 
     let insert_query = format!(
-        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
-        VALUES ({random_product_id}, 'car tester', 'a product for testing cars');"
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description, product_category, price)
+        VALUES ({random_product_id}, 'car tester', 'a product for testing cars', 'electronics', 10.99);"
     );
 
     // insert a new row
@@ -424,8 +424,8 @@ async fn test_realtime_tabled() {
 
     // insert a new row
     let insert_query = format!(
-        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description)
-        VALUES ({random_product_id}, 'car tester', 'a product for testing cars');"
+        "INSERT INTO \"{test_table_name}\"(product_id, product_name, description, product_category, price)
+        VALUES ({random_product_id}, 'car tester', 'a product for testing cars', 'electronics', 10.99);"
     );
     let _result = sqlx::query(&insert_query)
         .execute(&conn)
