@@ -105,6 +105,12 @@ make run
 
 Once the above command is run, you will be brought into Postgres via `psql`.
 
+Run the following command inside the `psql` console to enable the extensions:
+
+```sql
+create extension vectorize cascade
+```
+
 To list out the enabled extensions, run:
 
 ```sql
