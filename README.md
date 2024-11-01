@@ -234,8 +234,9 @@ When the source text data is updated, the embeddings can be updated automaticall
 Example:
 
 ```sql
-INSERT INTO products (product_id, product_name, description)
-VALUES (12345, 'Pizza', 'Dish of Italian origin consisting of a flattened disk of bread');
+
+INSERT INTO products (product_id, product_name, description, product_category, price)
+VALUES (12345, 'pizza', 'dish of Italian origin consisting of a flattened disk of bread', 'food', 5.99);
 
 UPDATE products
 SET description = 'Sling made of fabric, rope, or netting, suspended between two or more points, used for swinging, sleeping, or resting'

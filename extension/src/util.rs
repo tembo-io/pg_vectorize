@@ -62,14 +62,12 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 }
 
 pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
-    // search_alg is now deprecated
     let query: &str = "
         SELECT 
             job_id,
             name,
             index_dist_type,
             transformer,
-            search_alg,
             params
         FROM vectorize.job
         WHERE name = $1
@@ -104,11 +102,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             .get_by_name("transformer")
             .expect("transformer column does not exist.")
             .expect("transformer column was null.");
-        // search_alg is now deprecated
-        let search_alg: String = result_row
-            .get_by_name("search_alg")
-            .expect("search_alg column does not exist.")
-            .expect("search_alg column was null.");
         let params: pgrx::JsonB = result_row
             .get_by_name("params")
             .expect("params column does not exist.")
@@ -120,8 +113,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             name,
             index_dist_type: index_dist_type.into(),
             transformer: transformer_model,
-            // search_alg is now deprecated
-            search_alg: search_alg.into(),
             params: serde_json::to_value(params).unwrap(),
             last_completion: None,
         })
