@@ -12,14 +12,19 @@ CREATE OR REPLACE FUNCTION after_drop_trigger()
 RETURNS event_trigger AS $$
 DECLARE
     dropped_table_name TEXT;
+    dropped_table_schema TEXT;
 BEGIN
-    -- Get the name of the table being dropped
-    FOR dropped_table_name IN
-        SELECT objid::regclass::text
+    -- Get the name and schema of the table being dropped
+    FOR dropped_table_name, dropped_table_schema IN
+        SELECT objid::regclass::text, nspname
         FROM pg_event_trigger_dropped_objects()
+        JOIN pg_class ON objid = pg_class.oid
+        JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
         WHERE classid = 'pg_class'::regclass
     LOOP
-        DELETE FROM vectorize.job WHERE LOWER(name) = LOWER(dropped_table_name);
+        DELETE FROM vectorize.job 
+        WHERE LOWER(params ->> 'table') = LOWER(dropped_table_name)
+          AND LOWER(params ->> 'schema') = LOWER(dropped_table_schema);
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;

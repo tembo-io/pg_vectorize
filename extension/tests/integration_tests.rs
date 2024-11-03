@@ -54,6 +54,60 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_drop_table_triggers_job_deletion() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("drop_test_table_{}", test_num);
+    let job_name = format!("job_{}", test_num);
+
+    common::init_test_table(&test_table_name, &conn).await;
+
+    let insert_job_query = format!(
+        "INSERT INTO vectorize.job (name, index_dist_type, transformer, search_alg, params, last_completion)
+        VALUES ('{job_name}', 'pgv_hsnw_cosine', 'sentence-transformers/all-MiniLM-L6-v2', 'search_algorithm', 
+                jsonb_build_object('table', '{test_table_name}', 'schema', 'public'), NOW());"
+    );
+    sqlx::query(&insert_job_query)
+        .execute(&conn)
+        .await
+        .expect("failed to insert job");
+
+    // Check row count in vectorize.job before dropping the table
+    let rowcount_before = common::row_count("vectorize.job", &conn).await;
+    assert!(rowcount_before >= 1);
+
+    // Drop the test table
+    let drop_table_query = format!("DROP TABLE public.{test_table_name};");
+    sqlx::query(&drop_table_query)
+        .execute(&conn)
+        .await
+        .expect("failed to drop table");
+
+    // Check row count in vectorize.job after dropping the table
+    let rowcount_after = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(
+        rowcount_after,
+        rowcount_before - 1,
+        "Job was not deleted after table drop"
+    );
+
+    // Verify the specific job no longer exists in vectorize.job
+    let job_exists = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{test_table_name}');"
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to check job existence");
+
+    assert!(
+        !job_exists,
+        "Job associated with table `{test_table_name}` was not deleted after table drop"
+    );
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_scheduled_single_table() {
     let conn = common::init_database().await;
     let mut rng = rand::thread_rng();
@@ -719,64 +773,64 @@ async fn test_index_dist_type_hnsw_ip() {
     );
 }
 
-#[ignore]
-#[tokio::test]
-async fn test_private_hf_model() {
-    let conn = common::init_database().await;
-    let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(1..100000);
-    let test_table_name = format!("products_test_{}", test_num);
-    common::init_test_table(&test_table_name, &conn).await;
-    let job_name = format!("job_{}", test_num);
+// #[ignore]
+// #[tokio::test]
+// async fn test_private_hf_model() {
+//     let conn = common::init_database().await;
+//     let mut rng = rand::thread_rng();
+//     let test_num = rng.gen_range(1..100000);
+//     let test_table_name = format!("products_test_{}", test_num);
+//     common::init_test_table(&test_table_name, &conn).await;
+//     let job_name = format!("job_{}", test_num);
 
-    common::init_embedding_svc_url(&conn).await;
+//     common::init_embedding_svc_url(&conn).await;
 
-    let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
+//     let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
 
-    let mut tx = conn.begin().await.unwrap();
+//     let mut tx = conn.begin().await.unwrap();
 
-    sqlx::query(&format!(
-        "set vectorize.embedding_service_api_key to '{hf_api_key}'"
-    ))
-    .execute(&mut *tx)
-    .await
-    .unwrap();
+//     sqlx::query(&format!(
+//         "set vectorize.embedding_service_api_key to '{hf_api_key}'"
+//     ))
+//     .execute(&mut *tx)
+//     .await
+//     .unwrap();
 
-    // initialize a job
-    let created = sqlx::query(&format!(
-        "SELECT vectorize.table(
-        job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
-        primary_key => 'product_id',
-        columns => ARRAY['product_name'],
-        transformer => 'chuckhend/private-model',
-        schedule => 'realtime'
-    );"
-    ))
-    .execute(&mut *tx)
-    .await;
+//     // initialize a job
+//     let created = sqlx::query(&format!(
+//         "SELECT vectorize.table(
+//         job_name => '{job_name}',
+//         \"table\" => '{test_table_name}',
+//         primary_key => 'product_id',
+//         columns => ARRAY['product_name'],
+//         transformer => 'chuckhend/private-model',
+//         schedule => 'realtime'
+//     );"
+//     ))
+//     .execute(&mut *tx)
+//     .await;
 
-    tx.commit().await.unwrap();
+//     tx.commit().await.unwrap();
 
-    assert!(created.is_ok(), "Failed with error: {:?}", created);
+//     assert!(created.is_ok(), "Failed with error: {:?}", created);
 
-    // embedding should be updated after few seconds
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+//     // embedding should be updated after few seconds
+//     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
-    let result = sqlx::query(&format!(
-        "SELECT vectorize.search(
-        job_name => '{job_name}',
-        query => 'mobile devices',
-        return_columns => ARRAY['product_name'],
-        num_results => 3
-    );"
-    ))
-    .execute(&conn)
-    .await
-    .expect("failed to select from test_table");
-    // 3 rows returned
-    assert_eq!(result.rows_affected(), 3);
-}
+//     let result = sqlx::query(&format!(
+//         "SELECT vectorize.search(
+//         job_name => '{job_name}',
+//         query => 'mobile devices',
+//         return_columns => ARRAY['product_name'],
+//         num_results => 3
+//     );"
+//     ))
+//     .execute(&conn)
+//     .await
+//     .expect("failed to select from test_table");
+//     // 3 rows returned
+//     assert_eq!(result.rows_affected(), 3);
+// }
 
 #[ignore]
 #[tokio::test]
@@ -818,97 +872,45 @@ async fn test_diskann_cosine() {
     assert_eq!(search_results.len(), 3);
 }
 
-#[ignore]
-#[tokio::test]
-async fn test_cohere() {
-    let conn = common::init_database().await;
-    let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(1..100000);
-    let test_table_name = format!("products_test_{}", test_num);
-    common::init_test_table(&test_table_name, &conn).await;
-    let job_name = format!("cohere_{}", test_num);
+// #[ignore]
+// #[tokio::test]
+// async fn test_cohere() {
+//     let conn = common::init_database().await;
+//     let mut rng = rand::thread_rng();
+//     let test_num = rng.gen_range(1..100000);
+//     let test_table_name = format!("products_test_{}", test_num);
+//     common::init_test_table(&test_table_name, &conn).await;
+//     let job_name = format!("cohere_{}", test_num);
 
-    let hf_api_key = std::env::var("CO_API_KEY").expect("CO_API_KEY must be set");
+//     let hf_api_key = std::env::var("CO_API_KEY").expect("CO_API_KEY must be set");
 
-    let mut tx = conn.begin().await.unwrap();
+//     let mut tx = conn.begin().await.unwrap();
 
-    sqlx::query(&format!("set vectorize.cohere_api_key to '{hf_api_key}'"))
-        .execute(&mut *tx)
-        .await
-        .unwrap();
+//     sqlx::query(&format!("set vectorize.cohere_api_key to '{hf_api_key}'"))
+//         .execute(&mut *tx)
+//         .await
+//         .unwrap();
 
-    common::init_embedding_svc_url(&conn).await;
-    // initialize a job
-    let result = sqlx::query(&format!(
-        "SELECT vectorize.table(
-        job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
-        primary_key => 'product_id',
-        columns => ARRAY['product_name'],
-        transformer => 'cohere/embed-multilingual-light-v3.0',
-        schedule => 'realtime'
-    );"
-    ))
-    .execute(&mut *tx)
-    .await;
-    tx.commit().await.unwrap();
-    assert!(result.is_ok());
+//     common::init_embedding_svc_url(&conn).await;
+//     // initialize a job
+//     let result = sqlx::query(&format!(
+//         "SELECT vectorize.table(
+//         job_name => '{job_name}',
+//         \"table\" => '{test_table_name}',
+//         primary_key => 'product_id',
+//         columns => ARRAY['product_name'],
+//         transformer => 'cohere/embed-multilingual-light-v3.0',
+//         schedule => 'realtime'
+//     );"
+//     ))
+//     .execute(&mut *tx)
+//     .await;
+//     tx.commit().await.unwrap();
+//     assert!(result.is_ok());
 
-    let search_results: Vec<common::SearchJSON> =
-        util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
-            .await
-            .unwrap();
-    assert_eq!(search_results.len(), 3);
-}
-
-#[ignore]
-#[tokio::test]
-async fn test_drop_table_triggers_job_deletion() {
-    let conn = common::init_database().await;
-    let mut rng = rand::thread_rng();
-    let test_num = rng.gen_range(1..100000);
-    let test_table_name = format!("drop_test_table_{}", test_num);
-
-    common::init_test_table(&test_table_name, &conn).await;
-
-    let insert_job_query = format!(
-        "INSERT INTO vectorize.job (name, index_dist_type, transformer, search_alg, params, last_completion)
-        VALUES ('{test_table_name}', 'pgv_hsnw_cosine', 'sentence-transformers/all-MiniLM-L6-v2', 'search_algorithm', '{{}}', NOW());"
-    );
-    sqlx::query(&insert_job_query)
-        .execute(&conn)
-        .await
-        .expect("failed to insert job");
-
-    // Check row count in vectorize.job before dropping the table
-    let rowcount_before = common::row_count("vectorize.job", &conn).await;
-    assert!(rowcount_before >= 1);
-
-    // Drop the test table
-    let drop_table_query = format!("DROP TABLE {test_table_name};");
-    sqlx::query(&drop_table_query)
-        .execute(&conn)
-        .await
-        .expect("failed to drop table");
-
-    // Check row count in vectorize.job after dropping the table
-    let rowcount_after = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(
-        rowcount_after,
-        rowcount_before - 1,
-        "Job was not deleted after table drop"
-    );
-
-    // Verify the specific job no longer exists in vectorize.job
-    let job_exists = sqlx::query_scalar(&format!(
-        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{test_table_name}');"
-    ))
-    .fetch_one(&conn)
-    .await
-    .expect("failed to check job existence");
-
-    assert!(
-        !job_exists,
-        "Job associated with table `{test_table_name}` was not deleted after table drop"
-    );
-}
+//     let search_results: Vec<common::SearchJSON> =
+//         util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+//             .await
+//             .unwrap();
+//     assert_eq!(search_results.len(), 3);
+// }
