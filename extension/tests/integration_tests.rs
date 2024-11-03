@@ -773,64 +773,64 @@ async fn test_index_dist_type_hnsw_ip() {
     );
 }
 
-// #[ignore]
-// #[tokio::test]
-// async fn test_private_hf_model() {
-//     let conn = common::init_database().await;
-//     let mut rng = rand::thread_rng();
-//     let test_num = rng.gen_range(1..100000);
-//     let test_table_name = format!("products_test_{}", test_num);
-//     common::init_test_table(&test_table_name, &conn).await;
-//     let job_name = format!("job_{}", test_num);
+#[ignore]
+#[tokio::test]
+async fn test_private_hf_model() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
 
-//     common::init_embedding_svc_url(&conn).await;
+    common::init_embedding_svc_url(&conn).await;
 
-//     let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
+    let hf_api_key = std::env::var("HF_API_KEY").expect("HF_API_KEY must be set");
 
-//     let mut tx = conn.begin().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
 
-//     sqlx::query(&format!(
-//         "set vectorize.embedding_service_api_key to '{hf_api_key}'"
-//     ))
-//     .execute(&mut *tx)
-//     .await
-//     .unwrap();
+    sqlx::query(&format!(
+        "set vectorize.embedding_service_api_key to '{hf_api_key}'"
+    ))
+    .execute(&mut *tx)
+    .await
+    .unwrap();
 
-//     // initialize a job
-//     let created = sqlx::query(&format!(
-//         "SELECT vectorize.table(
-//         job_name => '{job_name}',
-//         \"table\" => '{test_table_name}',
-//         primary_key => 'product_id',
-//         columns => ARRAY['product_name'],
-//         transformer => 'chuckhend/private-model',
-//         schedule => 'realtime'
-//     );"
-//     ))
-//     .execute(&mut *tx)
-//     .await;
+    // initialize a job
+    let created = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'chuckhend/private-model',
+        schedule => 'realtime'
+    );"
+    ))
+    .execute(&mut *tx)
+    .await;
 
-//     tx.commit().await.unwrap();
+    tx.commit().await.unwrap();
 
-//     assert!(created.is_ok(), "Failed with error: {:?}", created);
+    assert!(created.is_ok(), "Failed with error: {:?}", created);
 
-//     // embedding should be updated after few seconds
-//     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
-//     let result = sqlx::query(&format!(
-//         "SELECT vectorize.search(
-//         job_name => '{job_name}',
-//         query => 'mobile devices',
-//         return_columns => ARRAY['product_name'],
-//         num_results => 3
-//     );"
-//     ))
-//     .execute(&conn)
-//     .await
-//     .expect("failed to select from test_table");
-//     // 3 rows returned
-//     assert_eq!(result.rows_affected(), 3);
-// }
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.search(
+        job_name => '{job_name}',
+        query => 'mobile devices',
+        return_columns => ARRAY['product_name'],
+        num_results => 3
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to select from test_table");
+    // 3 rows returned
+    assert_eq!(result.rows_affected(), 3);
+}
 
 #[ignore]
 #[tokio::test]
@@ -872,45 +872,45 @@ async fn test_diskann_cosine() {
     assert_eq!(search_results.len(), 3);
 }
 
-// #[ignore]
-// #[tokio::test]
-// async fn test_cohere() {
-//     let conn = common::init_database().await;
-//     let mut rng = rand::thread_rng();
-//     let test_num = rng.gen_range(1..100000);
-//     let test_table_name = format!("products_test_{}", test_num);
-//     common::init_test_table(&test_table_name, &conn).await;
-//     let job_name = format!("cohere_{}", test_num);
+#[ignore]
+#[tokio::test]
+async fn test_cohere() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("cohere_{}", test_num);
 
-//     let hf_api_key = std::env::var("CO_API_KEY").expect("CO_API_KEY must be set");
+    let hf_api_key = std::env::var("CO_API_KEY").expect("CO_API_KEY must be set");
 
-//     let mut tx = conn.begin().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
 
-//     sqlx::query(&format!("set vectorize.cohere_api_key to '{hf_api_key}'"))
-//         .execute(&mut *tx)
-//         .await
-//         .unwrap();
+    sqlx::query(&format!("set vectorize.cohere_api_key to '{hf_api_key}'"))
+        .execute(&mut *tx)
+        .await
+        .unwrap();
 
-//     common::init_embedding_svc_url(&conn).await;
-//     // initialize a job
-//     let result = sqlx::query(&format!(
-//         "SELECT vectorize.table(
-//         job_name => '{job_name}',
-//         \"table\" => '{test_table_name}',
-//         primary_key => 'product_id',
-//         columns => ARRAY['product_name'],
-//         transformer => 'cohere/embed-multilingual-light-v3.0',
-//         schedule => 'realtime'
-//     );"
-//     ))
-//     .execute(&mut *tx)
-//     .await;
-//     tx.commit().await.unwrap();
-//     assert!(result.is_ok());
+    common::init_embedding_svc_url(&conn).await;
+    // initialize a job
+    let result = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'cohere/embed-multilingual-light-v3.0',
+        schedule => 'realtime'
+    );"
+    ))
+    .execute(&mut *tx)
+    .await;
+    tx.commit().await.unwrap();
+    assert!(result.is_ok());
 
-//     let search_results: Vec<common::SearchJSON> =
-//         util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
-//             .await
-//             .unwrap();
-//     assert_eq!(search_results.len(), 3);
-// }
+    let search_results: Vec<common::SearchJSON> =
+        util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .unwrap();
+    assert_eq!(search_results.len(), 3);
+}
