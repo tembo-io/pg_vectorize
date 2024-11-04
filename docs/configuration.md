@@ -17,7 +17,7 @@ All Embedding model and LLM providers can have their base URLs changed.
 For example, if you have an OpenAI compliant embedding or LLM server (such as [vLLM](https://github.com/vllm-project/vllm)), running at `https://api.myserver.com/v1`, you can change the base URL with the following SQL command:
 
 ```sql
-ALTER SYSTEM SET vectorize.openai_base_url TO 'https://api.myserver.com/v1';
+ALTER SYSTEM SET vectorize.openai_service_url TO 'https://api.myserver.com/v1';
 SELECT pg_reload_conf();
 ```
 
