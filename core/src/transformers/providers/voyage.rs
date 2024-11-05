@@ -97,25 +97,14 @@ impl EmbeddingProvider for VoyageProvider {
     }
 
     async fn model_dim(&self, model_name: &str) -> Result<u32, VectorizeError> {
-        Ok(voyager_embedding_dim(model_name) as u32)
-    }
-}
-
-pub fn voyager_embedding_dim(model_name: &str) -> i32 {
-    match model_name {
-        "voyage-3-lite" => 512,
-        "voyage-3" | "voyage-finance-2" | "voyage-multilingual-2" | "voyage-law-2" => 1024,
-        "voyage-code-2" => 1536,
-        // older models
-        "voyage-large-2" => 1536,
-        "voyage-large-2-instruct"
-        | "voyage-2"
-        | "voyage-lite-02-instruct"
-        | "voyage-02"
-        | "voyage-01"
-        | "voyage-lite-01"
-        | "voyage-lite-01-instruct" => 1024,
-        _ => 1536,
+        // determine embedding dim by generating an embedding and getting length of array
+        let req = GenericEmbeddingRequest {
+            input: vec!["hello world".to_string()],
+            model: model_name.to_string(),
+        };
+        let embedding = self.generate_embedding(&req).await?;
+        let dim = embedding.embeddings[0].len();
+        Ok(dim as u32)
     }
 }
 
@@ -148,5 +137,8 @@ mod integration_tests {
             embeddings.embeddings[0].len() == 512,
             "Embeddings should have dimension 512"
         );
+
+        let dim = provider.model_dim("voyage-3-lite").await.unwrap();
+        assert_eq!(dim, 512);
     }
 }
