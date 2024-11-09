@@ -109,6 +109,7 @@ jobs:
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           PORTKEY_VIRTUAL_KEY_OPENAI: ${{ secrets.PORTKEY_VIRTUAL_KEY_OPENAI }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
         run: |
           cd ../core && cargo test
       - name: Restore cached binaries
@@ -132,6 +133,7 @@ jobs:
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           PORTKEY_VIRTUAL_KEY_OPENAI: ${{ secrets.PORTKEY_VIRTUAL_KEY_OPENAI }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
         run: |
           echo "\q" | make run
           make test-integration

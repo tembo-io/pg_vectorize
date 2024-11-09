@@ -3,6 +3,7 @@ pub mod ollama;
 pub mod openai;
 pub mod portkey;
 pub mod vector_serve;
+pub mod voyage;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -65,6 +66,9 @@ pub fn get_provider(
             url,
             api_key,
             virtual_key,
+        ))),
+        ModelSource::Voyage => Ok(Box::new(providers::voyage::VoyageProvider::new(
+            url, api_key,
         ))),
         ModelSource::SentenceTransformers => Ok(Box::new(
             providers::vector_serve::VectorServeProvider::new(url, api_key),
