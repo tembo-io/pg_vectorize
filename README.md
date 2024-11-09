@@ -1,10 +1,29 @@
-# pg\_vectorize: A VectorDB for Postgres
+<h1 align="center">
+ <b>pg_vectorize: a VectorDB for Postgres</b>
+<br>
+
+<br/>
+  <a href="https://tembo.io"><img src="https://github.com/tembo-io/pg_vectorize/assets/15756360/34d65cba-065b-485f-84a4-76284e9def19" alt="pg_vectorize" width="368px"></a>
+
+<p align="center">
+  <div style="text-align: center;">
+    <a href="https://cloud.tembo.io/sign-up">
+      <img src="https://tembo.io/tryFreeButton.svg" alt="Tembo Cloud Try Free">
+    </a>
+  </div>
+</p>
+
+</h1>
 
 A Postgres extension that automates the transformation and orchestration of text to embeddings and provides hooks into the most popular LLMs. This allows you to perform vector search and build LLM applications on existing data with as little as two function calls.
 
 This project relies heavily on the work by [pgvector](https://github.com/pgvector/pgvector) for vector similarity search, [pgmq](https://github.com/tembo-io/pgmq) for orchestration in background workers, and [SentenceTransformers](https://huggingface.co/sentence-transformers).
 
 ---
+
+[![Static Badge](https://img.shields.io/badge/%40tembo-community?logo=slack&label=slack)](https://join.slack.com/t/tembocommunity/shared_invite/zt-277pu7chi-NHtvHWvLhHwyK0Y5Y6vTPw)
+[![PGXN version](https://badge.fury.io/pg/vectorize.svg)](https://pgxn.org/dist/vectorize/)
+[![OSSRank](https://shields.io/endpoint?url=https://ossrank.com/shield/3815)](https://ossrank.com/p/3815)
 
 `pg_vectorize` powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai/vectordb) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
 
@@ -95,7 +114,7 @@ If you want to run everything locally, including the model server, you can use D
 
 3. **Set the Embedding Service URL**
 
-   Ensure that `vectorize.embedding_service_url` is set to the local model server.
+   If you're running the vector-serve container, set the following URL as a configuration parameter in Postgres. The host may need to change from `localhost` to something else depending on where you are running the container.
 
    ```sql
    ALTER SYSTEM SET vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings';

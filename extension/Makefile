@@ -1,7 +1,7 @@
 SQLX_OFFLINE:=true
 DISTNAME = $(shell grep -m 1 '^name' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
 DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*\)",\{0,1\}/\1/')
-PG_VERSION:=17
+PG_VERSION := $(or $(PG_VERSION), 15)
 DATABASE_URL:=postgres://${USER}:${USER}@localhost:288${PG_VERSION}/postgres
 PGRX_PG_CONFIG:=$(shell cargo pgrx info pg-config pg${PG_VERSION})
 UPGRADE_FROM_VER:=0.16.0
@@ -39,7 +39,7 @@ setup.dependencies: install-pg_cron install-pgvector install-pgmq install-vector
 setup.shared_preload_libraries:
 	echo "shared_preload_libraries = 'pg_cron, vectorize'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 setup.urls:
-	echo "vectorize.embedding_service_url = 'http://localhost:3000/v1'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
+	echo "vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 	echo "vectorize.ollama_service_url = 'http://localhost:3001'" >> ~/.pgrx/data-${PG_VERSION}/postgresql.conf
 setup: setup.dependencies setup.shared_preload_libraries setup.urls
 
@@ -86,7 +86,7 @@ install-vectorscale:
 	fi; \
 	git clone https://github.com/timescale/pgvectorscale.git && \
 	cd pgvectorscale/pgvectorscale && \
-	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
+	cargo pgrx install --pg-config=${PGRX_PG_CONFIG}; \
 	cd ../.. && rm -rf pgvectorscale
 
 test-integration:
