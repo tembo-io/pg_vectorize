@@ -18,6 +18,43 @@ Before you begin, ensure you have the following tools installed on your system:
 
 **Note**: This guide assumes you are using PostgreSQL version 17. If you are using a different version, adjust the commands accordingly.
 
+## Project Structure Overview
+
+Understanding the layout of the `pg_vectorize` project will help you navigate the codebase and contribute effectively. Here's a brief overview:
+
+### `extension` Directory
+
+Contains the PostgreSQL extension code, focusing on database operations and vectorized data processing within PostgreSQL.
+
+**Key Components**:
+
+- **Job Management**: Utilities for creating and executing jobs, including background workers.
+- **Configuration Settings**: GUC settings to customize the extension's behavior (e.g., API keys, batch sizes).
+- **Triggers and Scheduling**: Defines triggers and cron jobs for automated data processing.
+- **Embedding and Search Operations**: Integrates with external AI services to generate embeddings and enables vector search capabilities.
+
+**When to Contribute Here**:
+
+- Modifying database-specific logic or background job management.
+- Working on PostgreSQL interactions with external embedding services.
+- Enhancing in-database vector search functionalities.
+
+### `core` Directory
+
+Contains core logic and abstractions that support vectorization and embedding functionalities.
+
+**Key Components**:
+
+- **Providers**: API clients and wrappers for external AI/embedding services.
+- **Data Structures**: Definitions of embeddings and related types.
+- **Embedding Processing**: Logic for handling embedding requests and responses.
+
+**When to Contribute Here**:
+
+- Adding support for new AI/embedding providers.
+- Modifying embedding generation logic.
+- Implementing enhancements that are platform-independent.
+
 ## Setting Up Your Development Environment
 
 ### 1. Initialize PGRX
@@ -105,7 +142,7 @@ Expected output:
 
 ```text
                            List of installed extensions
-   Name     | Version |   Schema   |               Description               
+   Name     | Version |   Schema   |               Description
 ------------+---------+------------+------------------------------------------
  pg_cron    | 1.6     | pg_catalog | Job scheduler for PostgreSQL
  pgmq       | 1.1.1   | pgmq       | A lightweight message queue.
@@ -126,7 +163,7 @@ SHOW vectorize.embedding_service_url;
 Expected output:
 
 ```text
- vectorize.embedding_service_url 
+ vectorize.embedding_service_url
 ---------------------------------
  http://localhost:3000/v1/embeddings
 (1 row)
@@ -157,7 +194,7 @@ SELECT * FROM products LIMIT 2;
 Expected output:
 
 ```text
- product_id | product_name |                      description                       |       last_updated_at        
+ product_id | product_name |                      description                       |       last_updated_at
 ------------+--------------+--------------------------------------------------------+------------------------------
           1 | Pencil       | Utensil used for writing and often works best on paper | 2023-07-26 17:20:43.639351
           2 | Laptop Stand | Elevated platform for laptops, enhancing ergonomics    | 2023-07-26 17:20:43.639351
@@ -181,7 +218,7 @@ SELECT vectorize.table(
 Expected output:
 
 ```text
-             table             
+             table
 -------------------------------
  Successfully created job: product_search_hf
 (1 row)
@@ -201,7 +238,7 @@ SELECT * FROM vectorize.search(
 Expected output:
 
 ```text
-               search_results               
+               search_results
 ---------------------------------------------
  {"product_id":13,"product_name":"Phone Charger","similarity_score":0.8147812194590133}
  {"product_id":6,"product_name":"Backpack","similarity_score":0.774306211384604}
@@ -211,7 +248,9 @@ Expected output:
 
 ## Accessing the Tembo Embedding Service
 
-You can explore the Tembo Embedding Service API documentation at [http://localhost:3000/docs](http://localhost:3000/docs). This service allows you to experiment with different [Hugging Face models](https://huggingface.co/models?search=sentence-transformers) for your vector searches.
+When running the Tembo Embedding Service locally, you can view its endpoints in the Swagger UI at [http://localhost:3000/docs](http://localhost:3000/docs). This UI allows you to test and interact with available endpoints directly from your browser.
+
+For the full **API documentation** for `pg_vectorize`, refer to the hosted version at [https://tembo.io/pg_vectorize/](https://tembo.io/pg_vectorize/), which includes function references, and more usage examples.
 
 ## Troubleshooting and Tips
 

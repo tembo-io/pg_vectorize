@@ -27,9 +27,7 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 
 `pg_vectorize` powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai/vectordb) on [Tembo Cloud](https://cloud.tembo.io/) and is available in all hobby tier instances.
 
-**API Documentation**: [https://tembo.io/pg\_vectorize/](https://tembo.io/pg_vectorize/)
-
-**Source**: [https://github.com/tembo-io/pg\_vectorize](https://github.com/tembo-io/pg_vectorize)
+**Source**: [https://github.com/tembo-io/pg_vectorize](https://github.com/tembo-io/pg_vectorize)
 
 ## Features
 
@@ -61,7 +59,7 @@ To get started with `pg_vectorize`, you have two main options depending on wheth
 
    - Rust and [pgrx toolchain](https://github.com/pgcentralfoundation/pgrx)
    - Postgres extensions:
-     - [pg\_cron](https://github.com/citusdata/pg_cron) ^1.5
+     - [pg_cron](https://github.com/citusdata/pg_cron) ^1.5
      - [pgmq](https://github.com/tembo-io/pgmq) ^1
      - [pgvector](https://github.com/pgvector/pgvector) ^0.5.0
 
@@ -295,3 +293,11 @@ This will produce the following output (an array of numerical values representin
 ```text
 {0.0028769304, -0.005826319, -0.0035932811, ...}
 ```
+
+## Contributing
+
+We welcome contributions from the community! If you're interested in contributing to `pg_vectorize`, please check out our [Contributing Guide](CONTRIBUTING.md). Your contributions help make this project better for everyone.
+
+## Community Support
+
+If you encounter any issues or have any questions, feel free to join our [Tembo Community Slack](https://join.slack.com/t/tembocommunity/shared_invite/zt-2u3ctm86u-XzcyL76T7o~7Mpnt6KUx1g). We're here to help!
