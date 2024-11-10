@@ -32,20 +32,19 @@ This project relies heavily on the work by [pgvector](https://github.com/pgvecto
 ## Features
 
 - Workflows for both vector search and RAG (Retrieval-Augmented Generation)
-- Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [chat-completion](https://platform.openai.com/docs/guides/chat) endpoints, and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
+- Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [text generation](https://platform.openai.com/docs/guides/text-generation) endpoints, and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
 - Automated creation of Postgres triggers to keep your embeddings up to date
 - High-level API: one function to initialize embeddings transformations, and another function to search
 
 ## Table of Contents
 
 - [Installation](#installation)
-  - [Option 1: Local Setup with Docker](#option-1-local-setup-with-docker)
-  - [Option 2: Using Online Embeddings (e.g., OpenAI)](#option-2-using-online-embeddings-eg-openai)
+  - Option 1: Local Setup with Docker
+  - Option 2: Using Online Embeddings (e.g., OpenAI)
 - [Vector Search Example](#vector-search-example)
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
 - [Direct Interaction with LLMs](#direct-interaction-with-llms)
-- [Notes](#notes)
 
 ## Installation
 

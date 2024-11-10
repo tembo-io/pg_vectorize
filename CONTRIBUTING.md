@@ -269,9 +269,3 @@ For the full **API documentation** for `pg_vectorize`, refer to the hosted versi
 ## Releases
 
 Releases for `pg_vectorize` are automated via a [GitHub workflow](https://github.com/tembo-io/pg_vectorize/blob/main/.github/workflows/extension_ci.yml). Compiled binaries are hosted at [pgt.dev](https://pgt.dev).
-
-To create a new release:
-
-1. Create a new tag following [Semantic Versioning](https://semver.org/).
-2. Create a release with the same tag name.
-3. Auto-generate release notes and add any additional details.
