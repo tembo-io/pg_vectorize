@@ -16,7 +16,7 @@ Before you begin, ensure you have the following tools installed on your system:
 
 - **psql**: Install [psql](https://www.postgresql.org/docs/current/app-psql.html), the command-line interface to PostgreSQL.
 
-**Note**: This guide assumes you are using PostgreSQL version 15. If you are using a different version, adjust the commands accordingly.
+**Note**: This guide assumes you are using PostgreSQL version 17. If you are using a different version, adjust the commands accordingly.
 
 ## Setting Up Your Development Environment
 
@@ -51,10 +51,10 @@ cd pg_vectorize/extension
 
 ### 3. Set PostgreSQL Version
 
-Export the PostgreSQL version you are using (default is 15):
+Export the PostgreSQL version you are using (default is 17):
 
 ```bash
-export PG_VERSION=15
+export PG_VERSION=17
 ```
 
 ### 4. Install Dependencies and Configure PostgreSQL
