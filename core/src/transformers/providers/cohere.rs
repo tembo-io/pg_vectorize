@@ -132,7 +132,7 @@ mod integration_tests {
         );
         assert!(
             embeddings.embeddings[0].len() == 384,
-            "Embeddings should have length 384"
+            "Embeddings should have dimension 384"
         );
     }
 }

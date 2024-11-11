@@ -54,7 +54,7 @@ export PG_VERSION=17
 
 #### 3.3. Install dependencies
 
-From within the pg_vectorize directory, run the following, which will install `pg_cron`, `pgmq`, and `pgvector`:
+From within the pg_vectorize/extension directory, run the following, which will install `pg_cron`, `pgmq`, and `pgvector`:
 
 ```bash
 make setup
@@ -71,6 +71,12 @@ make run
 #### 4.1. Check extension presence
 
 Once the above command is run, you will be brought into Postgres via `psql`.
+
+Run the following command inside the `psql` console to enable the extensions:
+
+```sql
+create extension vectorize cascade
+```
 
 To list out the enabled extensions, run:
 
