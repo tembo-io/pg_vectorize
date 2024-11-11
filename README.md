@@ -88,14 +88,14 @@ Then set the following either in postgresql.conf or as a configuration parameter
 ```sql
 -- requires restart of Postgres
 alter system set shared_preload_libraries = 'vectorize,pg_cron';
-alter system set cron.database_name = 'postgres'
+alter system set cron.database_name = 'postgres';
 ```
 
 And if you're running the vector-serve container, set the following url as a configuration parameter in Postgres.
  The host may need to change from `localhost` to something else depending on where you are running the container.
 
 ```sql
-alter system set vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
+alter system set vectorize.embedding_service_url = 'http://localhost:3000/v1';
 
 SELECT pg_reload_conf();
 ```
@@ -285,4 +285,12 @@ select vectorize.encode(
 ```text
 {0.0028769304,-0.005826319,-0.0035932811, ...}
 ```
+
+## Contributing
+
+We welcome contributions from the community! If you're interested in contributing to `pg_vectorize`, please check out our [Contributing Guide](CONTRIBUTING.md). Your contributions help make this project better for everyone.
+
+## Community Support
+
+If you encounter any issues or have any questions, feel free to join our [Tembo Community Slack](https://join.slack.com/t/tembocommunity/shared_invite/zt-2u3ctm86u-XzcyL76T7o~7Mpnt6KUx1g). We're here to help!
 
