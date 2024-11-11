@@ -34,7 +34,7 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 ## Features
 
 - Workflows for both vector search and RAG
-- Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [chat-completion](https://platform.openai.com/docs/guides/text-generation) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
+- Integrations with OpenAI's [embeddings](https://platform.openai.com/docs/guides/embeddings) and [Text-Generation](https://platform.openai.com/docs/guides/text-generation) endpoints and a self-hosted container for running [Hugging Face Sentence-Transformers](https://huggingface.co/sentence-transformers)
 - Automated creation of Postgres triggers to keep your embeddings up to date
 - High level API - one function to initialize embeddings transformations, and another function to search
 
@@ -104,7 +104,7 @@ SELECT pg_reload_conf();
 
 ## Vector Search Example
 
-Text-to-embedding transformation can be done with either Hugging Face's Sentence-Transformers or OpenAI's embeddings. The following examples use Hugging Face's Sentence-Transformers. See the project [documentation](https://tembo-io.github.io/pg_vectorize/) for OpenAI examples.
+Text-to-embedding transformation can be done with either Hugging Face's Sentence-Transformers or OpenAI's embeddings. The following examples use Hugging Face's Sentence-Transformers. See the project [documentation](https://tembo.io/pg_vectorize/examples/openai_embeddings/) for OpenAI examples.
 
 Follow the [installation](#installation) steps if you haven't already.
 
@@ -190,7 +190,7 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 ```
 
 Initialize the RAG project.
- We'll use the `sentence-transformers/all-MiniLM-L6-v2` model to generate embeddings on our source documents.
+ We'll use the `openai/text-embedding-ada-002` model to generate embeddings on our source documents.
 
 ```sql
 SELECT vectorize.init_rag(
@@ -198,7 +198,7 @@ SELECT vectorize.init_rag(
     table_name          => 'products',
     "column"            => 'context',
     unique_record_id    => 'product_id',
-    transformer         => 'sentence-transformers/all-MiniLM-L6-v2'
+    transformer         => 'openai/text-embedding-ada-002'
 );
 ```
 
