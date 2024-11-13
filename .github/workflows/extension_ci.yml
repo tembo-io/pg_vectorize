@@ -96,7 +96,7 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib libopenblas-dev libreadline-dev
       - name: Test Core
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
