@@ -78,6 +78,11 @@ jobs:
   test-core:
     needs: dependencies
     runs-on: ubuntu-24.04
+    services:
+      vector-serve:
+        image: quay.io/tembo/vector-serve:latest
+        ports:
+          - 3000:3000
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable toolchain
