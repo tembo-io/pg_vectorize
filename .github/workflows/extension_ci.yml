@@ -110,10 +110,7 @@ jobs:
   test:
     name: Run tests
     needs: dependencies
-    runs-on:
-      - self-hosted
-      - dind
-      - large-8x8
+    runs-on: ubuntu-24.04
     services:
       # Label used to access the service container
       vector-serve:
@@ -134,7 +131,7 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y libssl-dev wget build-essential pkg-config postgresql postgresql-contrib libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
