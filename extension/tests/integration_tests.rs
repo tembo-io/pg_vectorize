@@ -93,8 +93,8 @@ async fn test_drop_table_triggers_job_deletion() {
     );
 
     // Verify the specific job no longer exists in vectorize.job
-    let job_exists = sqlx::query_scalar(&format!(
-        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{test_table_name}');"
+    let job_exists: bool = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{job_name}');"
     ))
     .fetch_one(&conn)
     .await
