@@ -171,7 +171,7 @@ This is a platform that allows, for example, the input of [different sentence-tr
 To check `pgrx` logs for debugging:
 
 ```bash
-cat ~/.pgrx/15.log
+cat ~/.pgrx/17.log
 ```
 
 # Releases
