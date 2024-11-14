@@ -63,15 +63,19 @@ async fn test_drop_table_triggers_job_deletion() {
 
     common::init_test_table(&test_table_name, &conn).await;
 
-    let insert_job_query = format!(
-        "INSERT INTO vectorize.job (name, index_dist_type, transformer, search_alg, params, last_completion)
-        VALUES ('{job_name}', 'pgv_hsnw_cosine', 'sentence-transformers/all-MiniLM-L6-v2', 'search_algorithm', 
-                jsonb_build_object('table', '{test_table_name}', 'schema', 'public'), NOW());"
+    let create_job_query = format!(
+        "SELECT vectorize.table(
+            job_name => '{job_name}',
+            \"table\" => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['product_name'],
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2'
+        );"
     );
-    sqlx::query(&insert_job_query)
+    sqlx::query(&create_job_query)
         .execute(&conn)
         .await
-        .expect("failed to insert job");
+        .expect("failed to create job");
 
     // Check row count in vectorize.job before dropping the table
     let rowcount_before = common::row_count("vectorize.job", &conn).await;
@@ -93,8 +97,8 @@ async fn test_drop_table_triggers_job_deletion() {
     );
 
     // Verify the specific job no longer exists in vectorize.job
-    let job_exists = sqlx::query_scalar(&format!(
-        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{test_table_name}');"
+    let job_exists:bool = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{job_name}');"
     ))
     .fetch_one(&conn)
     .await
