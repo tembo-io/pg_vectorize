@@ -81,8 +81,8 @@ async fn test_drop_table_triggers_job_deletion() {
     let rowcount_before = common::row_count("vectorize.job", &conn).await;
     assert!(rowcount_before >= 1);
 
-    // Drop the test table
-    let drop_table_query = format!("DROP TABLE public.{test_table_name};");
+    // Drop the test table with CASCADE to remove dependencies
+    let drop_table_query = format!("DROP TABLE public.{test_table_name} CASCADE;");
     sqlx::query(&drop_table_query)
         .execute(&conn)
         .await
