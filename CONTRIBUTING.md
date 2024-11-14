@@ -109,32 +109,6 @@ SHOW vectorize.embedding_service_url;
 (1 row)
 ```
 
-Say, for example, instead of local host, `vector-serve:3000` was the target?
-Should you desire to change this from within Postgre, simply run:
-
-```
-ALTER SYSTEM SET vectorize.embedding_service_url TO 'http://vector-serve:3000/v1';
-```
-
-Making changes such as this requires the following to be run:
-
-```sql
-SELECT pg_reload_conf();
-```
-
-Running the earlier SHOW command should reveal the appropriate change:
-
-```sql
-SHOW vectorize.embedding_service_url;
-```
-
-```text
-   vectorize.embedding_service_url
--------------------------------------
- http://vector-serve:3000/v1
-(1 row)
-```
-
 #### 4.3. Load example data
 
 The following can be found within the this project's README, under [Vector Search Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#vector-search-example).
