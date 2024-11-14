@@ -190,7 +190,7 @@ ADD COLUMN context TEXT GENERATED ALWAYS AS (product_name || ': ' || description
 ```
 
 Initialize the RAG project.
- We'll use the `openai/text-embedding-ada-002` model to generate embeddings on our source documents.
+ We'll use the `openai/text-embedding-3-small` model to generate embeddings on our source documents.
 
 ```sql
 SELECT vectorize.init_rag(
@@ -198,7 +198,7 @@ SELECT vectorize.init_rag(
     table_name          => 'products',
     "column"            => 'context',
     unique_record_id    => 'product_id',
-    transformer         => 'openai/text-embedding-ada-002'
+    transformer         => 'openai/text-embedding-3-small'
 );
 ```
 

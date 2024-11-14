@@ -44,15 +44,7 @@ git clone https://github.com/tembo-io/pg_vectorize.git
 cd pg_vectorize/extension
 ```
 
-#### 3.2. Set PostgresSQL Version
-
-Export the PostgresSQL version you want to use(default is 17):
-
-```bash
-export PG_VERSION=17
-```
-
-#### 3.3. Install dependencies
+#### 3.2. Install dependencies
 
 From within the pg_vectorize/extension directory, run the following, which will install `pg_cron`, `pgmq`, and `pgvector`:
 
@@ -60,7 +52,7 @@ From within the pg_vectorize/extension directory, run the following, which will 
 make setup
 ```
 
-#### 3.4. Compile and run `pg_vectorize`
+#### 3.3. Compile and run `pg_vectorize`
 
 ```bash
 make run
@@ -91,7 +83,7 @@ To list out the enabled extensions, run:
  pgmq       | 1.1.1   | pgmq       | A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.
  plpgsql    | 1.0     | pg_catalog | PL/pgSQL procedural language
  vector     | 0.6.0   | public     | vector data type and ivfflat and hnsw access methods
- vectorize  | 0.10.1  | vectorize  | The simplest way to do vector search on Postgres
+ vectorize  | 0.19.1  | vectorize  | The simplest way to do vector search on Postgres
 (6 rows)
 ```
 
@@ -113,7 +105,7 @@ SHOW vectorize.embedding_service_url;
 
 The following can be found within the this project's README, under [Vector Search Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#vector-search-example).
 
-Begin by creating a `producs` table with the dataset that comes included with `pg_vectorize`.
+Begin by creating a `products` table with the dataset that comes included with `pg_vectorize`.
 
 ```sql
 CREATE TABLE products (LIKE vectorize.example_products INCLUDING ALL);
@@ -173,6 +165,14 @@ num_results => 3
 
 Once all of the following is complete, you should be able to access Swagger UI for `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs) and explore.
 This is a platform that allows, for example, the input of [different sentence-transformers models](https://huggingface.co/models?sort=trending&search=sentence-transformers) from Hugging Face.
+
+## TroubleShooting
+
+To check `pgrx` logs for debugging:
+
+```bash
+cat ~/.pgrx/15.log
+```
 
 # Releases
 
