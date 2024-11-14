@@ -83,7 +83,7 @@ To list out the enabled extensions, run:
  pgmq       | 1.1.1   | pgmq       | A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.
  plpgsql    | 1.0     | pg_catalog | PL/pgSQL procedural language
  vector     | 0.6.0   | public     | vector data type and ivfflat and hnsw access methods
- vectorize  | 0.19.1  | vectorize  | The simplest way to do vector search on Postgres
+ vectorize  | 0.19.0  | vectorize  | The simplest way to do vector search on Postgres
 (6 rows)
 ```
 
