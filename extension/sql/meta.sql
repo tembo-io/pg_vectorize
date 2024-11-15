@@ -26,9 +26,10 @@ DECLARE
     obj RECORD;
 BEGIN
     FOR obj IN SELECT * FROM pg_event_trigger_dropped_objects() LOOP
-        IF obj.object_type = 'table' AND obj.object_schema = 'vectorize' THEN
+        IF obj.object_type = 'table' THEN
             DELETE FROM vectorize.job 
-            WHERE name = obj.object_name;
+            WHERE params ->> 'table' = obj.object_name 
+            AND params ->> 'schema' = obj.object_schema;
         END IF;
     END LOOP;
 END;
