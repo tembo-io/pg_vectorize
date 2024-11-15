@@ -860,3 +860,55 @@ async fn test_cohere() {
             .unwrap();
     assert_eq!(search_results.len(), 3);
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_event_trigger_on_table_drop() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    let job_name = format!("job_{}", test_num);
+
+    // Initialize the test table and job
+    common::init_test_table(&test_table_name, &conn).await;
+    common::init_embedding_svc_url(&conn).await;
+
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to initialize vectorize job");
+
+    let job_count_before = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(job_count_before, 1);
+
+    // Drop the test table
+    let drop_result = sqlx::query(&format!("DROP TABLE {test_table_name};"))
+        .execute(&conn)
+        .await;
+    assert!(drop_result.is_ok(), "Failed to drop the test table");
+
+    // Verify the job entry is removed from the vectorize.job table
+    let job_count_after = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(job_count_after, 0, "Job entry was not removed after table drop");
+
+    // Attempt to drop a non-associated table and verify no action is taken
+    let unrelated_table_name = format!("unrelated_test_{}", test_num);
+    common::init_test_table(&unrelated_table_name, &conn).await;
+    let _ = sqlx::query(&format!("DROP TABLE {unrelated_table_name};"))
+        .execute(&conn)
+        .await
+        .expect("Failed to drop the unrelated test table");
+
+    // Ensure vectorize.job is unaffected
+    let final_job_count = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(final_job_count, 0, "vectorize.job should remain unaffected by unrelated table drops");
+}
