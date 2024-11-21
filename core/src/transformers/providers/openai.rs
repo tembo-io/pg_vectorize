@@ -136,13 +136,21 @@ impl OpenAIProvider {
         &self,
         model_name: String,
         messages: &[ChatMessageRequest],
+        args: serde_json::Value,
     ) -> Result<String, VectorizeError> {
         let client = Client::new();
         let chat_url = format!("{}/chat/completions", self.url);
-        let message = serde_json::json!({
+        let mut message = serde_json::json!({
             "model": model_name,
             "messages": messages,
         });
+
+        if let Some(map) = args.as_object() {
+            for (key, value) in map {
+                message[key] = value.clone();
+            }
+        }
+
         let response = client
             .post(&chat_url)
             .timeout(std::time::Duration::from_secs(120_u64))

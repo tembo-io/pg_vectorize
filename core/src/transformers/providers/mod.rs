@@ -30,6 +30,7 @@ pub trait EmbeddingProvider {
 pub struct GenericEmbeddingRequest {
     pub input: Vec<String>,
     pub model: String,
+    //pub args: serde_json::Value
 }
 
 #[derive(Deserialize, Debug)]
@@ -40,7 +41,9 @@ pub struct GenericEmbeddingResponse {
 pub fn prepare_generic_embedding_request(
     model: &Model,
     inputs: &[Inputs],
+    //args: Option<serde_json::Value>,
 ) -> GenericEmbeddingRequest {
+    //let args = args.unwrap_or_else(|| serde_json::json!({}));
     let text_inputs = providers::openai::trim_inputs(inputs);
 
     GenericEmbeddingRequest {

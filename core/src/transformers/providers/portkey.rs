@@ -105,12 +105,18 @@ impl PortkeyProvider {
         &self,
         model_name: String,
         messages: &[ChatMessageRequest],
+        args: serde_json::Value,
     ) -> Result<String, VectorizeError> {
         let client = Client::new();
-        let message = serde_json::json!({
+        let mut message = serde_json::json!({
             "model": model_name,
             "messages": messages,
         });
+        if let Some(map) = message.as_object_mut() {
+            if let Some(args_map) = args.as_object() {
+                map.extend(args_map.clone());
+            }
+        }
         let chat_url = format!("{}/chat/completions", self.url);
         let response = client
             .post(&chat_url)
@@ -164,8 +170,13 @@ mod portkey_integration_tests {
             role: "user".to_string(),
             content: "hello world".to_string(),
         };
+        let args = serde_json::json!({
+            "temperature": 0.7,
+            "max_tokens": 100,
+            "top_p": 0.9
+        });
         let response = provider
-            .generate_response("gpt-3.5-turbo".to_string(), &[chatmessage])
+            .generate_response("gpt-3.5-turbo".to_string(), &[chatmessage], args)
             .await
             .unwrap();
         assert!(!response.is_empty(), "Response should not be empty");

@@ -9,7 +9,12 @@ use vectorize_core::transformers::providers::{self, prepare_generic_embedding_re
 use vectorize_core::transformers::types::Inputs;
 use vectorize_core::types::Model;
 
-pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> Vec<Vec<f64>> {
+pub fn transform(
+    input: &str,
+    transformer: &Model,
+    api_key: Option<String>,
+    args: serde_json::Value,
+) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
         .enable_time()
@@ -35,7 +40,10 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
         inputs: input.to_string(),
         token_estimate: 0,
     };
-    let embedding_request = prepare_generic_embedding_request(transformer, &[input]);
+    let embedding_request = prepare_generic_embedding_request(
+        transformer,
+        &[input], //args
+    );
     match runtime.block_on(async { provider.generate_embedding(&embedding_request).await }) {
         Ok(e) => e.embeddings,
         Err(e) => {

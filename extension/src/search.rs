@@ -187,6 +187,7 @@ pub fn search(
     return_columns: Vec<String>,
     num_results: i32,
     where_clause: Option<String>,
+    args: serde_json::Value,
 ) -> Result<Vec<pgrx::JsonB>> {
     let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(
@@ -202,7 +203,7 @@ pub fn search(
         // if not, use the one from the project metadata
         None => proj_params.api_key.clone(),
     };
-    let embeddings = transform(query, &project_meta.transformer, proj_api_key);
+    let embeddings = transform(query, &project_meta.transformer, proj_api_key, args);
 
     match project_meta.index_dist_type {
         types::IndexDist::pgv_hnsw_l2 => error!("Not implemented."),

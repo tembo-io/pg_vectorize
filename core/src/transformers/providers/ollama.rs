@@ -4,6 +4,7 @@ use super::{
 use crate::errors::VectorizeError;
 use async_trait::async_trait;
 use ollama_rs::{
+    generation::options::GenerationOptions,
     generation::completion::request::GenerationRequest,
     generation::embeddings::request::{EmbeddingsInput, GenerateEmbeddingsRequest},
     Ollama,
@@ -78,13 +79,16 @@ impl OllamaProvider {
         &self,
         model_name: String,
         prompt_text: &[ChatMessageRequest],
+        args: serde_json::Value,
     ) -> Result<String, VectorizeError> {
         let single_prompt: String = prompt_text
             .iter()
             .map(|x| x.content.clone())
             .collect::<Vec<String>>()
             .join("\n\n");
-        let req = GenerationRequest::new(model_name, single_prompt.to_owned());
+        let options: GenerationOptions = serde_json::from_value(args)
+            .map_err(|e| VectorizeError::OllamaError(e.into()))?;
+        let req = GenerationRequest::new(model_name, single_prompt.to_owned()).options(options);
         let res = self.instance.generate(req).await?;
         Ok(res.response)
     }

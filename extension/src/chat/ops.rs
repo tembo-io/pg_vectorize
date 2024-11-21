@@ -24,6 +24,7 @@ pub fn call_chat(
     api_key: Option<String>,
     num_context: i32,
     force_trim: bool,
+    args: serde_json::Value,
 ) -> Result<ChatResponse> {
     // get job metadata
     let project_meta: VectorizeMeta = get_vectorize_meta_spi(agent_name)?;
@@ -67,6 +68,7 @@ pub fn call_chat(
         columns,
         num_context,
         None,
+        args.clone(),
     )?;
 
     let mut search_results: Vec<ContextualSearch> = Vec::new();
@@ -127,7 +129,8 @@ pub fn call_chat(
 
     // http request to chat completions
     let guc_configs = guc::get_guc_configs(&chat_model.source);
-    let chat_response = call_chat_completions(rendered_prompt, chat_model, &guc_configs)?;
+    let chat_response =
+        call_chat_completions(rendered_prompt, chat_model, &guc_configs, args.clone())?;
 
     Ok(ChatResponse {
         context: search_results,
@@ -149,6 +152,7 @@ pub fn call_chat_completions(
     prompts: RenderedPrompt,
     model: &Model,
     guc_configs: &guc::ModelGucConfig,
+    args: serde_json::Value,
 ) -> Result<String> {
     let messages = vec![
         ChatMessageRequest {
@@ -174,7 +178,7 @@ pub fn call_chat_completions(
                     guc_configs.api_key.clone(),
                 );
                 provider
-                    .generate_response(model.api_name(), &messages)
+                    .generate_response(model.api_name(), &messages, args.clone())
                     .await
             }
             ModelSource::Portkey => {
@@ -184,13 +188,13 @@ pub fn call_chat_completions(
                     guc_configs.virtual_key.clone(),
                 );
                 provider
-                    .generate_response(model.api_name(), &messages)
+                    .generate_response(model.api_name(), &messages, args.clone())
                     .await
             }
             ModelSource::Ollama => {
                 let provider = OllamaProvider::new(guc_configs.service_url.clone());
                 provider
-                    .generate_response(model.api_name(), &messages)
+                    .generate_response(model.api_name(), &messages, args.clone())
                     .await
             }
             ModelSource::SentenceTransformers | ModelSource::Cohere | ModelSource::Voyage => {

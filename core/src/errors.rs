@@ -27,4 +27,5 @@ pub enum VectorizeError {
     ModelNotFound(String),
     #[error("ollama error: {0}")]
     OllamaError(#[from] OllamaError),
+    // need to add a error here
 }
