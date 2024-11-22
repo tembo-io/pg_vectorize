@@ -42,7 +42,8 @@ pub fn transform(
     };
     let embedding_request = prepare_generic_embedding_request(
         transformer,
-        &[input], //args
+        &[input], 
+        &args,
     );
     match runtime.block_on(async { provider.generate_embedding(&embedding_request).await }) {
         Ok(e) => e.embeddings,

@@ -8,6 +8,7 @@ pub mod voyage;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use super::types::Inputs;
 use crate::errors::VectorizeError;
@@ -30,7 +31,8 @@ pub trait EmbeddingProvider {
 pub struct GenericEmbeddingRequest {
     pub input: Vec<String>,
     pub model: String,
-    //pub args: serde_json::Value
+    #[serde(default)] 
+    pub params: Value,
 }
 
 #[derive(Deserialize, Debug)]
@@ -41,14 +43,14 @@ pub struct GenericEmbeddingResponse {
 pub fn prepare_generic_embedding_request(
     model: &Model,
     inputs: &[Inputs],
-    //args: Option<serde_json::Value>,
+    params: &Value,
 ) -> GenericEmbeddingRequest {
-    //let args = args.unwrap_or_else(|| serde_json::json!({}));
     let text_inputs = providers::openai::trim_inputs(inputs);
 
     GenericEmbeddingRequest {
         input: text_inputs,
         model: model.api_name(),
+        params: params.clone(),
     }
 }
 

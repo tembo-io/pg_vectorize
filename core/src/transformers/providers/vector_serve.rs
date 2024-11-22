@@ -115,6 +115,7 @@ mod integration_tests {
         let request = GenericEmbeddingRequest {
             model: "sentence-transformers/all-MiniLM-L6-v2".to_string(),
             input: vec!["hello world".to_string()],
+            params: serde_json::json!({}),
         };
 
         let embeddings = provider.generate_embedding(&request).await.unwrap();

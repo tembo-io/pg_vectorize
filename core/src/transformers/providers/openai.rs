@@ -197,6 +197,9 @@ mod integration_tests {
         let request = GenericEmbeddingRequest {
             model: "text-embedding-ada-002".to_string(),
             input: vec!["hello world".to_string()],
+            params: serde_json::json!({
+                "dimensions": 512
+            }),
         };
 
         let embeddings = provider.generate_embedding(&request).await.unwrap();

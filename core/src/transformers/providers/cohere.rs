@@ -119,6 +119,7 @@ mod integration_tests {
         let request = GenericEmbeddingRequest {
             model: "embed-english-light-v3.0".to_string(),
             input: vec!["hello world".to_string()],
+            params: serde_json::json!({}),
         };
 
         let embeddings = provider.generate_embedding(&request).await.unwrap();

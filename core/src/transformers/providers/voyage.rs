@@ -101,6 +101,7 @@ impl EmbeddingProvider for VoyageProvider {
         let req = GenericEmbeddingRequest {
             input: vec!["hello world".to_string()],
             model: model_name.to_string(),
+            params: serde_json::json!({}),
         };
         let embedding = self.generate_embedding(&req).await?;
         let dim = embedding.embeddings[0].len();
@@ -121,6 +122,7 @@ mod integration_tests {
         let request = GenericEmbeddingRequest {
             input: vec!["hello world".to_string()],
             model: "voyage-3-lite".to_string(),
+            params: serde_json::json!({}),
         };
 
         let embeddings = provider.generate_embedding(&request).await.unwrap();

@@ -93,6 +93,7 @@ impl EmbeddingProvider for PortkeyProvider {
         let req = GenericEmbeddingRequest {
             input: vec!["hello world".to_string()],
             model: model_name.to_string(),
+            params: serde_json::json!({}),
         };
         let embedding = self.generate_embedding(&req).await?;
         let dim = embedding.embeddings[0].len();
@@ -147,6 +148,9 @@ mod portkey_integration_tests {
         let request = GenericEmbeddingRequest {
             model: "text-embedding-ada-002".to_string(),
             input: vec!["hello world".to_string()],
+            params: serde_json::json!({
+                "dimensions": 512
+            }).into(),
         };
 
         let embeddings = provider.generate_embedding(&request).await.unwrap();

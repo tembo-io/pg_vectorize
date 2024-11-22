@@ -67,6 +67,7 @@ impl EmbeddingProvider for OllamaProvider {
         let req = GenericEmbeddingRequest {
             input: vec!["hello world".to_string()],
             model: model_name.to_string(),
+            params: serde_json::json!({}),
         };
         let embedding = self.generate_embedding(&req).await?;
         let dim = embedding.embeddings[0].len();

@@ -69,7 +69,7 @@ async fn execute_job(dbclient: Pool<Postgres>, msg: Message<types::JobMessage>) 
     let mut job_params: types::JobParams = serde_json::from_value(job_meta.params.clone())?;
 
     let embedding_request =
-        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs);
+        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs, &job_meta.params);
 
     let guc_configs: ModelGucConfig = get_guc_configs(&job_meta.transformer.source);
 

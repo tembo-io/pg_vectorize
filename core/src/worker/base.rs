@@ -108,7 +108,7 @@ async fn execute_job(
     )?;
 
     let embedding_request =
-        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs);
+        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs, &job_meta.params);
 
     let embeddings = provider.generate_embedding(&embedding_request).await?;
 
