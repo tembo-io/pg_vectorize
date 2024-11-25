@@ -162,7 +162,7 @@ jobs:
           make test-integration
 
   publish:
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
     name: trunk publish
     runs-on: ubuntu-24.04
     strategy:
