@@ -13,7 +13,7 @@ pub fn transform(
     input: &str,
     transformer: &Model,
     api_key: Option<String>,
-    args: serde_json::Value,
+    args: &Option<pgrx::JsonB>,
 ) -> Vec<Vec<f64>> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -28,6 +28,11 @@ pub fn transform(
         guc_configs.api_key
     };
 
+    let args: serde_json::Value = args
+        .as_ref()
+        .map(|jsonb| jsonb.0.clone())
+        .unwrap_or_else(|| serde_json::json!({}));
+
     let provider = providers::get_provider(
         &transformer.source,
         api_key,
@@ -40,11 +45,7 @@ pub fn transform(
         inputs: input.to_string(),
         token_estimate: 0,
     };
-    let embedding_request = prepare_generic_embedding_request(
-        transformer,
-        &[input], 
-        &args,
-    );
+    let embedding_request = prepare_generic_embedding_request(transformer, &[input], &args);
     match runtime.block_on(async { provider.generate_embedding(&embedding_request).await }) {
         Ok(e) => e.embeddings,
         Err(e) => {

@@ -187,7 +187,7 @@ pub fn search(
     return_columns: Vec<String>,
     num_results: i32,
     where_clause: Option<String>,
-    args: serde_json::Value,
+    args: &Option<pgrx::JsonB>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(

@@ -9,7 +9,6 @@ use crate::types;
 use anyhow::Result;
 use pgrx::prelude::*;
 use pgrx::JsonB;
-use serde_json::json;
 use vectorize_core::types::Model;
 
 #[allow(clippy::too_many_arguments)]
@@ -50,9 +49,8 @@ fn search(
     return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
     num_results: default!(i32, 10),
     where_sql: default!(Option<String>, "NULL"),
-    args: default!(JsonB, "NULL"),
+    args: default!(Option<JsonB>, "NULL"),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
-    let args_value: serde_json::Value = args.0;
     let search_results = search::search(
         &job_name,
         &query,
@@ -60,7 +58,7 @@ fn search(
         return_columns,
         num_results,
         where_sql,
-        args_value,
+        &args,
     )?;
     Ok(TableIterator::new(search_results.into_iter().map(|r| (r,))))
 }
@@ -70,11 +68,10 @@ fn transform_embeddings(
     input: &str,
     model_name: default!(String, "'sentence-transformers/all-MiniLM-L6-v2'"),
     api_key: default!(Option<String>, "NULL"),
-    args: default!(JsonB, "NULL"),
+    args: default!(Option<JsonB>, "NULL"),
 ) -> Result<Vec<f64>> {
     let model = Model::new(&model_name)?;
-    let args_value: serde_json::Value = args.0;
-    Ok(transform(input, &model, api_key, args_value).remove(0))
+    Ok(transform(input, &model, api_key, &args).remove(0))
 }
 
 #[pg_extern]
@@ -82,11 +79,10 @@ fn encode(
     input: &str,
     model: default!(String, "'sentence-transformers/all-MiniLM-L6-v2'"),
     api_key: default!(Option<String>, "NULL"),
-    args: default!(JsonB, "NULL"),
+    args: default!(Option<JsonB>, "NULL"),
 ) -> Result<Vec<f64>> {
     let model = Model::new(&model)?;
-    let args_value: serde_json::Value = args.0;
-    Ok(transform(input, &model, api_key, args_value).remove(0))
+    Ok(transform(input, &model, api_key, &args).remove(0))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -134,10 +130,9 @@ fn rag(
     num_context: default!(i32, 2),
     // truncates context to fit the model's context window
     force_trim: default!(bool, false),
-    args: default!(JsonB, "NULL"),
+    args: default!(Option<JsonB>, "NULL"),
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
     let model = Model::new(&chat_model)?;
-    let args_value: serde_json::Value = args.0;
     let resp = call_chat(
         agent_name,
         query,
@@ -146,7 +141,7 @@ fn rag(
         api_key,
         num_context,
         force_trim,
-        args_value,
+        &args,
     )?;
     let iter = vec![(pgrx::JsonB(serde_json::to_value(resp)?),)];
     Ok(TableIterator::new(iter))
@@ -168,8 +163,7 @@ fn generate(
     if let Some(api_key) = api_key {
         guc_configs.api_key = Some(api_key);
     }
-    let args = args.map(|jsonb| jsonb.0).unwrap_or_else(|| json!({}));
-    call_chat_completions(prompt, &model, &guc_configs, args)
+    call_chat_completions(prompt, &model, &guc_configs, &args)
 }
 
 #[pg_extern]
