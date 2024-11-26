@@ -7,6 +7,34 @@ CREATE TABLE vectorize.job (
     last_completion TIMESTAMP WITH TIME ZONE
 );
 
+-- create an event trigger function to delete jobs when corresponding tables are dropped
+CREATE OR REPLACE FUNCTION after_drop_trigger()
+RETURNS event_trigger AS $$
+DECLARE
+    dropped_table_name TEXT;
+    dropped_table_schema TEXT;
+BEGIN
+    -- Get the name and schema of the table being dropped
+    FOR dropped_table_name, dropped_table_schema IN
+        SELECT objid::regclass::text, nspname
+        FROM pg_event_trigger_dropped_objects()
+        JOIN pg_class ON objid = pg_class.oid
+        JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+        WHERE classid = 'pg_class'::regclass
+    LOOP
+        DELETE FROM vectorize.job 
+        WHERE LOWER(params ->> 'table') = LOWER(dropped_table_name)
+          AND LOWER(params ->> 'schema') = LOWER(dropped_table_schema);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- create the event trigger for DROP TABLE events
+CREATE EVENT TRIGGER trg_after_drop
+ON sql_drop
+WHEN TAG IN ('DROP TABLE')
+EXECUTE FUNCTION after_drop_trigger();
+
 CREATE TABLE vectorize.prompts (
     prompt_type TEXT NOT NULL UNIQUE,
     sys_prompt TEXT NOT NULL,
