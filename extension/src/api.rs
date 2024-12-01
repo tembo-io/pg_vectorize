@@ -13,11 +13,10 @@ use vectorize_core::types::Model;
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table(
-    table: &str,
+    table_name: PgOid,
     columns: Vec<String>,
     job_name: &str,
     primary_key: &str,
-    schema: default!(&str, "'public'"),
     update_col: default!(String, "'last_updated_at'"),
     index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
     transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
@@ -26,10 +25,10 @@ fn table(
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     let model = Model::new(transformer)?;
+
     init_table(
         job_name,
-        schema,
-        table,
+        table_name,
         columns,
         primary_key,
         Some(update_col),
@@ -100,7 +99,6 @@ fn init_rag(
     let transformer_model = Model::new(transformer)?;
     init_table(
         agent_name,
-        schema,
         table_name,
         columns,
         unique_record_id,
