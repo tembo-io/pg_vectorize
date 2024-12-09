@@ -32,16 +32,10 @@ BEGIN
             schema_name := split_part(obj.object_identity, '.', 1);  
             table_name := split_part(obj.object_identity, '.', 2);  
             
-            RAISE NOTICE 'Event Trigger Fired for table drop: %, schema: %', table_name, schema_name;
-            
             -- Perform cleanup: delete the associated job from the vectorize.job table
             DELETE FROM vectorize.job
             WHERE params ->> 'table' = table_name
             AND params ->> 'schema' = schema_name;
-            
-            IF NOT FOUND THEN
-                RAISE NOTICE 'No matching job found for table: %, schema: %', table_name, schema_name;
-            END IF;
         END IF;
     END LOOP;
 END;
