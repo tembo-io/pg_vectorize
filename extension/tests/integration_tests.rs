@@ -887,18 +887,29 @@ async fn test_event_trigger_on_table_drop() {
     .await
     .expect("failed to initialize vectorize job");
 
+    // Check the job table before dropping the test table
     let job_count_before = common::row_count("vectorize.job", &conn).await;
     assert_eq!(job_count_before, 1);
 
     // Drop the test table
-    let drop_result = sqlx::query(&format!("DROP TABLE {test_table_name};"))
+    let drop_result = sqlx::query(&format!("DROP TABLE {test_table_name} CASCADE;"))
         .execute(&conn)
         .await;
     assert!(drop_result.is_ok(), "Failed to drop the test table");
 
-    // Verify the job entry is removed from the vectorize.job table
+    // Debug: Check job table after dropping the test table
     let job_count_after = common::row_count("vectorize.job", &conn).await;
     assert_eq!(job_count_after, 0, "Job entry was not removed after table drop");
+
+    // Check if the job was deleted
+    let deleted_job = sqlx::query("SELECT * FROM vectorize.job WHERE params->>'table' = $1 AND params->>'schema' = $2")
+        .bind(test_table_name)
+        .bind("public")
+        .fetch_optional(&conn)
+        .await
+        .expect("Failed to fetch job");
+
+    assert!(deleted_job.is_none(), "Job was not deleted after table drop");
 
     // Attempt to drop a non-associated table and verify no action is taken
     let unrelated_table_name = format!("unrelated_test_{}", test_num);
