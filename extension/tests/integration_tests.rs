@@ -54,6 +54,72 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_drop_table_triggers_job_deletion() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("test_table_{}", test_num);
+    let job_name = format!("job_{}", test_num);
+
+    common::init_test_table(&test_table_name, &conn).await;
+    common::init_embedding_svc_url(&conn).await;
+
+    let create_job_query = format!(
+        "SELECT vectorize.table(
+            job_name => '{job_name}',
+            \"table\" => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['product_name'],
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2'
+        );"
+    );
+    sqlx::query(&create_job_query)
+        .bind(&job_name)
+        .bind(&test_table_name)
+        .execute(&conn)
+        .await
+        .expect("failed to create job");
+    
+    // Verify the job exists before dropping the table
+    let job_count_before = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(
+        job_count_before, 1,
+        "Expected 1 job in vectorize.job, found {}",
+        job_count_before
+    );
+
+    // Drop the test table with CASCADE to remove dependencies
+    let drop_query = format!("DROP TABLE public.{test_table_name} CASCADE;");
+    sqlx::query(&drop_query)
+        .execute(&conn)
+        .await
+        .expect("Failed to drop test table");
+
+    // Check row count in vectorize.job after dropping the table
+    let job_count_after = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(
+        job_count_after, 0,
+        "Job was not deleted after dropping table"
+    );
+
+    // Verify the specific job no longer exists in vectorize.job
+    let job_exists: bool = sqlx::query_scalar(&format!(
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = $1);"
+    ))
+    .bind(&job_name)
+    .fetch_one(&conn)
+    .await
+    .expect("failed to check job existence");
+
+    assert!(
+        !job_exists,
+        "Job associated with table `{}` was not deleted",
+        test_table_name
+    );
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_scheduled_single_table() {
     let conn = common::init_database().await;
     let mut rng = rand::thread_rng();
