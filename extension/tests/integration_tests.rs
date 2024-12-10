@@ -58,10 +58,11 @@ async fn test_drop_table_triggers_job_deletion() {
     let conn = common::init_database().await;
     let mut rng = rand::thread_rng();
     let test_num = rng.gen_range(1..100000);
-    let test_table_name = format!("drop_test_table_{}", test_num);
+    let test_table_name = format!("test_table_{}", test_num);
     let job_name = format!("job_{}", test_num);
 
     common::init_test_table(&test_table_name, &conn).await;
+    common::init_embedding_svc_url(&conn).await;
 
     let create_job_query = format!(
         "SELECT vectorize.table(
@@ -73,40 +74,47 @@ async fn test_drop_table_triggers_job_deletion() {
         );"
     );
     sqlx::query(&create_job_query)
+        .bind(&job_name)
+        .bind(&test_table_name)
         .execute(&conn)
         .await
         .expect("failed to create job");
-
-    // Check row count in vectorize.job before dropping the table
-    let rowcount_before = common::row_count("vectorize.job", &conn).await;
-    assert!(rowcount_before >= 1);
+    
+    // Verify the job exists before dropping the table
+    let job_count_before = common::row_count("vectorize.job", &conn).await;
+    assert_eq!(
+        job_count_before, 1,
+        "Expected 1 job in vectorize.job, found {}",
+        job_count_before
+    );
 
     // Drop the test table with CASCADE to remove dependencies
-    let drop_table_query = format!("DROP TABLE public.{test_table_name} CASCADE;");
-    sqlx::query(&drop_table_query)
+    let drop_query = format!("DROP TABLE public.{test_table_name} CASCADE;");
+    sqlx::query(&drop_query)
         .execute(&conn)
         .await
-        .expect("failed to drop table");
+        .expect("Failed to drop test table");
 
     // Check row count in vectorize.job after dropping the table
-    let rowcount_after = common::row_count("vectorize.job", &conn).await;
+    let job_count_after = common::row_count("vectorize.job", &conn).await;
     assert_eq!(
-        rowcount_after,
-        rowcount_before - 1,
-        "Job was not deleted after table drop"
+        job_count_after, 0,
+        "Job was not deleted after dropping table"
     );
 
     // Verify the specific job no longer exists in vectorize.job
     let job_exists: bool = sqlx::query_scalar(&format!(
-        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = '{job_name}');"
+        "SELECT EXISTS (SELECT 1 FROM vectorize.job WHERE name = $1);"
     ))
+    .bind(&job_name)
     .fetch_one(&conn)
     .await
     .expect("failed to check job existence");
 
     assert!(
         !job_exists,
-        "Job associated with table `{test_table_name}` was not deleted after table drop"
+        "Job associated with table `{}` was not deleted",
+        test_table_name
     );
 }
 

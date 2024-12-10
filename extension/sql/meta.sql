@@ -7,30 +7,40 @@ CREATE TABLE vectorize.job (
     last_completion TIMESTAMP WITH TIME ZONE
 );
 
+CREATE INDEX IF NOT EXISTS idx_job_params_table_schema
+ON vectorize.job ((params ->> 'table'), (params ->> 'schema'));
+
 -- create an event trigger function to delete jobs when corresponding tables are dropped
 CREATE OR REPLACE FUNCTION after_drop_trigger()
 RETURNS event_trigger AS $$
 DECLARE
-    dropped_table_name TEXT;
-    dropped_table_schema TEXT;
+    dropped_object RECORD;
+    schema_name TEXT;
+    table_name TEXT;
 BEGIN
-    -- Get the name and schema of the table being dropped
-    FOR dropped_table_name, dropped_table_schema IN
-        SELECT objid::regclass::text, nspname
-        FROM pg_event_trigger_dropped_objects()
-        JOIN pg_class ON objid = pg_class.oid
-        JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
-        WHERE classid = 'pg_class'::regclass
-    LOOP
-        DELETE FROM vectorize.job 
-        WHERE LOWER(params ->> 'table') = LOWER(dropped_table_name)
-          AND LOWER(params ->> 'schema') = LOWER(dropped_table_schema);
+    -- Using pg_event_trigger_dropped_objects() to fetch details of dropped objects.
+    -- This function provides metadata for objects affected by the DROP event.
+    FOR dropped_object IN SELECT * FROM pg_event_trigger_dropped_objects() LOOP
+        IF dropped_object.object_type = 'table' THEN
+            schema_name := split_part(dropped_object.object_identity, '.', 1);
+            table_name := split_part(dropped_object.object_identity, '.', 2);
+            RAISE NOTICE 'Processing drop for table: %, schema: %', table_name, schema_name;
+
+        -- Delete jobs associated with the dropped table
+            DELETE FROM vectorize.job
+            WHERE params ? 'table' AND params ? 'schema'
+              AND params ->> 'table' = table_name
+              AND params ->> 'schema' = schema_name;
+            RAISE NOTICE 'Job deletion executed for table: %, schema: %', table_name, schema_name;
+        END IF;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
+DROP EVENT TRIGGER IF EXISTS vectorize_job_drop_trigger;
+
 -- create the event trigger for DROP TABLE events
-CREATE EVENT TRIGGER trg_after_drop
+CREATE EVENT TRIGGER vectorize_job_drop_trigger
 ON sql_drop
 WHEN TAG IN ('DROP TABLE')
 EXECUTE FUNCTION after_drop_trigger();
