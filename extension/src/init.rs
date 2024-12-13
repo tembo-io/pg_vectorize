@@ -236,7 +236,7 @@ fn append_embedding_column(job_name: &str, schema: &str, table: &str, col_type: 
     )
 }
 
-pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<String> {
+pub fn get_column_datatype(table: &str, column: &str) -> Result<String> {
     Spi::get_one_with_args(
         "
         SELECT data_type
@@ -247,23 +247,20 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
             AND column_name = $3    
         ",
         vec![
-            (PgBuiltInOids::TEXTOID.oid(), schema.into_datum()),
             (PgBuiltInOids::TEXTOID.oid(), table.into_datum()),
             (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
         ],
     )
     .map_err(|_| {
         anyhow!(
-            "One of schema:`{}`, table:`{}`, column:`{}` does not exist.",
-            schema,
+            "One of table:`{}`, column:`{}` does not exist.",
             table,
             column
         )
     })?
     .ok_or_else(|| {
         anyhow!(
-            "An unknown error occurred while fetching the data type for column `{}` in `{}.{}`.",
-            schema,
+            "An unknown error occurred while fetching the data type for column `{}` in `{}`.",
             table,
             column
         )
