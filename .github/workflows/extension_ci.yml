@@ -75,6 +75,38 @@ jobs:
       - name: Clippy
         run: cargo clippy
 
+  test-core:
+    runs-on: ubuntu-24.04
+    services:
+      vector-serve:
+        image: quay.io/tembo/vector-serve:latest
+        ports:
+          - 3000:3000
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "extension-test"
+          workspaces: |
+            vectorize
+          # Additional directories to cache
+          cache-directories: |
+            /home/runner/.pgrx
+      - name: Install sys dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib libopenblas-dev libreadline-dev
+      - name: Test Core
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CO_API_KEY: ${{ secrets.CO_API_KEY }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+          PORTKEY_VIRTUAL_KEY_OPENAI: ${{ secrets.PORTKEY_VIRTUAL_KEY_OPENAI }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+        run: |
+          cd ../core && cargo test
+
   test:
     name: Run tests
     needs: dependencies
@@ -103,15 +135,6 @@ jobs:
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
-      - name: Test Core
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CO_API_KEY: ${{ secrets.CO_API_KEY }}
-          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
-          PORTKEY_VIRTUAL_KEY_OPENAI: ${{ secrets.PORTKEY_VIRTUAL_KEY_OPENAI }}
-          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
-        run: |
-          cd ../core && cargo test
       - name: Restore cached binaries
         uses: actions/cache@v2
         with:
@@ -144,7 +167,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        pg-version: [14, 15, 16]
+        pg-version: [14, 15, 16, 17]
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust stable toolchain
