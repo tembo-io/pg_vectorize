@@ -5,7 +5,6 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
-use crate::util::*;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -26,21 +25,11 @@ fn table(
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
-    let chunked_table_name = format!("{}_chunked", table);
-    chunk_table(
-        table,
-        columns.clone(),
-        chunk_size.unwrap_or(1000),
-        chunk_overlap.unwrap_or(200),
-        &chunked_table_name,
-        schema,
-    )?;
-
     let model = Model::new(transformer)?;
     init_table(
         job_name,
         schema,
-        &chunked_table_name,
+        table,
         columns,
         primary_key,
         Some(update_col),
@@ -49,45 +38,6 @@ fn table(
         table_method.into(),
         schedule,
     )
-}
-
-/// Utility function to chunk the rows of a table and store them in a new table
-#[pg_extern]
-async fn chunk_table(
-    input_table: &str,
-    columns: Vec<String>,
-    chunk_size: default!(i32, 1000),
-    chunk_overlap: default!(i32, 200),
-    output_table: &str,
-    schema: default!(&str, "'public'"),
-) -> Result<String> {
-    let conn = get_pg_conn().await?;
-
-    let rows = fetch_table_rows(&conn, input_table, columns.clone(), schema).await?;
-    create_chunked_table(output_table, columns.clone(), schema)?;
-
-    for row in rows {
-        for col in &columns {
-            if let Some(text) = row.get(col) {
-                let chunks =
-                    chunking::chunk_text(text, chunk_size as usize, chunk_overlap as usize);
-                // Insert each chunk as a new row in the output table
-                for chunk in chunks {
-                    insert_chunk_into_table(
-                        output_table,
-                        chunk,
-                        row.get("primary_key").unwrap(),
-                        schema,
-                    )?;
-                }
-            }
-        }
-    }
-
-    Ok(format!(
-        "Data from {} successfully chunked into {}",
-        input_table, output_table
-    ))
 }
 
 #[pg_extern]
@@ -162,7 +112,6 @@ fn init_rag(
     )
 }
 
-/// creates a table indexed with embeddings for chat completion workloads
 /// creates a table indexed with embeddings for chat completion workloads
 #[pg_extern]
 fn rag(
