@@ -84,7 +84,7 @@ async fn test_chunk_text() {
         .fetch_all(&conn)
         .await
         .expect("failed to execute query");
-    assert_eq!(result, vec![]);
+    assert_eq!(result, Vec::<String>::new());
 
     // Test case 3: Single short input
     let query = r#"
