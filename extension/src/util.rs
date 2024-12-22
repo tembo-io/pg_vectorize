@@ -222,39 +222,6 @@ pub async fn ready(conn: &Pool<Postgres>) -> bool {
     .expect("failed")
 }
 
-/// Recursive split text based on separators
-pub fn chunk_text(text: &str, chunk_size: usize, chunk_overlap: usize) -> Vec<String> {
-    let separators = vec!["\n\n", "\n", " ", ""];
-    let mut chunks = Vec::new();
-    let mut start = 0;
-
-    while start < text.len() {
-        let mut chunk_found = false;
-
-        // Try to split the text based on the separators
-        for sep in &separators {
-            let end_pos = text[start..].find(sep).unwrap_or(text.len());
-
-            if end_pos - start >= chunk_size {
-                let chunk = &text[start..start + chunk_size].to_string();
-                chunks.push(chunk.clone());
-                start += chunk_size - chunk_overlap;
-                chunk_found = true;
-                break;
-            }
-        }
-
-        // Fallback if no suitable separator is found, chunk by size
-        if !chunk_found {
-            let end = std::cmp::min(start + chunk_size, text.len());
-            chunks.push(text[start..end].to_string());
-            start += chunk_size - chunk_overlap;
-        }
-    }
-
-    chunks
-}
-
 /// Fetch rows from a given table and schema
 pub async fn fetch_table_rows(
     conn: &Pool<Postgres>,
