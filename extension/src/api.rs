@@ -198,11 +198,14 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<&str> {
             end = std::cmp::min(start + chunk_size, text.len());
         }
         chunks.push(&text[start..end]);
-        if end >= start + chunk_size {
-            start = end.saturating_sub(chunk_overlap);
+
+        // Move the start position for the next chunk
+        start = if end > start {
+            end.saturating_sub(chunk_overlap)
         } else {
-            start = end;
+            break;
         }
     }
+
     chunks
 }
