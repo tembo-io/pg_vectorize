@@ -185,7 +185,7 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
         // Try to split the text based on the separators
         for sep in &separators {
             if let Some(pos) = text[start..end].rfind(sep) {
-                if pos > 0 {
+                if pos > 0 && pos + start <= end {
                     end = start + pos;
                     found_separator = true;
                     break;
@@ -198,8 +198,11 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
             end = std::cmp::min(start + chunk_size, text.len());
         }
         chunks.push(text[start..end].to_string());
-        start = end.saturating_sub(chunk_overlap);
+        if end >= start + chunk_size {
+            start = end.saturating_sub(chunk_overlap);
+        } else {
+            start = end;
+        }
     }
-
     chunks
 }
