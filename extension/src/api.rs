@@ -200,8 +200,8 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<&str> {
         chunks.push(&text[start..end]);
 
         // Move the start position for the next chunk
-        start = if end > start {
-            end.saturating_sub(chunk_overlap)
+        if end > start {
+            start = end.saturating_sub(chunk_overlap);
         } else {
             break;
         }
