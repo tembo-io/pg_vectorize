@@ -170,7 +170,7 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
 
 /// Recursive split text based on separators
 #[pg_extern]
-fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
+fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<&str> {
     let separators = vec!["\n\n", "\n", " ", ""];
     let chunk_size = chunk_size as usize;
     let chunk_overlap = chunk_overlap as usize;
