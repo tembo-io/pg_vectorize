@@ -197,7 +197,7 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<&str> {
         if !found_separator {
             end = std::cmp::min(start + chunk_size, text.len());
         }
-        chunks.push(text[start..end].to_string());
+        chunks.push(&text[start..end]);
         if end >= start + chunk_size {
             start = end.saturating_sub(chunk_overlap);
         } else {
