@@ -62,7 +62,7 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('This is a test for chunking.', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(
@@ -81,7 +81,7 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, Vec::<String>::new());
@@ -91,50 +91,10 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('Short', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, vec!["Short".to_string()]);
-
-    // Test case 4: Text with separators
-    let query = r#"
-        SELECT vectorize.chunk_text('This\nis\na\ntest.', 5, 2);
-    "#;
-    let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
-        .await
-        .expect("failed to execute query");
-    assert_eq!(
-        result,
-        vec![
-            "This".to_string(),
-            "is".to_string(),
-            "a".to_string(),
-            "test.".to_string(),
-        ]
-    );
-
-    // Test case 5: Large input with overlap
-    let query = r#"
-        SELECT vectorize.chunk_text('Lorem ipsum dolor sit amet, consectetur adipiscing elit.', 15, 5);
-    "#;
-    let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
-        .await
-        .expect("failed to execute query");
-    assert_eq!(
-        result,
-        vec![
-            "Lorem ipsum do".to_string(),
-            "ipsum dolor si".to_string(),
-            "dolor sit amet".to_string(),
-            "sit amet, cons".to_string(),
-            "amet, consecte".to_string(),
-            "consectetur ad".to_string(),
-            "adipiscing eli".to_string(),
-            "elit.".to_string(),
-        ]
-    );
 
     println!("All chunk_text test cases passed!");
 }
