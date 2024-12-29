@@ -6,6 +6,13 @@ from sentence_transformers import SentenceTransformer
 
 from app.metrics import ML_MODEL_COUNT
 
+LOCAL_FILES_ONLY = os.getenv("LOCAL_FILES_ONLY", "true").lower() in [
+    "true",
+    "1",
+    "t",
+    True,
+]
+
 _HF_ORG = "sentence-transformers"
 
 MODELS_TO_CACHE = [f"{_HF_ORG}/all-MiniLM-L6-v2"]
@@ -28,7 +35,9 @@ def parse_header(authorization: str) -> str | None:
 def load_model_cache(app: FastAPI) -> dict[str, SentenceTransformer]:
     model_cache = {}
     for m in MODELS_TO_CACHE:
-        model_cache[m] = SentenceTransformer(m, cache_folder=cache_dir)
+        model_cache[m] = SentenceTransformer(
+            m, cache_folder=cache_dir, local_files_only=LOCAL_FILES_ONLY
+        )
     app.state.model_cache = model_cache
 
 
