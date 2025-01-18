@@ -41,7 +41,6 @@ fn chunk_table(
     let (id_opt, text_opt): (Option<i32>, Option<String>) = Spi::get_two(&query)?;
     let rows = vec![(id_opt, text_opt)]; // Wrap in a vector if needed
 
-
     // Prepare to hold chunked rows
     let mut chunked_rows: Vec<(i32, i32, String)> = Vec::new(); // (original_id, chunk_index, chunk)
 
@@ -54,7 +53,6 @@ fn chunk_table(
                 chunked_rows.push((id, index as i32, chunk.clone())); // Add chunk index
             }
         }
-        
     }
 
     // Create output table with an additional column for chunk index
@@ -97,15 +95,8 @@ fn table(
     table_method: default!(types::TableMethod, "'join'"),
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'* * * * *'"),
-    chunk_input: default!(bool, false), // New parameter to enable chunking
-    max_chunk_size: default!(i32, 1000), // New parameter for chunk size
 ) -> Result<String> {
-    if chunk_input {
-        // Call chunk_table if chunking is enabled
-        chunk_table(table, &columns[0], max_chunk_size, "'chunked_data'")?; 
-    }
 
-    // Proceed with the original table initialization logic
     let model = Model::new(transformer)?;
     init_table(
         job_name,
