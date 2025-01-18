@@ -154,7 +154,7 @@ mod portkey_integration_tests {
         );
         assert!(
             embeddings.embeddings[0].len() == 1536,
-            "Embeddings should have length 1536"
+            "Embeddings should have dimension 1536"
         );
 
         let dim = provider.model_dim("text-embedding-ada-002").await.unwrap();

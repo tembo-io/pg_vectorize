@@ -137,8 +137,6 @@ pub struct VectorizeMeta {
     pub name: String,
     pub index_dist_type: IndexDist,
     pub transformer: Model,
-    // search_alg and SimilarityAlg are now deprecated
-    pub search_alg: SimilarityAlg,
     pub params: serde_json::Value,
     #[serde(deserialize_with = "from_tsopt")]
     pub last_completion: Option<chrono::DateTime<Utc>>,
@@ -162,6 +160,7 @@ impl Model {
             ModelSource::Tembo => self.name.clone(),
             ModelSource::Cohere => self.name.clone(),
             ModelSource::Portkey => self.name.clone(),
+            ModelSource::Voyage => self.name.clone(),
         }
     }
 }
@@ -239,6 +238,7 @@ pub enum ModelSource {
     Tembo,
     Cohere,
     Portkey,
+    Voyage,
 }
 
 impl FromStr for ModelSource {
@@ -252,6 +252,7 @@ impl FromStr for ModelSource {
             "tembo" => Ok(ModelSource::Tembo),
             "cohere" => Ok(ModelSource::Cohere),
             "portkey" => Ok(ModelSource::Portkey),
+            "voyage" => Ok(ModelSource::Voyage),
             _ => Ok(ModelSource::SentenceTransformers),
         }
     }
@@ -266,6 +267,7 @@ impl Display for ModelSource {
             ModelSource::Tembo => write!(f, "tembo"),
             ModelSource::Cohere => write!(f, "cohere"),
             ModelSource::Portkey => write!(f, "portkey"),
+            ModelSource::Voyage => write!(f, "voyage"),
         }
     }
 }
@@ -279,6 +281,7 @@ impl From<String> for ModelSource {
             "tembo" => ModelSource::Tembo,
             "cohere" => ModelSource::Cohere,
             "portkey" => ModelSource::Portkey,
+            "voyage" => ModelSource::Voyage,
             // other cases are assumed to be private sentence-transformer compatible model
             // and can be hot-loaded
             _ => ModelSource::SentenceTransformers,
@@ -298,6 +301,15 @@ mod model_tests {
         assert_eq!(model.fullname, "portkey/openai/text-embedding-ada-002");
         assert_eq!(model.name, "text-embedding-ada-002");
         assert_eq!(model.api_name(), "text-embedding-ada-002");
+    }
+
+    #[test]
+    fn test_voyage_parsing() {
+        let model = Model::new("voyage/voyage-3-lite").unwrap();
+        assert_eq!(model.source, ModelSource::Voyage);
+        assert_eq!(model.fullname, "voyage/voyage-3-lite");
+        assert_eq!(model.name, "voyage-3-lite");
+        assert_eq!(model.api_name(), "voyage-3-lite");
     }
 
     #[test]
