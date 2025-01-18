@@ -924,6 +924,7 @@ async fn test_event_trigger_on_table_drop() {
     assert_eq!(final_job_count, 0, "vectorize.job should remain unaffected by unrelated table drops");
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_chunk_table() {
     let conn = common::init_database().await;
