@@ -3,7 +3,6 @@ use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres, Row};
-use sqlx::{Pool, Postgres, Row};
 use std::env;
 use url::{ParseError, Url};
 

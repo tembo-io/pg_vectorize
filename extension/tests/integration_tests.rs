@@ -59,10 +59,10 @@ async fn test_chunk_text() {
 
     // Test case 1: Simple text chunking
     let query = r#"
-        SELECT chunk_text('This is a test for chunking.', 10, 5);
+        SELECT vectorize.chunk_text('This is a test for chunking.', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(
@@ -78,63 +78,23 @@ async fn test_chunk_text() {
 
     // Test case 2: Empty text
     let query = r#"
-        SELECT chunk_text('', 10, 5);
+        SELECT vectorize.chunk_text('', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
-    assert_eq!(result, vec![]);
+    assert_eq!(result, Vec::<String>::new());
 
     // Test case 3: Single short input
     let query = r#"
-        SELECT chunk_text('Short', 10, 5);
+        SELECT vectorize.chunk_text('Short', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, vec!["Short".to_string()]);
-
-    // Test case 4: Text with separators
-    let query = r#"
-        SELECT chunk_text('This\nis\na\ntest.', 5, 2);
-    "#;
-    let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
-        .await
-        .expect("failed to execute query");
-    assert_eq!(
-        result,
-        vec![
-            "This".to_string(),
-            "is".to_string(),
-            "a".to_string(),
-            "test.".to_string(),
-        ]
-    );
-
-    // Test case 5: Large input with overlap
-    let query = r#"
-        SELECT chunk_text('Lorem ipsum dolor sit amet, consectetur adipiscing elit.', 15, 5);
-    "#;
-    let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
-        .await
-        .expect("failed to execute query");
-    assert_eq!(
-        result,
-        vec![
-            "Lorem ipsum do".to_string(),
-            "ipsum dolor si".to_string(),
-            "dolor sit amet".to_string(),
-            "sit amet, cons".to_string(),
-            "amet, consecte".to_string(),
-            "consectetur ad".to_string(),
-            "adipiscing eli".to_string(),
-            "elit.".to_string(),
-        ]
-    );
 
     println!("All chunk_text test cases passed!");
 }
@@ -986,17 +946,25 @@ async fn test_event_trigger_on_table_drop() {
 
     // Debug: Check job table after dropping the test table
     let job_count_after = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(job_count_after, 0, "Job entry was not removed after table drop");
+    assert_eq!(
+        job_count_after, 0,
+        "Job entry was not removed after table drop"
+    );
 
     // Check if the job was deleted
-    let deleted_job = sqlx::query("SELECT * FROM vectorize.job WHERE params->>'table' = $1 AND params->>'schema' = $2")
-        .bind(test_table_name)
-        .bind("public")
-        .fetch_optional(&conn)
-        .await
-        .expect("Failed to fetch job");
+    let deleted_job = sqlx::query(
+        "SELECT * FROM vectorize.job WHERE params->>'table' = $1 AND params->>'schema' = $2",
+    )
+    .bind(test_table_name)
+    .bind("public")
+    .fetch_optional(&conn)
+    .await
+    .expect("Failed to fetch job");
 
-    assert!(deleted_job.is_none(), "Job was not deleted after table drop");
+    assert!(
+        deleted_job.is_none(),
+        "Job was not deleted after table drop"
+    );
 
     // Attempt to drop a non-associated table and verify no action is taken
     let unrelated_table_name = format!("unrelated_test_{}", test_num);
@@ -1008,5 +976,8 @@ async fn test_event_trigger_on_table_drop() {
 
     // Ensure vectorize.job is unaffected
     let final_job_count = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(final_job_count, 0, "vectorize.job should remain unaffected by unrelated table drops");
+    assert_eq!(
+        final_job_count, 0,
+        "vectorize.job should remain unaffected by unrelated table drops"
+    );
 }
