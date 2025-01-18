@@ -62,7 +62,7 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('This is a test for chunking.', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_one(&conn)
+        .fetch_all(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(
@@ -81,7 +81,7 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_one(&conn)
+        .fetch_all(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, Vec::<String>::new());
@@ -91,7 +91,7 @@ async fn test_chunk_text() {
         SELECT vectorize.chunk_text('Short', 10, 5);
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_one(&conn)
+        .fetch_all(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, vec!["Short".to_string()]);
