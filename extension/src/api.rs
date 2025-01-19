@@ -175,7 +175,7 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
     let chunk_size = chunk_size as usize;
     let chunk_overlap = chunk_overlap as usize;
 
-    let mut chunks = Vec::new();
+    let mut chunks: Vec<String> = Vec::new();
     let mut start = 0;
 
     while start < text.len() {
