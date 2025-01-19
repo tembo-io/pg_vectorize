@@ -931,6 +931,20 @@ async fn test_chunk_table() {
     let test_table_name = "chunk_test_table";
     let output_table_name = "chunked_data";
 
+    // Drop the test table if it exists
+    let drop_table_query = format!("DROP TABLE IF EXISTS {}", test_table_name);
+    sqlx::query(&drop_table_query)
+        .execute(&conn)
+        .await
+        .expect("failed to drop test table");
+
+    // Drop the output table if it exists
+    let drop_output_table_query = format!("DROP TABLE IF EXISTS {}", output_table_name);
+    sqlx::query(&drop_output_table_query)
+        .execute(&conn)
+        .await
+        .expect("failed to drop output table");
+
     // Create a test table and insert data
     let create_table_query = format!(
         "CREATE TABLE {} (id SERIAL PRIMARY KEY, text_column TEXT)",
@@ -961,17 +975,19 @@ async fn test_chunk_table() {
         .expect("failed to chunk table");
 
     // Verify the chunked data
-    let select_query = format!("SELECT * FROM {}", output_table_name);
+    let select_query = format!("SELECT original_id, chunk_index, chunk FROM {}", output_table_name);
     let rows: Vec<(i32, i32, String)> = sqlx::query_as(&select_query)
         .fetch_all(&conn)
         .await
         .expect("failed to select chunked data");
 
-    assert_eq!(rows.len(), 6);
+
+    assert_eq!(rows.len(), 7);
     assert_eq!(rows[0].2, "This is a ");
     assert_eq!(rows[1].2, "test strin");
     assert_eq!(rows[2].2, "g that wil");
     assert_eq!(rows[3].2, "l be chunk");
     assert_eq!(rows[4].2, "ed into sm");
     assert_eq!(rows[5].2, "aller piec");
+    assert_eq!(rows[6].2, "es.");
 }
