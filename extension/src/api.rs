@@ -171,41 +171,32 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
 /// Recursive split text based on separators
 #[pg_extern]
 fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
-    let separators = vec!["\n\n", "\n", " ", ""];
     let chunk_size = chunk_size as usize;
     let chunk_overlap = chunk_overlap as usize;
+
+    if text.is_empty() {
+        return Vec::new();
+    }
 
     let mut chunks: Vec<String> = Vec::new();
     let mut start = 0;
 
     while start < text.len() {
-        let mut end = std::cmp::min(start + chunk_size, text.len());
-        let mut found_separator = false;
+        let end = (start + chunk_size).min(text.len());
+        let chunk = &text[start..end];
 
-        // Try to split the text based on the separators
-        for sep in &separators {
-            if let Some(pos) = text[start..end].rfind(sep) {
-                if pos > 0 && pos + start <= end {
-                    end = start + pos + sep.len();
-                    found_separator = true;
-                    break;
-                }
-            }
-        }
-
-        // Fallback if no suitable separator is found, chunk by size
-        if !found_separator {
-            end = std::cmp::min(start + chunk_size, text.len());
-        }
-        let chunk = text[start..end].to_string();
-        chunks.push(chunk);
-
-        // Move the start position for the next chunk
-         if end >= start + chunk_size {
-            start = end.saturating_sub(chunk_overlap);
-        } else {
+        if end == text.len() {
             break;
         }
+
+        let next_start = (end.saturating_sub(1)).saturating_sub(chunk_overlap);
+
+        // Move the start position for the next chunk
+        start = if next_start > start {
+            next_start
+        } else {
+            end
+        };
     }
 
     chunks
