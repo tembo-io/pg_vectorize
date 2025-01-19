@@ -184,6 +184,7 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
     while start < text.len() {
         let end = (start + chunk_size).min(text.len());
         let chunk = &text[start..end];
+        chunks.push(chunk.to_string());
 
         if end == text.len() {
             break;
