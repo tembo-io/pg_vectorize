@@ -1,5 +1,7 @@
 # Contributing to pg_vectorize
 
+If you encounter any issues or have questions, feel free to join the [Tembo Community Slack](https://join.slack.com/t/tembocommunity/shared_invite/zt-2u3ctm86u-XzcyL76T7o~7Mpnt6KUx1g) for support.
+
 ## Prerequisites
 
 - [Rust](https://www.rust-lang.org/learn/get-started) - Toolchain including `rustc`, `cargo`, and `rustfmt`
@@ -32,52 +34,9 @@ Confirm a successful set up by running the following:
 docker ps
 ```
 
-:wrench: Note: Consider running the following to see the container logs real time:
-
-```bash
-docker logs <your-container-id> -f
-```
-
 ### 3. Clone and compile `pg_vectorize` and extension dependencies
 
-:wrench: When progressing through these steps, refer to the following for troubleshooting:
-
-```bash
-cat ~/.pgrx/15.log
-```
-
-#### 3.1. Apply configurations
-
-Prior to compiling and running `pg_vectorize`, it's essential to update the `postgresql.conf` file.
-`pgrx` uses a Postgres version-specific data directory, each containing its own `postgresql.conf` file.
-The following example, utilizes Postgres version 15.
-If you're using a different version, please alter the file path value `data-<postgres-version>` and run the following:
-
-```bash
-<your-editor> ~/.pgrx/data-15/postgresql.conf
-```
-
-Within this document, add the following:
-
-```text
-shared_preload_libraries = 'pg_cron, vectorize'
-cron.database_name = 'postgres'
-vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
-```
-
-:wrench: Note: If your machine is running a MacOS, you may need to apply the following configurations to Cargo's config file:
-
-```
-<your-editor> ~/.cargo/config
-```
-
-```text
-[target.'cfg(target_os="macos")']
-# Postgres symbols won't be available until runtime
-rustflags = ["-Clink-arg=-Wl,-undefined,dynamic_lookup"]
-```
-
-#### 3.2. Clone and enter directory
+#### 3.1. Clone and enter directory
 
 ```bash
 git clone https://github.com/tembo-io/pg_vectorize.git
@@ -85,7 +44,7 @@ git clone https://github.com/tembo-io/pg_vectorize.git
 cd pg_vectorize/extension
 ```
 
-#### 3.3. Install dependencies
+#### 3.2. Install dependencies
 
 From within the pg_vectorize/extension directory, run the following, which will install `pg_cron`, `pgmq`, and `pgvector`:
 
@@ -93,7 +52,7 @@ From within the pg_vectorize/extension directory, run the following, which will 
 make setup
 ```
 
-#### 3.4. Compile and run `pg_vectorize`
+#### 3.3. Compile and run `pg_vectorize`
 
 ```bash
 make run
@@ -124,19 +83,13 @@ To list out the enabled extensions, run:
  pgmq       | 1.1.1   | pgmq       | A lightweight message queue. Like AWS SQS and RSMQ but on Postgres.
  plpgsql    | 1.0     | pg_catalog | PL/pgSQL procedural language
  vector     | 0.6.0   | public     | vector data type and ivfflat and hnsw access methods
- vectorize  | 0.10.1  | vectorize  | The simplest way to do vector search on Postgres
+ vectorize  | 0.19.0  | vectorize  | The simplest way to do vector search on Postgres
 (6 rows)
 ```
 
 #### 4.2 Confirm embedding service url is set to localhost
 
-In section 3.1., we set the following postgresql.conf variable:
-
-```text
-vectorize.embedding_service_url = 'http://localhost:3000/v1/embeddings'
-```
-
-To confirm its success, run the following SHOW command:
+Run the following SHOW command to confirm that the url is set to `localhost`:
 
 ```sql
 SHOW vectorize.embedding_service_url;
@@ -144,41 +97,15 @@ SHOW vectorize.embedding_service_url;
 ```text
    vectorize.embedding_service_url
 -------------------------------------
- http://localhost:3000/v1/embeddings
-(1 row)
-```
-
-Say, for example, instead of local host, `vector-serve:3000` was the target?
-Should you desire to change this from within Postgre, simply run:
-
-```
-ALTER SYSTEM SET vectorize.embedding_service_url TO 'http://localhost:3000/v1/embeddings';
-```
-
-Making changes such as this requires the following to be run:
-
-```sql
-SELECT pg_reload_conf();
-```
-
-Running the earlier SHOW command should reveal the appropriate change:
-
-```sql
-SHOW vectorize.embedding_service_url;
-```
-
-```text
-   vectorize.embedding_service_url
--------------------------------------
- http://localhost:3000/v1/embeddings
+ http://localhost:3000/v1
 (1 row)
 ```
 
 #### 4.3. Load example data
 
-The following can be found within the this project's README, under [Hugging Face Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#hugging-face-example).
+The following can be found within the this project's README, under [Vector Search Example](https://github.com/tembo-io/pg_vectorize/blob/main/README.md#vector-search-example).
 
-Begin by creating a `producs` table with the dataset that comes included with `pg_vectorize`.
+Begin by creating a `products` table with the dataset that comes included with `pg_vectorize`.
 
 ```sql
 CREATE TABLE products (LIKE vectorize.example_products INCLUDING ALL);
@@ -236,8 +163,16 @@ num_results => 3
 
 ### 5. Local URL
 
-Once all of the following is complete, you should be able to visit the `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs) and explore.
+Once all of the following is complete, you should be able to access Swagger UI for `Tembo-Embedding-Service` at [http://localhost:3000/docs](http://localhost:3000/docs) and explore.
 This is a platform that allows, for example, the input of [different sentence-transformers models](https://huggingface.co/models?sort=trending&search=sentence-transformers) from Hugging Face.
+
+## TroubleShooting
+
+To check `pgrx` logs for debugging:
+
+```bash
+cat ~/.pgrx/17.log
+```
 
 # Releases
 
