@@ -190,14 +190,13 @@ fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<String> {
             break;
         }
 
-        let next_start = (end.saturating_sub(1)).saturating_sub(chunk_overlap);
+        let next_start = end.saturating_sub(chunk_overlap);
 
-        // Move the start position for the next chunk
-        start = if next_start > start {
-            next_start
+        if next_start <= start {
+            start = end;
         } else {
-            end
-        };
+            start = next_start;
+        }
     }
 
     chunks
