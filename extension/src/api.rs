@@ -5,6 +5,7 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
+use text_splitter::TextSplitter;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -168,37 +169,19 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
     env_interpolate_string(&g)
 }
 
-/// Recursive split text based on separators
+/// Splits a document into smaller chunks of text based on a maximum character limit.
+///
+/// # Example
+///
+/// ```sql
+/// -- Example usage in PostgreSQL after creating the function:
+/// SELECT vectorize.chunk_text('This is a sample text to demonstrate chunking.', 20);
+///
+/// -- Expected output:
+/// -- ["This is a sample tex", "t to demonstrate ch", "unking."]
+/// ```
 #[pg_extern]
-fn chunk_text(text: &str, chunk_size: i32, chunk_overlap: i32) -> Vec<&str> {
-    let chunk_size = chunk_size as usize;
-    let chunk_overlap = chunk_overlap as usize;
-
-    if text.is_empty() {
-        return Vec::new();
-    }
-    
-    let mut chunks = Vec::new();
-    let mut start = 0;
-
-    while start < text.len() {
-        let end = (start + chunk_size).min(text.len());
-        let chunk = &text[start..end];
-        chunks.push(chunk.to_string());
-
-        // Fallback if no suitable separator is found, chunk by size
-        if end == text.len() {
-            break;
-        }
-        let next_start = (end.saturating_sub(1)).saturating_sub(chunk_overlap);
-
-        // Move the start position for the next chunk
-        start = if next_start > start {
-            next_start
-        } else {
-            end
-        };
-    }
-
-    chunks
+fn chunk_text(document: &str, max_characters: usize) -> Vec<String> {
+    let splitter = TextSplitter::new(max_characters);
+    splitter.chunks(document).collect()
 }
