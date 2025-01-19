@@ -59,10 +59,10 @@ async fn test_chunk_text() {
 
     // Test case 1: Simple text chunking
     let query = r#"
-        SELECT vectorize.chunk_text('This is a test for chunking.', 10, 5);
+        SELECT vectorize.chunk_text('This is a test for chunking.', 10, 5)::TEXT[];
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(
@@ -78,20 +78,20 @@ async fn test_chunk_text() {
 
     // Test case 2: Empty text
     let query = r#"
-        SELECT vectorize.chunk_text('', 10, 5);
+        SELECT vectorize.chunk_text('', 10, 5)::TEXT[];
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, Vec::<String>::new());
 
     // Test case 3: Single short input
     let query = r#"
-        SELECT vectorize.chunk_text('Short', 10, 5);
+        SELECT vectorize.chunk_text('Short', 10, 5)::TEXT[];
     "#;
     let result: Vec<String> = sqlx::query_scalar(query)
-        .fetch_all(&conn)
+        .fetch_one(&conn)
         .await
         .expect("failed to execute query");
     assert_eq!(result, vec!["Short".to_string()]);
