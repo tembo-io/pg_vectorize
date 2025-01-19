@@ -185,4 +185,3 @@ fn chunk_text(document: &str, max_characters: i32) -> Vec<String> {
     let splitter = TextSplitter::new(max_characters as usize);
     splitter.chunks(document).map(|s| s.to_string()).collect()
 }
-

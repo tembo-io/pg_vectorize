@@ -120,7 +120,6 @@ async fn test_chunk_text() {
     );
 }
 
-
 #[ignore]
 #[tokio::test]
 async fn test_scheduled_single_table() {
