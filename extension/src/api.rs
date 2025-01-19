@@ -22,6 +22,13 @@ fn chunk_text(text: &str, max_chunk_size: usize) -> Vec<String> {
         start = end;
     }
 
+    // Remove any trailing empty chunk
+    if let Some(last_chunk) = chunks.last() {
+        if last_chunk.is_empty() {
+            chunks.pop();
+        }
+    }
+
     chunks
 }
 
