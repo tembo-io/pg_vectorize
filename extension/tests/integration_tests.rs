@@ -100,10 +100,10 @@ async fn test_chunk_text() {
     assert_eq!(
         result,
         vec![
-            "Lorem ipsum dolor sit amet, consectetur".to_string(),
-            "adipiscing elit. Sed do eiusmod tempor".to_string(),
-            "incididunt ut labore et dolore magna".to_string(),
-            "aliqua.".to_string(),
+            "Lorem ipsum dolor sit amet, consectetur adipiscing".to_string(),
+            "elit.".to_string(),
+            "Sed do eiusmod tempor incididunt ut labore et".to_string(),
+            "dolore magna aliqua.".to_string(),
         ]
     );
 

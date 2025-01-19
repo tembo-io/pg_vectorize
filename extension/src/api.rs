@@ -169,7 +169,7 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
     env_interpolate_string(&g)
 }
 
-/// Splits a document into smaller chunks of text based on a maximum character limit.
+/// Splits a document into smaller chunks of text based on a maximum characters
 ///
 /// # Example
 ///
@@ -181,7 +181,7 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
 /// -- ["This is a sample tex", "t to demonstrate ch", "unking."]
 /// ```
 #[pg_extern]
-fn chunk_text(document: &str, max_characters: usize) -> Vec<String> {
-    let splitter = TextSplitter::new(max_characters);
-    splitter.chunks(document).collect()
+fn chunk_text(document: &str, max_characters: i32) -> Vec<String> {
+    let splitter = TextSplitter::new(max_characters as usize);
+    splitter.chunks(document).map(|s| s.to_string()).collect()
 }
