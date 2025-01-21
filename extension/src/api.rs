@@ -36,13 +36,14 @@ fn chunk_text(text: &str, max_chunk_size: usize) -> Vec<String> {
 fn chunk_table(
     input_table: &str,
     column_name: &str,
+    primary_key: &str, // Add primary_key parameter
     max_chunk_size: default!(i32, 1000),
     output_table: default!(&str, "'chunked_data'"),
 ) -> Result<String> {
     let max_chunk_size = max_chunk_size as usize;
 
     // Retrieve rows from the input table, ensuring column existence
-    let query = format!("SELECT id, {} FROM {}", column_name, input_table);
+    let query = format!("SELECT {}, {} FROM {}", primary_key, column_name, input_table); // Use primary_key instead of hardcoding "id"
     
     // Reverting back to use get_two
     let (id_opt, text_opt): (Option<i32>, Option<String>) = Spi::get_two(&query)?;

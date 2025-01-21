@@ -964,9 +964,9 @@ async fn test_chunk_table() {
         .await
         .expect("failed to insert data into test table");
 
-    // Call the chunk_table function
+    // Call the chunk_table function with the primary key parameter
     let chunk_table_query = format!(
-        "SELECT vectorize.chunk_table('{}', 'text_column', 10, '{}')",
+        "SELECT vectorize.chunk_table('{}', 'text_column', 'id', 10, '{}')",
         test_table_name, output_table_name
     );
     sqlx::query(&chunk_table_query)
@@ -980,7 +980,6 @@ async fn test_chunk_table() {
         .fetch_all(&conn)
         .await
         .expect("failed to select chunked data");
-
 
     assert_eq!(rows.len(), 7);
     assert_eq!(rows[0].2, "This is a ");
