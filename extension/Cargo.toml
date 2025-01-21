@@ -38,6 +38,7 @@ sqlx = { version = "0.8", features = [
     "chrono",
     "json"
 ] }
+text-splitter = "0.22.0"
 thiserror = "1.0.44"
 tiktoken-rs = "0.5.7"
 tokio = {version = "1.29.1", features = ["rt-multi-thread"] }

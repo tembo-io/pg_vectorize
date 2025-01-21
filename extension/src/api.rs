@@ -5,6 +5,7 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
+use text_splitter::TextSplitter;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -244,4 +245,21 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
     )?
     .unwrap_or_else(|| panic!("no value set for guc: {guc_name}"));
     env_interpolate_string(&g)
+}
+
+/// Splits a document into smaller chunks of text based on a maximum characters
+///
+/// # Example
+///
+/// ```sql
+/// -- Example usage in PostgreSQL after creating the function:
+/// SELECT vectorize.chunk_text('This is a sample text to demonstrate chunking.', 20);
+///
+/// -- Expected output:
+/// -- ["This is a sample tex", "t to demonstrate ch", "unking."]
+/// ```
+#[pg_extern]
+fn chunk_text(document: &str, max_characters: i32) -> Vec<String> {
+    let splitter = TextSplitter::new(max_characters as usize);
+    splitter.chunks(document).map(|s| s.to_string()).collect()
 }

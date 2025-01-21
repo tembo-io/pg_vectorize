@@ -54,6 +54,74 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_chunk_text() {
+    let conn = common::init_database().await;
+
+    let query = r#"
+        SELECT vectorize.chunk_text('This is a test for chunking.', 20)::TEXT[];
+    "#;
+    let result: Vec<String> = sqlx::query_scalar(query)
+        .fetch_one(&conn)
+        .await
+        .expect("failed to execute query");
+    assert_eq!(
+        result,
+        vec!["This is a test for".to_string(), "chunking.".to_string(),]
+    );
+
+    let query = r#"
+        SELECT vectorize.chunk_text('', 20)::TEXT[];
+    "#;
+    let result: Vec<String> = sqlx::query_scalar(query)
+        .fetch_one(&conn)
+        .await
+        .expect("failed to execute query");
+    assert_eq!(result, Vec::<String>::new());
+
+    let query = r#"
+        SELECT vectorize.chunk_text('Short', 20)::TEXT[];
+    "#;
+    let result: Vec<String> = sqlx::query_scalar(query)
+        .fetch_one(&conn)
+        .await
+        .expect("failed to execute query");
+    assert_eq!(result, vec!["Short".to_string()]);
+
+    let query = r#"
+        SELECT vectorize.chunk_text(
+            'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+            50
+        )::TEXT[];
+    "#;
+    let result: Vec<String> = sqlx::query_scalar(query)
+        .fetch_one(&conn)
+        .await
+        .expect("failed to execute query");
+    assert_eq!(
+        result,
+        vec![
+            "Lorem ipsum dolor sit amet, consectetur adipiscing".to_string(),
+            "elit.".to_string(),
+            "Sed do eiusmod tempor incididunt ut labore et".to_string(),
+            "dolore magna aliqua.".to_string(),
+        ]
+    );
+
+    let query = r#"
+        SELECT vectorize.chunk_text('This is a simple text that exceeds the limit.', 100)::TEXT[];
+    "#;
+    let result: Vec<String> = sqlx::query_scalar(query)
+        .fetch_one(&conn)
+        .await
+        .expect("failed to execute query");
+    assert_eq!(
+        result,
+        vec!["This is a simple text that exceeds the limit.".to_string()]
+    );
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_scheduled_single_table() {
     let conn = common::init_database().await;
     let mut rng = rand::thread_rng();
@@ -899,17 +967,25 @@ async fn test_event_trigger_on_table_drop() {
 
     // Debug: Check job table after dropping the test table
     let job_count_after = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(job_count_after, 0, "Job entry was not removed after table drop");
+    assert_eq!(
+        job_count_after, 0,
+        "Job entry was not removed after table drop"
+    );
 
     // Check if the job was deleted
-    let deleted_job = sqlx::query("SELECT * FROM vectorize.job WHERE params->>'table' = $1 AND params->>'schema' = $2")
-        .bind(test_table_name)
-        .bind("public")
-        .fetch_optional(&conn)
-        .await
-        .expect("Failed to fetch job");
+    let deleted_job = sqlx::query(
+        "SELECT * FROM vectorize.job WHERE params->>'table' = $1 AND params->>'schema' = $2",
+    )
+    .bind(test_table_name)
+    .bind("public")
+    .fetch_optional(&conn)
+    .await
+    .expect("Failed to fetch job");
 
-    assert!(deleted_job.is_none(), "Job was not deleted after table drop");
+    assert!(
+        deleted_job.is_none(),
+        "Job was not deleted after table drop"
+    );
 
     // Attempt to drop a non-associated table and verify no action is taken
     let unrelated_table_name = format!("unrelated_test_{}", test_num);
@@ -921,7 +997,10 @@ async fn test_event_trigger_on_table_drop() {
 
     // Ensure vectorize.job is unaffected
     let final_job_count = common::row_count("vectorize.job", &conn).await;
-    assert_eq!(final_job_count, 0, "vectorize.job should remain unaffected by unrelated table drops");
+    assert_eq!(
+        final_job_count, 0,
+        "vectorize.job should remain unaffected by unrelated table drops"
+    );
 }
 
 #[ignore]
