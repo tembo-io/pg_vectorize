@@ -2,7 +2,7 @@ use anyhow::Result;
 use pgrx::spi::SpiTupleTable;
 use pgrx::*;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use sqlx::{Pool, Postgres, Row};
+use sqlx::{Pool, Postgres};
 use std::env;
 use url::{ParseError, Url};
 
@@ -211,18 +211,4 @@ pub async fn ready(conn: &Pool<Postgres>) -> bool {
     .fetch_one(conn)
     .await
     .expect("failed")
-}
-
-/// Fetch rows from a given table and schema
-pub async fn fetch_table_rows(
-    conn: &Pool<Postgres>,
-    table: &str,
-    columns: Vec<String>,
-    schema: &str,
-) -> Result<Vec<sqlx::postgres::PgRow>> {
-    let query = format!("SELECT {} FROM {}.{}", columns.join(", "), schema, table);
-
-    // Execute the query using sqlx and fetch the rows
-    let rows = sqlx::query(&query).fetch_all(conn).await?;
-    Ok(rows)
 }
