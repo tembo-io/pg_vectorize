@@ -19,7 +19,7 @@ test:
 
 setup:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
-	uv install
+	uv sync
 
 check:
 	uv run ruff check ${SOURCE_OBJECTS}
