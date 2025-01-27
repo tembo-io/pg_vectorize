@@ -16,8 +16,8 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.0.0",
 ]
 
-[project.optional-dependencies]
-dev = [
+[tool.uv]
+dev-dependencies = [
     "ruff",
     "black",
     "pytest>=8",

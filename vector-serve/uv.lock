@@ -42,7 +42,7 @@ dependencies = [
     { name = "torch" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "httpx" },
@@ -52,16 +52,20 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "black", marker = "extra == 'dev'" },
     { name = "einops", specifier = ">=0.8.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.2" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "prometheus-client", specifier = ">=0.21.0" },
     { name = "prometheus-fastapi-instrumentator", specifier = ">=7.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "ruff", marker = "extra == 'dev'" },
     { name = "sentence-transformers", specifier = ">=3.2.0" },
     { name = "torch", specifier = ">=2.4.1" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "ruff" },
 ]
 
 [[package]]
