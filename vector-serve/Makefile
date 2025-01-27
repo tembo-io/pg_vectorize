@@ -1,27 +1,26 @@
 SOURCE_OBJECTS=app
-POETRY_VERSION:=1.7.1
 
 format:
-	poetry run black ${SOURCE_OBJECTS}
-	poetry run ruff check --silent --fix --exit-zero ${SOURCE_OBJECTS}
+	uv run black ${SOURCE_OBJECTS}
+	uv run ruff check --silent --fix --exit-zero ${SOURCE_OBJECTS}
 
 download.models:
-	poetry run python -m app.models
+	uv run python -m app.models
 
 run: download.models
-	poetry run uvicorn app.app:app --host 0.0.0.0 --port 3000
+	uv run fastapi run app/app.py --host 0.0.0.0 --port 3000 --workers 1
 
 run.docker:
 	docker build -t vector-serve .
 	docker run -p 3000:3000 vector-serve
 
 test:
-	poetry run pytest
+	uv run pytest
 
 setup:
-	curl -sSL https://install.python-poetry.org | POETRY_VERSION=${POETRY_VERSION} python3 -
-	poetry install
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	uv install
 
 check:
-	poetry run ruff check ${SOURCE_OBJECTS}
-	poetry run black --check ${SOURCE_OBJECTS}
+	uv run ruff check ${SOURCE_OBJECTS}
+	uv run black --check ${SOURCE_OBJECTS}

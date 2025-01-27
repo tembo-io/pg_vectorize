@@ -1,22 +1,32 @@
-FROM python:3.12.7-slim-bookworm
+FROM ubuntu:24.04 AS prod
 
 RUN apt-get update && \
-    apt-get install -y curl make && \
-    rm -rf /var/lib/apt/lists/*
-    
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_HOME="/opt/poetry" \
-    PATH="/opt/poetry/bin:$PATH"
+    apt-get install -y curl ca-certificates tzdata git gcc build-essential
+
+ARG PYTHON_VERSION=3.12.4
+ARG PROJECT_NAME=vector-serve
+
+ARG UV_PYTHON_INSTALL_DIR=/opt/python
+
+ENV UV_PYTHON_INSTALL_DIR=${UV_PYTHON_INSTALL_DIR}
+ENV PROJECT_HOME=/opt/${PROJECT_NAME}
+
+ENV VIRTUAL_ENV=${PROJECT_HOME}/.venv
+ENV PATH="${VIRTUAL_ENV}/bin:$PATH"
+
+WORKDIR ${PROJECT_HOME}
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+ENV UV_LINK_MODE=copy
+RUN uv venv --python "${PYTHON_VERSION}"
+
+COPY uv.lock pyproject.toml ./
+
+RUN uv sync --all-groups
 
 COPY vector-serve /vector-serve/
 
-WORKDIR /vector-serve
+RUN uv run python -m app.models
 
-RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.7.1 python3 - && \
-	poetry install --no-cache --without dev --no-root && \
-    find $POETRY_HOME -type d -name "__pycache__" -exec rm -rf {} + && \
-    poetry run python -m app.models
-
-CMD ["poetry", "run", "fastapi", "run", "app/app.py", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]
+CMD ["uv", "run", "fastapi", "run", "app/app.py", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]

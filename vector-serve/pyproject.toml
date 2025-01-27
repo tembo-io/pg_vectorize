@@ -1,26 +1,29 @@
-[tool.poetry]
+[project]
 name = "app"
 version = "0.1.0"
 description = ""
-authors = ["Tembo <engineering@tembo.io>"]
+authors = [
+    { name = "Tembo", email = "engineering@tembo.io" }
+]
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]>=0.115.2",
+    "sentence-transformers>=3.2.0",
+    "torch>=2.4.1",
+    "einops>=0.8.0",
+    "prometheus-client>=0.21.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-fastapi = {extras = ["standard"], version = "^0.115.2"}
-sentence-transformers = "^3.2.0"
-torch = "^2.4.1"
-einops = "^0.8.0"
-prometheus-client = "^0.21.0"
-prometheus-fastapi-instrumentator = "^7.0.0"
-
-
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-black = "*"
-pytest = "^8"
-httpx = "^0.27"
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "black",
+    "pytest>=8",
+    "httpx>=0.27",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
