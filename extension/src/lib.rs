@@ -15,10 +15,10 @@ pub mod workers;
 
 pgrx::pg_module_magic!();
 
-extension_sql_file!("../sql/meta.sql", bootstrap);
+extension_sql_file!("../sql/meta.sql");
 
 // example dataset
-extension_sql_file!("../sql/example.sql", bootstrap);
+extension_sql_file!("../sql/example.sql");
 
 /// This module is required by `cargo pgrx test` invocations.
 /// It must be visible at the root of your extension crate.
