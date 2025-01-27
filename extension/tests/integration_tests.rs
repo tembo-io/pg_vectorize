@@ -1054,7 +1054,10 @@ async fn test_chunk_table() {
         .expect("failed to chunk table");
 
     // Verify the chunked data
-    let select_query = format!("SELECT original_id, chunk_index, chunk FROM {}", output_table_name);
+    let select_query = format!(
+        "SELECT original_id, chunk_index, chunk FROM {}",
+        output_table_name
+    );
     let rows: Vec<(i32, i32, String)> = sqlx::query_as(&select_query)
         .fetch_all(&conn)
         .await
