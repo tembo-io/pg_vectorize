@@ -21,11 +21,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 ENV UV_LINK_MODE=copy
 RUN uv venv --python "${PYTHON_VERSION}"
 
-COPY uv.lock pyproject.toml ./
+COPY vector-serve .
 
 RUN uv sync --all-groups
-
-COPY vector-serve /vector-serve/
 
 RUN uv run python -m app.models
 
