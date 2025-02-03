@@ -13,6 +13,7 @@ use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
 #[allow(clippy::too_many_arguments)]
+// TODO: Need to updatex to create index for full-text search
 pub fn init_table(
     job_name: &str,
     schema: &str,
@@ -145,16 +146,26 @@ pub fn init_table(
 
     let init_embed_q =
         init::init_embedding_table_query(job_name, &valid_params, &index_dist_type, model_dim);
-
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+    let ran_semantic: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
             let _r = c.update(&q, None, None)?;
         }
         Ok(())
     });
-    if let Err(e) = ran {
+    if let Err(e) = ran_semantic {
         error!("error creating embedding table: {}", e);
     }
+
+    // Creating the index for full-text search
+    let index_query = init::init_index_query(job_name, &valid_params);
+    let ran_index: Result<_, spi::Error> = Spi::connect(|mut c| {
+        let _r = c.update(&index_query, None, None)?;
+        Ok(())
+    });
+    if let Err(e) = ran_index {
+        error!("error creating index: {}", e);
+    }
+
     match schedule {
         "realtime" => {
             // setup triggers
@@ -180,6 +191,85 @@ pub fn init_table(
     Ok(format!("Successfully created job: {job_name}"))
 }
 
+// TODO: Implement full-text search
+pub fn full_text_search(
+    job_name: &str
+) -> Result<Vec<pgrx::JsonB>> {
+    let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
+    let proj_params: types::JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
+            error!("failed to serialize metadata: {}", e);
+        }),
+    )?;
+
+//     for now, it just fetches the top 10 results from the table
+    let query = format!(
+        "SELECT * FROM {schema}.{table} LIMIT 10;",
+        schema = proj_params.schema,
+        table = proj_params.table
+    );
+
+    Spi::connect(|client| {
+        let mut results: Vec<pgrx::JsonB> = Vec::new();
+        let tup_table = client.select(&query, None, None)?;
+        for row in tup_table {
+            match row["results"].value()? {
+                Some(r) => results.push(r),
+                None => error!("failed to get results"),
+            }
+        }
+        Ok(results)
+    }
+    )
+}
+
+pub struct  SearchResult {
+    data: Vec<pgrx::JsonB>,
+    rank: Vec<i32>,
+}
+
+pub fn rrf_score(
+    rank: i32,
+    rrf_k: Option<i32>,
+) -> f32 {
+    // Default to 10 if not provided
+    let r = rrf_k.unwrap_or(10);
+    1.0 / (rank as f32 + r as f32)
+}
+
+// Read the search results and their ranks.
+// use the RRF formula to calculate the final score for each result.
+// Return the results in order of their final score.
+pub fn final_search(
+    rrf_k: i32,
+    _full_text_results: SearchResult,
+    _semantic_results: SearchResult,
+) -> Result<Vec<pgrx::JsonB>> {
+    // THIS IS JUST A DUMMY IMPLEMENTATION.
+    // IT HAS NOT BEEN TESTED
+
+    let mut results: Vec<pgrx::JsonB> = Vec::new();
+    let full_text_ranks: Vec<i32> = Vec::new();
+    let semantic_ranks: Vec<i32> = Vec::new();
+
+    //TODO: Iterate over the results from different searches
+    // Calculate it's rrf score and order it accordingly
+
+
+    let mut final_scores: Vec<f32> = Vec::new();
+    for i in 0..results.len() {
+        let full_text_score = rrf_score(full_text_ranks[i], Some(rrf_k));
+        let final_score = full_text_score + rrf_score(semantic_ranks[i], Some(rrf_k));
+        final_scores.push(final_score);
+    }
+
+    //
+    let final_results: Vec<pgrx::JsonB> = Vec::new();
+
+    Ok(final_results)
+}
+
+// TODO: Rename this to semantic_search
 pub fn search(
     job_name: &str,
     query: &str,
