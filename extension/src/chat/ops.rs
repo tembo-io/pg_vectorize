@@ -60,7 +60,7 @@ pub fn call_chat(
     let pk = job_params.primary_key;
     let columns = vec![pk.clone(), content_column.clone()];
 
-    let raw_search = search::search(
+    let raw_search = search::semantic_search(
         agent_name,
         query,
         api_key.clone(),

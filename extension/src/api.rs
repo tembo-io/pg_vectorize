@@ -128,7 +128,7 @@ fn search(
     num_results: default!(i32, 10),
     where_sql: default!(Option<String>, "NULL"),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
-    let search_results = search::search(
+    let search_results = search::semantic_search(
         &job_name,
         &query,
         api_key,

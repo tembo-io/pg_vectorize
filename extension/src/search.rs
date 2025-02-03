@@ -12,6 +12,10 @@ use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
+// TODO: Need to crete a migration and release the new version
+// TODO: Search method should be configurable: full-text, semantic, or hybrid
+
+
 #[allow(clippy::too_many_arguments)]
 // TODO: Need to updatex to create index for full-text search
 pub fn init_table(
@@ -270,7 +274,8 @@ pub fn final_search(
 }
 
 // TODO: Rename this to semantic_search
-pub fn search(
+// Need to update API accordingly
+pub fn semantic_search(
     job_name: &str,
     query: &str,
     api_key: Option<String>,
