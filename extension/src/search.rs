@@ -11,6 +11,8 @@ use pgrx::prelude::*;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
+use itertools::Itertools;
+
 
 // TODO: Need to crete a migration and release the new version
 // TODO: Search method should be configurable: full-text, semantic, or hybrid
@@ -197,7 +199,9 @@ pub fn init_table(
 
 // TODO: Implement full-text search
 pub fn full_text_search(
-    job_name: &str
+    job_name: &str,
+    query: &str,
+    return_columns: Vec<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(
@@ -206,25 +210,49 @@ pub fn full_text_search(
         }),
     )?;
 
-//     for now, it just fetches the top 10 results from the table
+    let search_columns = proj_params.columns
+        .iter()
+        .map(|col| format!("COALESCE({}, '')", col))
+        .collect::<Vec<String>>()
+        .join(" || ' ' || ");
+
     let query = format!(
-        "SELECT * FROM {schema}.{table} LIMIT 10;",
+        "SELECT {return_columns} FROM {schema}.{table}
+     WHERE to_tsvector('english', {search_columns})
+     @@ to_tsquery('english', '{query}')
+     LIMIT 10;",
         schema = proj_params.schema,
-        table = proj_params.table
+        table = proj_params.table,
+        return_columns = return_columns.join(", "),
+        search_columns = search_columns,  // Dynamically concatenate columns
+        query = query.split_whitespace().collect::<Vec<&str>>().join(" & ").replace("'", "''"),
     );
 
     Spi::connect(|client| {
         let mut results: Vec<pgrx::JsonB> = Vec::new();
         let tup_table = client.select(&query, None, None)?;
+
         for row in tup_table {
-            match row["results"].value()? {
-                Some(r) => results.push(r),
-                None => error!("failed to get results"),
+            let mut row_result = serde_json::json!({});
+
+            for col in &return_columns {
+                let col_value: Option<serde_json::Value> =
+                    row.get_by_name::<pgrx::JsonB, _>(col)
+                        .ok()
+                        .flatten()
+                        .map(|v| v.0) // JSONB values
+                        .or_else(|| row.get_by_name::<String, _>(col).ok().flatten().map(|v| serde_json::json!(v))) // TEXT values
+                        .or_else(|| row.get_by_name::<i32, _>(col).ok().flatten().map(|v| serde_json::json!(v))); // INT values
+
+                row_result[col] = col_value.unwrap_or(serde_json::Value::Null);
             }
+
+            results.push(pgrx::JsonB(row_result));
         }
+
         Ok(results)
-    }
-    )
+    })
+
 }
 
 pub struct  SearchResult {
@@ -244,7 +272,7 @@ pub fn rrf_score(
 // Read the search results and their ranks.
 // use the RRF formula to calculate the final score for each result.
 // Return the results in order of their final score.
-pub fn final_search(
+pub fn search(
     rrf_k: i32,
     _full_text_results: SearchResult,
     _semantic_results: SearchResult,
@@ -252,7 +280,7 @@ pub fn final_search(
     // THIS IS JUST A DUMMY IMPLEMENTATION.
     // IT HAS NOT BEEN TESTED
 
-    let mut results: Vec<pgrx::JsonB> = Vec::new();
+    let results: Vec<pgrx::JsonB> = Vec::new();
     let full_text_ranks: Vec<i32> = Vec::new();
     let semantic_ranks: Vec<i32> = Vec::new();
 
