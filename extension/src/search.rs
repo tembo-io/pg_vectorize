@@ -272,17 +272,29 @@ pub fn rrf_score(
 // Read the search results and their ranks.
 // use the RRF formula to calculate the final score for each result.
 // Return the results in order of their final score.
+
+// Might have to have a flag somewhere to indicate if the search is full-text or semantic
 pub fn search(
-    rrf_k: i32,
-    _full_text_results: SearchResult,
-    _semantic_results: SearchResult,
+    job_name: &str,
+    query: &str,
+    api_key: Option<String>,
+    return_columns: Vec<String>,
+    num_results: i32,
+    where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
     // THIS IS JUST A DUMMY IMPLEMENTATION.
     // IT HAS NOT BEEN TESTED
 
+    let full_text_results = full_text_search(job_name, query, return_columns.clone())?;
+    let semantic_results = semantic_search(job_name, query, api_key, return_columns, num_results, where_clause)?;
+
+    warning!("Full text results: {:?}", full_text_results);
+    warning!("Semantic results: {:?}", semantic_results);
+
     let results: Vec<pgrx::JsonB> = Vec::new();
     let full_text_ranks: Vec<i32> = Vec::new();
     let semantic_ranks: Vec<i32> = Vec::new();
+    let rrf_k = 10;
 
     //TODO: Iterate over the results from different searches
     // Calculate it's rrf score and order it accordingly
