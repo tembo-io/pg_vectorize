@@ -82,7 +82,6 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     )
 }
 
-// TODO: add an option to specify the index type
 pub fn init_index_query(
     job_name: &str,
     job_params: &JobParams,
