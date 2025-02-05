@@ -11,7 +11,6 @@ use pgrx::prelude::*;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
-use itertools::{all, Itertools};
 use pgrx::JsonB;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -21,7 +20,6 @@ use std::collections::HashMap;
 // TODO: Search method should be configurable: full-text, semantic, or hybrid
 
 #[allow(clippy::too_many_arguments)]
-// TODO: Need to updatex to create index for full-text search
 pub fn init_table(
     job_name: &str,
     schema: &str,
@@ -256,18 +254,12 @@ pub fn full_text_search(
 
 }
 
-pub fn rrf_score(
-    rank: i32,
-    rrf_k: Option<i32>,
-) -> f32 {
-    // Default to 10 if not provided
-    let r = rrf_k.unwrap_or(10);
-    1.0 / (rank as f32 + r as f32)
-}
-
-pub struct SearchResult {
-    data: pgrx::JsonB,
-    rank: i32,
+pub fn rrf_score(rank: Option<i32>) -> f32 {
+    let k = 60.0;
+    match rank {
+        Some(rank) => 1.0 / (rank as f32 + k),
+        None => 0.0,
+    }
 }
 
 #[derive(Debug)]
@@ -278,10 +270,6 @@ pub struct AllResults {
     rrf_score: f32,
 }
 
-// Read the search results and their ranks.
-// use the RRF formula to calculate the final score for each result.
-// Return the results in order of their final score.
-
 // Might have to have a flag somewhere to indicate if the search is full-text or semantic
 pub fn search(
     job_name: &str,
@@ -291,22 +279,9 @@ pub fn search(
     num_results: i32,
     where_clause: Option<String>,
 ) -> Result<Vec<pgrx::JsonB>> {
-    // THIS IS JUST A DUMMY IMPLEMENTATION.
-    // IT HAS NOT BEEN TESTED
 
     let full_text_results = full_text_search(job_name, query, return_columns.clone())?;
-    // let semantic_results = semantic_search(job_name, query, api_key, return_columns, num_results, where_clause)?;
-
-    use serde_json::json;
-
-    let semantic_results = vec![
-        JsonB(json!({"product_id": 3, "product_name": "Desk Lamp"})),       // Overlaps with full-text
-        JsonB(json!({"product_id": 7, "product_name": "Wireless Mouse"})),  // Overlaps with full-text
-        JsonB(json!({"product_id": 13, "product_name": "Phone Charger"})),   // Overlaps with full-text
-        JsonB(json!({"product_id": 26, "product_name": "Wristwatch"})),      // Overlaps with full-text
-        JsonB(json!({"product_id": 40, "product_name": "Smart Light"})),     // Unique to semantic search
-        JsonB(json!({"product_id": 45, "product_name": "Digital Notebook"})) // Unique to semantic search
-    ];
+    let semantic_results = semantic_search(job_name, query, api_key, return_columns, num_results, where_clause)?;
 
     // warning!("Full text results: {:?}", full_text_results);
     // warning!("Semantic results: {:?}", semantic_results);
@@ -320,10 +295,10 @@ pub fn search(
 
         combined_results_map
             .entry(json_value.clone())
-            .and_modify(|entry| entry.full_text_rank = Some((i as i32)))
+            .and_modify(|entry| entry.full_text_rank = Some(i as i32))
             .or_insert(AllResults {
                 data: JsonB(json_value),
-                full_text_rank: Some((i as i32)),
+                full_text_rank: Some(i as i32),
                 semantic_rank: None,
                 rrf_score: 0.0,
             });
@@ -335,11 +310,11 @@ pub fn search(
 
         combined_results_map
             .entry(json_value.clone())
-            .and_modify(|entry| entry.semantic_rank = Some((i as i32)))
+            .and_modify(|entry| entry.semantic_rank = Some(i as i32))
             .or_insert(AllResults {
                 data: JsonB(json_value),
                 full_text_rank: None,
-                semantic_rank: Some((i as i32)),
+                semantic_rank: Some(i as i32),
                 rrf_score: 0.0,
             });
     }
@@ -350,28 +325,20 @@ pub fn search(
     // Debug output
     // warning!("Combined Results: {:?}", all_results);
 
-    let k = Some(10); // Commonly used constant for RRF
-
     for result in all_results.iter_mut() {  // Iterate mutably to update results
-        let full_text_rank = result.full_text_rank.unwrap_or(0);
-        let semantic_rank = result.semantic_rank.unwrap_or(0);
-
-        let final_rrf_score = rrf_score(full_text_rank, k) + rrf_score(semantic_rank, k);
-
+        let final_rrf_score = rrf_score(result.full_text_rank) + rrf_score(result.semantic_rank);
         result.rrf_score = final_rrf_score; // Store RRF score in AllResults
     }
 
     all_results.sort_by(|a, b| b.rrf_score.partial_cmp(&a.rrf_score).unwrap());
 
-    // Convert back to Vec<JsonB>
-    // TODO: This is hardcoded. Fix this.
     let final_results: Vec<JsonB> = all_results.into_iter().map(|res| {
-        JsonB(json!({
-            "product": res.data.0, // Keep the original JSON structure
-            "full_text_rank": res.full_text_rank,
-            "semantic_rank": res.semantic_rank,
-            "rrf_score": res.rrf_score
-        }))
+        let mut result_json = res.data.0.clone(); // Extract original JSON structure
+
+        // Inject score values at the top level
+        result_json["rrf_score"] = serde_json::Value::from(res.rrf_score);
+
+        JsonB(result_json) // Wrap back into JsonB
     }).collect();
 
     Ok(final_results)
