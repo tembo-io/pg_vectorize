@@ -82,10 +82,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     )
 }
 
-pub fn init_index_query(
-    job_name: &str,
-    job_params: &JobParams,
-) -> String {
+pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
     let src_table = job_params.table.clone();
