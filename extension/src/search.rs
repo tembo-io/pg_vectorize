@@ -161,16 +161,6 @@ pub fn init_table(
         error!("error creating embedding table: {}", e);
     }
 
-    // Creating the index for full-text search
-    let index_query = init::init_index_query(job_name, &valid_params);
-    let ran_index: Result<_, spi::Error> = Spi::connect(|mut c| {
-        let _r = c.update(&index_query, None, None)?;
-        Ok(())
-    });
-    if let Err(e) = ran_index {
-        error!("error creating index: {}", e);
-    }
-
     match schedule {
         "realtime" => {
             // setup triggers
