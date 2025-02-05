@@ -162,7 +162,6 @@ pub fn init_embedding_table_query(
                 // also create a view over the source table and the embedding table, for this project
                 drop_project_view(job_name),
                 create_project_view(job_name, job_params),
-
                 // Currently creating a GIN index within this function
                 // TODO: Find a long term solution for this
                 init_index_query(job_name, job_params),
