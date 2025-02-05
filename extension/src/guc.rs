@@ -30,6 +30,7 @@ pub static PORTKEY_VIRTUAL_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<
 pub static PORTKEY_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VOYAGE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VOYAGE_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
+pub static SEMANTIC_WEIGHT: GucSetting<i32> = GucSetting::<i32>::new(50);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -192,6 +193,17 @@ pub fn init_guc() {
         "API Key for the Voyage AI platform",
         "API Key for the Voyage AI platform",
         &VOYAGE_API_KEY,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
+
+    GucRegistry::define_int_guc(
+        "vectorize.semantic_weight",
+        "weight for semantic search",
+        "weight for semantic search. default is 50",
+        &SEMANTIC_WEIGHT,
+        0,
+        100,
         GucContext::Suset,
         GucFlags::default(),
     );

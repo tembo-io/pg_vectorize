@@ -293,7 +293,7 @@ pub fn hybrid_search(
     num_results: i32,
     where_clause: Option<String>,
 ) -> Result<Vec<JsonB>> {
-    const SEMANTIC_WEIGHT: f32 = 0.5;
+    let semantic_weight: i32 = guc::SEMANTIC_WEIGHT.get();
 
     // Getting the results from both full-text and semantic search
     // num_results * 2 to get a larger pool of results to rank
@@ -351,8 +351,8 @@ pub fn hybrid_search(
     // Calculate RRF score for each result, sum it and store in AllResults
     for result in all_results.iter_mut() {
         // Iterate mutably to update results
-        let final_rrf_score = ((1.0 - SEMANTIC_WEIGHT) * rrf_score(result.full_text_rank))
-            + (SEMANTIC_WEIGHT * rrf_score(result.semantic_rank));
+        let final_rrf_score = ((1.0 - (semantic_weight /100) as f32) * rrf_score(result.full_text_rank))
+            + ((semantic_weight /100) as f32 * rrf_score(result.semantic_rank));
         result.rrf_score = final_rrf_score; // Store RRF score in AllResults
     }
 
