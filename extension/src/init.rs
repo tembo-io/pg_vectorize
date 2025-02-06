@@ -82,6 +82,22 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     )
 }
 
+pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
+    check_input(job_name).expect("invalid job name");
+    let src_schema = job_params.schema.clone();
+    let src_table = job_params.table.clone();
+
+    format!(
+        "
+        CREATE INDEX IF NOT EXISTS {job_name}_idx on {schema}.{table} using GIN (to_tsvector('english', {columns}));
+        ",
+        job_name = job_name,
+        schema = src_schema,
+        table = src_table,
+        columns = job_params.columns.join(" || ' ' || "),
+    )
+}
+
 pub fn init_embedding_table_query(
     job_name: &str,
     job_params: &JobParams,
@@ -146,6 +162,9 @@ pub fn init_embedding_table_query(
                 // also create a view over the source table and the embedding table, for this project
                 drop_project_view(job_name),
                 create_project_view(job_name, job_params),
+                // Currently creating a GIN index within this function
+                // TODO: Find a long term solution for this
+                init_index_query(job_name, job_params),
             ]
         }
     }
