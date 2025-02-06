@@ -89,7 +89,7 @@ pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
 
     format!(
         "
-        CREATE INDEX {job_name}_idx on {schema}.{table} using GIN (to_tsvector('english', {columns}));
+        CREATE INDEX IF NOT EXISTS {job_name}_idx on {schema}.{table} using GIN (to_tsvector('english', {columns}));
         ",
         job_name = job_name,
         schema = src_schema,
