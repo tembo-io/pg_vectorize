@@ -59,9 +59,9 @@ async fn test_scheduled_job() {
         num_results => 3
     );"
     ))
-        .execute(&conn)
-        .await
-        .expect("failed to select from test_table");
+    .execute(&conn)
+    .await
+    .expect("failed to select from test_table");
     // 3 rows returned
     assert_eq!(result_hybrid.rows_affected(), 3);
 }
