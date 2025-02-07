@@ -342,8 +342,8 @@ pub fn hybrid_search(
     for result in all_results.iter_mut() {
         // Iterate mutably to update results
         let ft_score =
-            (1.0 - semantic_weight.clone() as f32 / 100.0) * rrf_score(result.full_text_rank);
-        let s_score = (semantic_weight.clone() as f32 / 100.0) * rrf_score(result.semantic_rank);
+            (1.0 - semantic_weight as f32 / 100.0) * rrf_score(result.full_text_rank);
+        let s_score = (semantic_weight as f32 / 100.0) * rrf_score(result.semantic_rank);
         let final_rrf_score = ft_score + s_score;
         result.rrf_score = final_rrf_score; // Store RRF score in AllResults
     }
