@@ -1,5 +1,5 @@
 use crate::guc;
-use crate::guc::get_guc_configs;
+use crate::guc::{get_guc_configs};
 use crate::init;
 use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_job};
 use crate::transformers::openai;
@@ -341,9 +341,9 @@ pub fn hybrid_search(
     // Calculate RRF score for each result, sum it and store in AllResults
     for result in all_results.iter_mut() {
         // Iterate mutably to update results
-        let final_rrf_score = ((1.0 - (semantic_weight / 100) as f32)
-            * rrf_score(result.full_text_rank))
-            + ((semantic_weight / 100) as f32 * rrf_score(result.semantic_rank));
+        let ft_score = (1.0 - semantic_weight.clone() as f32/100.0) * rrf_score(result.full_text_rank);
+        let s_score =  (semantic_weight.clone() as f32/100.0) * rrf_score(result.semantic_rank);
+        let final_rrf_score = ft_score + s_score;
         result.rrf_score = final_rrf_score; // Store RRF score in AllResults
     }
 
