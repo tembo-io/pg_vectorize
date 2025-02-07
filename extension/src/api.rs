@@ -137,6 +137,9 @@ fn search(
     Ok(TableIterator::new(search_results.into_iter().map(|r| (r,))))
 }
 
+/// EXPERIMENTAL: Hybrid search
+///
+/// This function is experimental and may change in future versions.
 #[pg_extern]
 fn hybrid_search(
     job_name: String,
