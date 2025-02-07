@@ -180,4 +180,50 @@ pub mod common {
         println!("results: {:?}", js_results);
         Err(anyhow::anyhow!("timed out waiting for search query"))
     }
+
+    pub async fn hybrid_search_with_retry(
+        conn: &Pool<Postgres>,
+        query: &str,
+        job_name: &str,
+        retries: usize,
+        delay_seconds: usize,
+        num_results: i32,
+        filter: Option<String>,
+    ) -> Result<Vec<SearchJSON>> {
+        let mut results: Vec<SearchJSON> = vec![];
+        let filter_param = match filter {
+            Some(f) => format!(",where_sql => $VECTDELIM${f}$VECTDELIM$"),
+            None => "".to_string(),
+        };
+        let query = format!(
+            "SELECT * from vectorize.hybrid_search(
+            job_name => '{job_name}',
+            query => '{query}',
+            return_columns => ARRAY['product_id', 'product_name', 'description'],
+            num_results => {num_results}
+            {filter_param}
+        ) as hybrid_search_results;"
+        );
+        for i in 0..retries {
+            results = sqlx::query_as::<_, SearchJSON>(&query)
+                .fetch_all(conn)
+                .await?;
+            let num_returned = results.len();
+            if num_returned != num_results as usize {
+                println!(
+                    "job_name: {}, num_results: {}, retrying hybrid search query: {}/{}",
+                    job_name,
+                    num_returned,
+                    i + 1,
+                    retries
+                );
+                tokio::time::sleep(tokio::time::Duration::from_secs(delay_seconds as u64)).await;
+            } else {
+                return Ok(results);
+            }
+        }
+        let js_results = serde_json::to_value(&results).unwrap();
+        println!("results: {:?}", js_results);
+        Err(anyhow::anyhow!("timed out waiting for hybrid search query"))
+    }
 }

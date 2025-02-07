@@ -54,6 +54,40 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_hybrid_search() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+        schedule => '* * * * *'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    let hybrid_search_results =
+        common::hybrid_search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
+    assert_eq!(hybrid_search_results.len(), 3);
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_chunk_text() {
     let conn = common::init_database().await;
 
