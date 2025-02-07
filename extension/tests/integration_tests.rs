@@ -72,9 +72,9 @@ async fn test_hybrid_search() {
         schedule => '* * * * *'
     );"
     ))
-        .execute(&conn)
-        .await
-        .expect("failed to init job");
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
 
     // embedding should be updated after few seconds
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
