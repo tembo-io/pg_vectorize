@@ -1107,3 +1107,174 @@ async fn test_chunk_table() {
     assert_eq!(rows[6].2, "smaller");
     assert_eq!(rows[7].2, "pieces.");
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_import_embeddings() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    
+    // Create source table with embeddings
+    let src_table_name = format!("source_embeddings_test_{}", test_num);
+    sqlx::query(&format!(
+        "CREATE TABLE {} (
+            id SERIAL PRIMARY KEY,
+            content TEXT,
+            embeddings vector(384)
+        )", src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create source table");
+
+    // Insert test data with embeddings
+    sqlx::query(&format!(
+        "INSERT INTO {} (content, embeddings) VALUES
+        ('test content 1', '[0.1, 0.2, {}]'::vector),
+        ('test content 2', '[0.3, 0.4, {}]'::vector)",
+        src_table_name,
+        "0.0".repeat(382), // Fill to 384 dimensions
+        "0.0".repeat(382)
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to insert test data");
+
+    // Test with join table method
+    let join_job_name = format!("join_import_test_{}", test_num);
+    let dest_table_name = format!("dest_table_test_{}", test_num);
+
+    // Create destination table
+    sqlx::query(&format!(
+        "CREATE TABLE {} (
+            id SERIAL PRIMARY KEY,
+            content TEXT
+        )", dest_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create destination table");
+
+    // Insert matching records
+    sqlx::query(&format!(
+        "INSERT INTO {} (id, content)
+         SELECT id, content FROM {}",
+        dest_table_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to insert destination data");
+
+    // Initialize vectorize job
+    sqlx::query(&format!(
+        "SELECT vectorize.table(
+            job_name => '{}',
+            table => '{}',
+            primary_key => 'id',
+            columns => ARRAY['content'],
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+            schedule => 'realtime',
+            table_method => 'join'
+        )", join_job_name, dest_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to initialize vectorize job");
+
+    // Import embeddings
+    sqlx::query(&format!(
+        "SELECT vectorize.import_embeddings(
+            job_name => '{}',
+            src_table => '{}',
+            src_primary_key => 'id',
+            src_embeddings_col => 'embeddings'
+        )", join_job_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to import embeddings");
+
+    // Verify embeddings were imported correctly
+    let count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}", join_job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count embeddings");
+    assert_eq!(count, 2, "Expected 2 embeddings to be imported");
+
+    // Verify no pending jobs in queue for realtime schedule
+    let queue_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM pgmq.q_vectorize_jobs WHERE message->>'job_name' = '{}'",
+        join_job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count queue messages");
+    assert_eq!(queue_count, 0, "Expected no pending jobs in queue");
+
+    // Test with append table method
+    let append_job_name = format!("append_import_test_{}", test_num);
+    let append_table_name = format!("append_table_test_{}", test_num);
+
+    // Create append destination table
+    sqlx::query(&format!(
+        "CREATE TABLE {} (
+            id SERIAL PRIMARY KEY,
+            content TEXT
+        )", append_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create append destination table");
+
+    // Insert matching records
+    sqlx::query(&format!(
+        "INSERT INTO {} (id, content)
+         SELECT id, content FROM {}",
+        append_table_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to insert append destination data");
+
+    // Initialize vectorize job with append method
+    sqlx::query(&format!(
+        "SELECT vectorize.table(
+            job_name => '{}',
+            table => '{}',
+            primary_key => 'id',
+            columns => ARRAY['content'],
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+            table_method => 'append'
+        )", append_job_name, append_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to initialize append vectorize job");
+
+    // Import embeddings for append method
+    sqlx::query(&format!(
+        "SELECT vectorize.import_embeddings(
+            job_name => '{}',
+            src_table => '{}',
+            src_primary_key => 'id',
+            src_embeddings_col => 'embeddings'
+        )", append_job_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to import embeddings for append method");
+
+    // Verify embeddings were imported correctly for append method
+    let append_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM {} WHERE {}_embeddings IS NOT NULL",
+        append_table_name, append_job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count append embeddings");
+    assert_eq!(append_count, 2, "Expected 2 embeddings to be imported for append method");
+}

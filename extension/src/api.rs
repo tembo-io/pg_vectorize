@@ -6,6 +6,8 @@ use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
 use text_splitter::TextSplitter;
+use crate::init::VECTORIZE_QUEUE;
+use vectorize_core::transformers::providers::get_provider;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -284,4 +286,117 @@ fn chunk_text(document: &str, max_characters: i64) -> Vec<String> {
     let max_chars_usize = max_characters as usize;
     let splitter = TextSplitter::new(max_chars_usize);
     splitter.chunks(document).map(|s| s.to_string()).collect()
+}
+
+#[pg_extern]
+fn import_embeddings(
+    job_name: &str,
+    src_table: &str,
+    src_primary_key: &str,
+    src_embeddings_col: &str,
+) -> Result<String> {
+    // Get project metadata
+    let meta = get_vectorize_meta_spi(job_name)?;
+    let job_params: types::JobParams = serde_json::from_value(meta.params.clone())?;
+
+    // Get model dimension
+    let guc_configs = get_guc_configs(&meta.transformer.source);
+    let provider = get_provider(
+        &meta.transformer.source,
+        guc_configs.api_key.clone(),
+        guc_configs.service_url.clone(),
+        guc_configs.virtual_key.clone(),
+    )?;
+
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
+
+    let expected_dim = runtime
+        .block_on(async { provider.model_dim(&meta.transformer.api_name()).await })?;
+
+    let mut count = 0;
+
+    // Process rows based on table method
+    if job_params.table_method == types::TableMethod::join {
+        // For join method, insert into dedicated embeddings table
+        let select_q = format!(
+            "SELECT {}, {} FROM {}",
+            src_primary_key, src_embeddings_col, src_table
+        );
+        
+        let rows = Spi::get_all(&select_q)?;
+        for row in rows {
+            let original_id = row
+                .get_by_name::<String>(src_primary_key)?
+                .ok_or_else(|| anyhow::anyhow!("Missing primary key value"))?;
+            
+            let embeddings: Vec<f64> = row
+                .get_by_name::<Vec<f64>>(src_embeddings_col)?
+                .ok_or_else(|| anyhow::anyhow!("Missing embeddings value"))?;
+
+            // Validate dimensions
+            if embeddings.len() != expected_dim as usize {
+                return Err(anyhow::anyhow!(
+                    "Row {} has embedding length {} but expected {}",
+                    original_id,
+                    embeddings.len(),
+                    expected_dim
+                ));
+            }
+
+            let insert_q = format!(
+                "INSERT INTO vectorize._embeddings_{} ({}, embeddings, updated_at)
+                 VALUES ($1, $2, NOW())
+                 ON CONFLICT ({}) DO UPDATE SET embeddings = $2, updated_at = NOW()",
+                job_name, job_params.primary_key, job_params.primary_key
+            );
+
+            Spi::run_with_args(
+                &insert_q,
+                Some(vec![
+                    (PgBuiltInOids::TEXTOID.oid(), original_id.into_datum()),
+                    (PgBuiltInOids::FLOAT8ARRAYOID.oid(), embeddings.into_datum()),
+                ]),
+            )?;
+            count += 1;
+        }
+    } else {
+        // For append method, update the source table's embeddings column
+        let update_q = format!(
+            "UPDATE {}.{} t0 
+             SET {}_embeddings = src.{},
+                 {}_updated_at = NOW()
+             FROM {} src
+             WHERE t0.{} = src.{}",
+            job_params.schema,
+            job_params.table,
+            job_name,
+            src_embeddings_col,
+            job_name,
+            src_table,
+            job_params.primary_key,
+            src_primary_key
+        );
+        
+        Spi::run(&update_q)?;
+        count = Spi::get_one::<i64>("SELECT count(*) FROM last_query")?
+            .unwrap_or(0) as i32;
+    }
+
+    // Clean up realtime jobs if necessary
+    if job_params.schedule == "realtime" {
+        let delete_q = format!(
+            "DELETE FROM pgmq.q_{} WHERE message->>'job_name' = $1",
+            VECTORIZE_QUEUE
+        );
+        Spi::run_with_args(
+            &delete_q,
+            Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
+        )?;
+    }
+
+    Ok(format!("Successfully imported embeddings for {} row(s)", count))
 }

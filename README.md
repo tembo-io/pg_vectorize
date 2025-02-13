@@ -46,6 +46,7 @@ pg_vectorize powers the [VectorDB Stack](https://tembo.io/docs/product/stacks/ai
 - [RAG Example](#rag-example)
 - [Updating Embeddings](#updating-embeddings)
 - [Directly Interact with LLMs](#directly-interact-with-llms)
+- [Importing Pre-existing Embeddings](#importing-pre-existing-embeddings)
 
 ## Installation
 
@@ -285,6 +286,31 @@ select vectorize.encode(
 ```text
 {0.0028769304,-0.005826319,-0.0035932811, ...}
 ```
+
+## Importing Pre-existing Embeddings
+
+If you have already computed embeddings using a compatible model (e.g., using Sentence-Transformers directly), you can import these into pg_vectorize without recomputation:
+
+```sql
+-- First create the vectorize project
+SELECT vectorize.table(
+    job_name => 'my_search',
+    table => 'my_table',
+    primary_key => 'id',
+    columns => ARRAY['content'],
+    transformer => 'sentence-transformers/all-MiniLM-L6-v2'
+);
+
+-- Then import your pre-computed embeddings
+SELECT vectorize.import_embeddings(
+    job_name => 'my_search',
+    src_table => 'my_embeddings_table',
+    src_primary_key => 'id',
+    src_embeddings_col => 'embedding'
+);
+```
+
+The embeddings must match the dimensions of the specified transformer model. For example, 'sentence-transformers/all-MiniLM-L6-v2' expects 384-dimensional vectors.
 
 ## Contributing
 
