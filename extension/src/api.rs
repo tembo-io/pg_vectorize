@@ -400,3 +400,66 @@ fn import_embeddings(
 
     Ok(format!("Successfully imported embeddings for {} row(s)", count))
 }
+
+#[allow(clippy::too_many_arguments)]
+#[pg_extern]
+fn table_from(
+    table: &str,
+    columns: Vec<String>,
+    job_name: &str,
+    primary_key: &str,
+    src_table: &str,
+    src_primary_key: &str,
+    src_embeddings_col: &str,
+    schema: default!(&str, "'public'"),
+    update_col: default!(String, "'last_updated_at'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
+    transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
+    table_method: default!(types::TableMethod, "'join'"),
+    schedule: default!(&str, "'* * * * *'"),
+) -> Result<String> {
+    let model = Model::new(transformer)?;
+    
+    // First initialize the table structure without triggers/cron
+    init_table(
+        job_name,
+        schema,
+        table,
+        columns,
+        primary_key,
+        Some(update_col),
+        index_dist_type.into(),
+        &model,
+        table_method.into(),
+        "manual", // Use manual schedule initially to prevent immediate job creation
+    )?;
+
+    // Import the embeddings
+    import_embeddings(
+        job_name,
+        src_table,
+        src_primary_key,
+        src_embeddings_col,
+    )?;
+
+    // Now set up the triggers or cron job based on the desired schedule
+    if schedule == "realtime" {
+        // Create triggers for realtime updates
+        let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
+        Spi::run(&trigger_handler)?;
+        
+        let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
+        let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
+        
+        Spi::run(&insert_trigger)?;
+        Spi::run(&update_trigger)?;
+    } else if schedule != "manual" {
+        // Set up cron job for scheduled updates
+        init_cron(schedule, job_name)?;
+    }
+
+    Ok(format!(
+        "Successfully created table from existing embeddings with schedule: {}",
+        schedule
+    ))
+}

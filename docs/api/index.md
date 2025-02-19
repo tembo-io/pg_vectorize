@@ -50,3 +50,46 @@ SELECT vectorize.import_embeddings(
     src_embeddings_col => 'embedding_vector'
 );
 ```
+
+## Creating a Table from Existing Embeddings
+
+If you have pre-computed embeddings and want to create a new vectorize table from them, use `vectorize.table_from()`:
+
+```sql
+SELECT vectorize.table_from(
+    table => 'products',
+    columns => ARRAY['description'],
+    job_name => 'product_search',
+    primary_key => 'id',
+    src_table => 'product_embeddings',
+    src_primary_key => 'product_id',
+    src_embeddings_col => 'embedding_vector',
+    transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+    schedule => 'realtime'
+);
+```
+
+This function:
+1. Creates the vectorize table structure
+2. Imports your pre-computed embeddings
+3. Sets up the specified update schedule (realtime triggers or cron job)
+
+The embeddings must match the dimensions of the specified transformer model.
+
+### Parameters
+
+- `table`: The table to create or modify
+- `columns`: Array of columns to generate embeddings from
+- `job_name`: Name for this vectorize project
+- `primary_key`: Primary key column in your table
+- `src_table`: Table containing your pre-computed embeddings
+- `src_primary_key`: Primary key column in your source table
+- `src_embeddings_col`: Column containing the vector embeddings
+- `schema`: Schema name (default: 'public')
+- `update_col`: Column tracking updates (default: 'last_updated_at')
+- `index_dist_type`: Index type (default: 'pgv_hnsw_cosine')
+- `transformer`: Model to use (default: 'sentence-transformers/all-MiniLM-L6-v2')
+- `table_method`: How to store embeddings (default: 'join')
+- `schedule`: Update schedule - 'realtime', 'manual', or cron expression (default: '* * * * *')
+
+This approach ensures your pre-computed embeddings are properly imported before any automatic updates are enabled.
