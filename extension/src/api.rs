@@ -1,17 +1,19 @@
 use crate::chat::ops::{call_chat, call_chat_completions};
 use crate::chat::types::RenderedPrompt;
 use crate::guc::get_guc_configs;
+use crate::init::{init_cron, VECTORIZE_QUEUE};
+use crate::job::{create_event_trigger, create_trigger_handler};
 use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
+use crate::util::get_vectorize_meta_spi;
 use text_splitter::TextSplitter;
-use crate::init::VECTORIZE_QUEUE;
 use vectorize_core::transformers::providers::get_provider;
+use vectorize_core::types::{JobParams, Model};
 
 use anyhow::Result;
 use pgrx::prelude::*;
-use vectorize_core::types::Model;
 
 #[pg_extern]
 fn chunk_table(
@@ -297,7 +299,7 @@ fn import_embeddings(
 ) -> Result<String> {
     // Get project metadata
     let meta = get_vectorize_meta_spi(job_name)?;
-    let job_params: types::JobParams = serde_json::from_value(meta.params.clone())?;
+    let job_params: JobParams = serde_json::from_value(meta.params.clone())?;
 
     // Get model dimension
     let guc_configs = get_guc_configs(&meta.transformer.source);
@@ -314,25 +316,25 @@ fn import_embeddings(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let expected_dim = runtime
-        .block_on(async { provider.model_dim(&meta.transformer.api_name()).await })?;
+    let expected_dim =
+        runtime.block_on(async { provider.model_dim(&meta.transformer.api_name()).await })?;
 
     let mut count = 0;
 
     // Process rows based on table method
-    if job_params.table_method == types::TableMethod::join {
+    if job_params.table_method == vectorize_core::types::TableMethod::join {
         // For join method, insert into dedicated embeddings table
         let select_q = format!(
             "SELECT {}, {} FROM {}",
             src_primary_key, src_embeddings_col, src_table
         );
-        
-        let rows = Spi::get_all(&select_q)?;
+
+        let rows = Spi::select(&select_q, None, None)?;
         for row in rows {
             let original_id = row
                 .get_by_name::<String>(src_primary_key)?
                 .ok_or_else(|| anyhow::anyhow!("Missing primary key value"))?;
-            
+
             let embeddings: Vec<f64> = row
                 .get_by_name::<Vec<f64>>(src_embeddings_col)?
                 .ok_or_else(|| anyhow::anyhow!("Missing embeddings value"))?;
@@ -380,9 +382,9 @@ fn import_embeddings(
             job_params.primary_key,
             src_primary_key
         );
-        
+
         Spi::run(&update_q)?;
-        count = Spi::get_one::<i64>("SELECT count(*) FROM last_query")?
+        count = Spi::get_one::<i64>("SELECT count(*) FROM pg_temp.pg_stat_statements_info")?
             .unwrap_or(0) as i32;
     }
 
@@ -398,7 +400,10 @@ fn import_embeddings(
         )?;
     }
 
-    Ok(format!("Successfully imported embeddings for {} row(s)", count))
+    Ok(format!(
+        "Successfully imported embeddings for {} row(s)",
+        count
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -419,7 +424,7 @@ fn table_from(
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     let model = Model::new(transformer)?;
-    
+
     // First initialize the table structure without triggers/cron
     init_table(
         job_name,
@@ -435,22 +440,17 @@ fn table_from(
     )?;
 
     // Import the embeddings
-    import_embeddings(
-        job_name,
-        src_table,
-        src_primary_key,
-        src_embeddings_col,
-    )?;
+    import_embeddings(job_name, src_table, src_primary_key, src_embeddings_col)?;
 
     // Now set up the triggers or cron job based on the desired schedule
     if schedule == "realtime" {
         // Create triggers for realtime updates
         let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
         Spi::run(&trigger_handler)?;
-        
+
         let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
         let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
-        
+
         Spi::run(&insert_trigger)?;
         Spi::run(&update_trigger)?;
     } else if schedule != "manual" {

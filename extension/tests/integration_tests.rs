@@ -1115,7 +1115,7 @@ async fn test_import_embeddings() {
     common::init_embedding_svc_url(&conn).await;
     let mut rng = rand::thread_rng();
     let test_num = rng.gen_range(1..100000);
-    
+
     // Create source table with embeddings
     let src_table_name = format!("source_embeddings_test_{}", test_num);
     sqlx::query(&format!(
@@ -1123,7 +1123,8 @@ async fn test_import_embeddings() {
             id SERIAL PRIMARY KEY,
             content TEXT,
             embeddings vector(384)
-        )", src_table_name
+        )",
+        src_table_name
     ))
     .execute(&conn)
     .await
@@ -1151,7 +1152,8 @@ async fn test_import_embeddings() {
         "CREATE TABLE {} (
             id SERIAL PRIMARY KEY,
             content TEXT
-        )", dest_table_name
+        )",
+        dest_table_name
     ))
     .execute(&conn)
     .await
@@ -1177,7 +1179,8 @@ async fn test_import_embeddings() {
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
             schedule => 'realtime',
             table_method => 'join'
-        )", join_job_name, dest_table_name
+        )",
+        join_job_name, dest_table_name
     ))
     .execute(&conn)
     .await
@@ -1190,7 +1193,8 @@ async fn test_import_embeddings() {
             src_table => '{}',
             src_primary_key => 'id',
             src_embeddings_col => 'embeddings'
-        )", join_job_name, src_table_name
+        )",
+        join_job_name, src_table_name
     ))
     .execute(&conn)
     .await
@@ -1198,7 +1202,8 @@ async fn test_import_embeddings() {
 
     // Verify embeddings were imported correctly
     let count: i64 = sqlx::query_scalar(&format!(
-        "SELECT COUNT(*) FROM vectorize._embeddings_{}", join_job_name
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}",
+        join_job_name
     ))
     .fetch_one(&conn)
     .await
@@ -1224,7 +1229,8 @@ async fn test_import_embeddings() {
         "CREATE TABLE {} (
             id SERIAL PRIMARY KEY,
             content TEXT
-        )", append_table_name
+        )",
+        append_table_name
     ))
     .execute(&conn)
     .await
@@ -1249,7 +1255,8 @@ async fn test_import_embeddings() {
             columns => ARRAY['content'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
             table_method => 'append'
-        )", append_job_name, append_table_name
+        )",
+        append_job_name, append_table_name
     ))
     .execute(&conn)
     .await
@@ -1262,7 +1269,8 @@ async fn test_import_embeddings() {
             src_table => '{}',
             src_primary_key => 'id',
             src_embeddings_col => 'embeddings'
-        )", append_job_name, src_table_name
+        )",
+        append_job_name, src_table_name
     ))
     .execute(&conn)
     .await
@@ -1276,5 +1284,8 @@ async fn test_import_embeddings() {
     .fetch_one(&conn)
     .await
     .expect("failed to count append embeddings");
-    assert_eq!(append_count, 2, "Expected 2 embeddings to be imported for append method");
+    assert_eq!(
+        append_count, 2,
+        "Expected 2 embeddings to be imported for append method"
+    );
 }
