@@ -111,7 +111,7 @@ fn table(
         job_name,
         schema,
         table,
-        columns,
+        columns.clone(),
         primary_key,
         Some(update_col),
         index_dist_type.into(),
@@ -323,48 +323,30 @@ fn import_embeddings(
 
     // Process rows based on table method
     if job_params.table_method == vectorize_core::types::TableMethod::join {
-        // For join method, insert into dedicated embeddings table
-        let select_q = format!(
-            "SELECT {}, {} FROM {}",
-            src_primary_key, src_embeddings_col, src_table
+        let insert_q = format!(
+            "INSERT INTO vectorize._embeddings_{} ({}, embeddings, updated_at)
+             SELECT src.{}, src.{}, NOW()
+             FROM {} src
+             LEFT JOIN vectorize._embeddings_{} tgt ON src.{} = tgt.{}
+             WHERE tgt.{} IS NULL
+             ON CONFLICT ({}) DO UPDATE 
+             SET embeddings = EXCLUDED.embeddings, updated_at = NOW()",
+            job_name,
+            job_params.primary_key,
+            src_primary_key,
+            src_embeddings_col,
+            src_table,
+            job_name,
+            src_primary_key,
+            job_params.primary_key,
+            job_params.primary_key,
+            job_params.primary_key
         );
 
-        let rows = Spi::select(&select_q, None, None)?;
-        for row in rows {
-            let original_id = row
-                .get_by_name::<String>(src_primary_key)?
-                .ok_or_else(|| anyhow::anyhow!("Missing primary key value"))?;
+        Spi::run(&insert_q)?;
 
-            let embeddings: Vec<f64> = row
-                .get_by_name::<Vec<f64>>(src_embeddings_col)?
-                .ok_or_else(|| anyhow::anyhow!("Missing embeddings value"))?;
-
-            // Validate dimensions
-            if embeddings.len() != expected_dim as usize {
-                return Err(anyhow::anyhow!(
-                    "Row {} has embedding length {} but expected {}",
-                    original_id,
-                    embeddings.len(),
-                    expected_dim
-                ));
-            }
-
-            let insert_q = format!(
-                "INSERT INTO vectorize._embeddings_{} ({}, embeddings, updated_at)
-                 VALUES ($1, $2, NOW())
-                 ON CONFLICT ({}) DO UPDATE SET embeddings = $2, updated_at = NOW()",
-                job_name, job_params.primary_key, job_params.primary_key
-            );
-
-            Spi::run_with_args(
-                &insert_q,
-                Some(vec![
-                    (PgBuiltInOids::TEXTOID.oid(), original_id.into_datum()),
-                    (PgBuiltInOids::FLOAT8ARRAYOID.oid(), embeddings.into_datum()),
-                ]),
-            )?;
-            count += 1;
-        }
+        count = Spi::get_one::<i64>("SELECT count(*) FROM vectorize._embeddings_{job_name}")?
+            .unwrap_or(0) as i32;
     } else {
         // For append method, update the source table's embeddings column
         let update_q = format!(
@@ -384,8 +366,12 @@ fn import_embeddings(
         );
 
         Spi::run(&update_q)?;
-        count = Spi::get_one::<i64>("SELECT count(*) FROM pg_temp.pg_stat_statements_info")?
-            .unwrap_or(0) as i32;
+        count = Spi::get_one::<i64>(
+            "SELECT count(*) FROM {}.{}",
+            job_params.schema,
+            job_params.table,
+        )?
+        .unwrap_or(0) as i32;
     }
 
     // Clean up realtime jobs if necessary
@@ -430,7 +416,7 @@ fn table_from(
         job_name,
         schema,
         table,
-        columns,
+        columns.clone(),
         primary_key,
         Some(update_col),
         index_dist_type.into(),
