@@ -44,7 +44,7 @@ jobs:
           cargo install pg-trunk
 
       - name: Cache binaries
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             /usr/local/bin/stoml
@@ -136,7 +136,7 @@ jobs:
         with:
           working-directory: ./extension
       - name: Restore cached binaries
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             /usr/local/bin/stoml
