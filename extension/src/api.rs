@@ -346,8 +346,7 @@ fn import_embeddings(
         Spi::run(&insert_q)?;
 
         let count_query = format!("SELECT count(*) FROM vectorize._embeddings_{}", job_name);
-        count = Spi::get_one::<i64>(&count_query)?
-            .unwrap_or(0) as i32;
+        count = Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32;
     } else {
         // For append method, update the source table's embeddings column
         let update_q = format!(
@@ -367,9 +366,11 @@ fn import_embeddings(
         );
 
         Spi::run(&update_q)?;
-        let count_query = format!("SELECT count(*) FROM {}.{}", job_params.schema, job_params.table);
-        count = Spi::get_one::<i64>(&count_query)?
-            .unwrap_or(0) as i32;
+        let count_query = format!(
+            "SELECT count(*) FROM {}.{}",
+            job_params.schema, job_params.table
+        );
+        count = Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32;
     }
 
     // Clean up realtime jobs if necessary
