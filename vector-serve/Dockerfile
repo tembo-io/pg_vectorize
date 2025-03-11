@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:24.10
 
 RUN apt-get update && \
     apt-get install -y \
@@ -32,6 +32,7 @@ COPY vector-serve .
 
 RUN uv venv --python "${PYTHON_VERSION}" && \
     uv sync --all-groups --frozen && \
-    uv run python -m app.models
+    uv run python -m app.models && \
+    uv cache clean
 
 CMD ["fastapi", "run", "app/app.py", "--host", "0.0.0.0", "--port", "3000", "--workers", "1"]

@@ -22,7 +22,6 @@ permissions:
 defaults:
   run:
     shell: bash
-    working-directory: ./vector-serve/
 
 jobs:
   tests:
@@ -34,16 +33,20 @@ jobs:
         with:
           python-version: 3.12.7
       - name: Setup
+        working-directory: ./vector-serve/
         run: make setup
       - name: Init Model Cache
+        working-directory: ./vector-serve/
         run: make download.models
       - name: Lints
+        working-directory: ./vector-serve/
         run: make check
       - name: Tests
+        working-directory: ./vector-serve/
         run: make test
-  build_and_push:
-    name: Build and push images
-    needs: tests
+
+  build_and_push_amd64:
+    name: Build and push AMD64 images
     runs-on:
       - self-hosted
       - dind
@@ -51,16 +54,12 @@ jobs:
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set version strings
         id: versions
-        run: |
-          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -72,27 +71,19 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
 
       - name: Build and push -- Commit
-        # push a build for every commit
-        uses: docker/build-push-action@v6
-        with:
-          file: ./vector-serve/Dockerfile
-          context: ./
-          platforms: linux/amd64, linux/arm64
-          push: true
-          tags: |
-            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+        run: |
+            docker build \
+                -f ./vector-serve/Dockerfile \
+                -t quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64 .
+            docker push quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64
 
-      - name: Build and push -- Latest
-        # only push latest off main
+      - name: Build and push -- Release
         if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v6
-        with:
-          file: ./vector-serve/Dockerfile
-          context: ./
-          platforms: linux/amd64, linux/arm64
-          push: true
-          tags: |
-            quay.io/tembo/vector-serve:latest
+        run: |
+            docker build \
+                -f ./vector-serve/Dockerfile \
+                -t quay.io/tembo/vector-serve:latest-amd64 .
+            docker push quay.io/tembo/vector-serve:latest-amd64
 
       - name: ECR Build and push -- Commit
         uses: aws-actions/configure-aws-credentials@v4
@@ -117,3 +108,93 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           provenance: false
+
+  build_and_push_arm64:
+    name: Build and push ARM64 images
+    runs-on:
+      - arm64-4x16
+    outputs:
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version strings
+        id: versions
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+
+      - name: Build and push -- Commit
+        run: |
+            docker build \
+                -f ./vector-serve/Dockerfile \
+                --platform linux/arm64 \
+                -t quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
+            docker push quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-arm64
+
+      - name: Build and push -- Release
+        if: github.ref == 'refs/heads/main'
+        run: |
+            docker build \
+                -f ./vector-serve/Dockerfile \
+                --platform linux/arm64 \
+                -t quay.io/tembo/vector-serve:latest-arm64 .
+            docker push quay.io/tembo/vector-serve:latest-arm64
+
+  create_manifest:
+    name: Create and Push Manifest
+
+    runs-on: ubuntu-latest
+    needs: [build_and_push_arm64, build_and_push_amd64]
+    outputs:
+      short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io/tembo
+          username: ${{ secrets.QUAY_USER_TEMBO }}
+          password: ${{ secrets.QUAY_PASSWORD_TEMBO }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set version string
+        id: versions
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Create and push Docker manifest -- Commit
+        run: |
+          docker manifest create \
+            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }} \
+            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
+            quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64
+
+          docker manifest annotate quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64 --arch amd64 --os linux
+          docker manifest push quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
+
+      - name: Create and push Docker manifest -- latest (main)
+        # only push latest off main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker manifest create \
+            quay.io/tembo/vector-serve:latest \
+            quay.io/tembo/vector-serve:latest-arm64 \
+            quay.io/tembo/vector-serve:latest-amd64
+        
+          docker manifest annotate quay.io/tembo/vector-serve:latest quay.io/tembo/vector-serve:latest-arm64 --arch arm64 --os linux
+          docker manifest annotate quay.io/tembo/vector-serve:latest quay.io/tembo/vector-serve:latest-amd64 --arch amd64 --os linux
+          docker manifest push quay.io/tembo/vector-serve:latest
