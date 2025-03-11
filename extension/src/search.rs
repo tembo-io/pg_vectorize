@@ -8,9 +8,15 @@ use crate::util;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
+use pgrx::JsonB;
+use serde_json::Value;
+use std::collections::HashMap;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
+
+// TODO: Need to crete a migration and release the new version
+// TODO: Dynamically change the weight of full-text and semantic search
 
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
@@ -22,7 +28,7 @@ pub fn init_table(
     update_col: Option<String>,
     index_dist_type: types::IndexDist,
     transformer: &Model,
-    table_method: types::TableMethod,
+    table_method: TableMethod,
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: &str,
 ) -> Result<String> {
@@ -111,7 +117,7 @@ pub fn init_table(
         args: optional_args,
     };
     let params =
-        pgrx::JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
+        JsonB(serde_json::to_value(valid_params.clone()).expect("error serializing params"));
 
     // write job to table
     let init_job_q = init::init_job_query();
@@ -145,16 +151,16 @@ pub fn init_table(
 
     let init_embed_q =
         init::init_embedding_table_query(job_name, &valid_params, &index_dist_type, model_dim);
-
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+    let ran_semantic: Result<_, spi::Error> = Spi::connect(|mut c| {
         for q in init_embed_q {
             let _r = c.update(&q, None, None)?;
         }
         Ok(())
     });
-    if let Err(e) = ran {
+    if let Err(e) = ran_semantic {
         error!("error creating embedding table: {}", e);
     }
+
     match schedule {
         "realtime" => {
             // setup triggers
@@ -180,6 +186,191 @@ pub fn init_table(
     Ok(format!("Successfully created job: {job_name}"))
 }
 
+pub fn full_text_search(
+    job_name: &str,
+    query: &str,
+    return_columns: Vec<String>,
+    num_results: i32,
+) -> Result<Vec<JsonB>> {
+    let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
+    let proj_params: types::JobParams = serde_json::from_value(
+        serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
+            error!("failed to serialize metadata: {}", e);
+        }),
+    )?;
+
+    let search_columns = proj_params
+        .columns
+        .iter()
+        .map(|col| format!("COALESCE({}, '')", col))
+        .collect::<Vec<String>>()
+        .join(" || ' ' || ");
+
+    let query = format!(
+        "SELECT {return_columns} FROM {schema}.{table}
+             WHERE to_tsvector('english', {search_columns})
+             @@ to_tsquery('english', '{query}')
+             LIMIT {limit};",
+        schema = proj_params.schema,
+        table = proj_params.table,
+        return_columns = return_columns.join(", "),
+        search_columns = search_columns, // Dynamically concatenate columns
+        query = query
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .join(" | ")
+            .replace("'", "''"),
+        limit = num_results
+    );
+
+    Spi::connect(|client| {
+        let mut results: Vec<JsonB> = Vec::new();
+        let tup_table = client.select(&query, None, None)?;
+
+        for row in tup_table {
+            let mut row_result = serde_json::json!({});
+
+            for col in &return_columns {
+                let col_value: Option<Value> = row
+                    .get_by_name::<JsonB, _>(col)
+                    .ok()
+                    .flatten()
+                    .map(|v| v.0) // JSONB values
+                    .or_else(|| {
+                        row.get_by_name::<String, _>(col)
+                            .ok()
+                            .flatten()
+                            .map(|v| serde_json::json!(v))
+                    }) // TEXT values
+                    .or_else(|| {
+                        row.get_by_name::<i32, _>(col)
+                            .ok()
+                            .flatten()
+                            .map(|v| serde_json::json!(v))
+                    }); // INT values
+
+                row_result[col] = col_value.unwrap_or(Value::Null);
+            }
+
+            results.push(JsonB(row_result));
+        }
+
+        Ok(results)
+    })
+}
+
+pub fn rrf_score(rank: Option<i32>) -> f32 {
+    let k = 60.0;
+    match rank {
+        Some(rank) => 1.0 / (rank as f32 + k),
+        None => 0.0,
+    }
+}
+
+#[derive(Debug)]
+pub struct AllResults {
+    data: JsonB,
+    full_text_rank: Option<i32>,
+    semantic_rank: Option<i32>,
+    rrf_score: f32,
+}
+
+pub fn hybrid_search(
+    job_name: &str,
+    query: &str,
+    api_key: Option<String>,
+    return_columns: Vec<String>,
+    num_results: i32,
+    where_clause: Option<String>,
+) -> Result<Vec<JsonB>> {
+    let semantic_weight: i32 = guc::SEMANTIC_WEIGHT.get();
+
+    // Getting the results from both full-text and semantic search
+    // num_results * 2 to get a larger pool of results to rank
+    let full_text_results = full_text_search(
+        job_name,
+        query,
+        return_columns.clone(),
+        num_results.clone() * 2,
+    )?;
+    let semantic_results = search(
+        job_name,
+        query,
+        api_key,
+        return_columns,
+        num_results * 2,
+        where_clause,
+    )?;
+
+    // Use a HashMap with serde_json::Value as the key
+    let mut combined_results_map: HashMap<Value, AllResults> = HashMap::new();
+
+    // Process full-text search results to combine with semantic search results
+    for (i, result) in full_text_results.iter().enumerate() {
+        let json_value = result.0.clone(); // Extract serde_json::Value from JsonB
+
+        combined_results_map
+            .entry(json_value.clone())
+            .and_modify(|entry| entry.full_text_rank = Some(i as i32))
+            .or_insert(AllResults {
+                data: JsonB(json_value),
+                full_text_rank: Some(i as i32),
+                semantic_rank: None,
+                rrf_score: 0.0,
+            });
+    }
+
+    // Process semantic search results
+    for (i, result) in semantic_results.iter().enumerate() {
+        let json_value = result.0.clone(); // Extract serde_json::Value from JsonB
+
+        combined_results_map
+            .entry(json_value.clone())
+            .and_modify(|entry| entry.semantic_rank = Some(i as i32))
+            .or_insert(AllResults {
+                data: JsonB(json_value),
+                full_text_rank: None,
+                semantic_rank: Some(i as i32),
+                rrf_score: 0.0,
+            });
+    }
+
+    // Convert HashMap to Vec
+    let mut all_results: Vec<AllResults> = combined_results_map.into_values().collect();
+
+    // Calculate RRF score for each result, sum it and store in AllResults
+    for result in all_results.iter_mut() {
+        // Iterate mutably to update results
+        let ft_score = (1.0 - semantic_weight as f32 / 100.0) * rrf_score(result.full_text_rank);
+        let s_score = (semantic_weight as f32 / 100.0) * rrf_score(result.semantic_rank);
+        let final_rrf_score = ft_score + s_score;
+        result.rrf_score = final_rrf_score; // Store RRF score in AllResults
+    }
+
+    // Sort by RRF score
+    all_results.sort_by(|a, b| b.rrf_score.partial_cmp(&a.rrf_score).unwrap());
+
+    let final_results: Vec<JsonB> = all_results
+        .into_iter()
+        .map(|res| {
+            let mut result_json = res.data.0.clone(); // Extract original JSON structure
+
+            // Inject score values at the top level
+            result_json["full_text_rank"] = serde_json::Value::from(res.full_text_rank);
+            result_json["semantic_rank"] = serde_json::Value::from(res.semantic_rank);
+            result_json["rrf_score"] = serde_json::Value::from(res.rrf_score);
+
+            JsonB(result_json) // Wrap back into JsonB
+        })
+        .collect();
+
+    // Return only the top num_results
+    Ok(final_results
+        .into_iter()
+        .take(num_results as usize)
+        .collect())
+}
+
 pub fn search(
     job_name: &str,
     query: &str,
@@ -187,7 +378,7 @@ pub fn search(
     return_columns: Vec<String>,
     num_results: i32,
     where_clause: Option<String>,
-) -> Result<Vec<pgrx::JsonB>> {
+) -> Result<Vec<JsonB>> {
     let project_meta: VectorizeMeta = util::get_vectorize_meta_spi(job_name)?;
     let proj_params: types::JobParams = serde_json::from_value(
         serde_json::to_value(project_meta.params).unwrap_or_else(|e| {
@@ -227,7 +418,7 @@ pub fn cosine_similarity_search(
     num_results: i32,
     embeddings: &[f64],
     where_clause: Option<String>,
-) -> Result<Vec<pgrx::JsonB>> {
+) -> Result<Vec<JsonB>> {
     let schema = job_params.schema.clone();
     let table = job_params.table.clone();
 
@@ -250,7 +441,7 @@ pub fn cosine_similarity_search(
         ),
     };
     Spi::connect(|client| {
-        let mut results: Vec<pgrx::JsonB> = Vec::new();
+        let mut results: Vec<JsonB> = Vec::new();
         let tup_table = client.select(
             &query,
             None,

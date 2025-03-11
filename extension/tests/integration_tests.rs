@@ -54,6 +54,40 @@ async fn test_scheduled_job() {
 
 #[ignore]
 #[tokio::test]
+async fn test_hybrid_search() {
+    let conn = common::init_database().await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+    let test_table_name = format!("products_test_{}", test_num);
+    common::init_test_table(&test_table_name, &conn).await;
+    let job_name = format!("job_{}", test_num);
+
+    let _ = sqlx::query(&format!(
+        "SELECT vectorize.table(
+        job_name => '{job_name}',
+        \"table\" => '{test_table_name}',
+        primary_key => 'product_id',
+        columns => ARRAY['product_name'],
+        transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+        schedule => '* * * * *'
+    );"
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to init job");
+
+    // embedding should be updated after few seconds
+    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+    let hybrid_search_results =
+        common::hybrid_search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)
+            .await
+            .expect("failed to exec search");
+    assert_eq!(hybrid_search_results.len(), 3);
+}
+
+#[ignore]
+#[tokio::test]
 async fn test_chunk_text() {
     let conn = common::init_database().await;
 
@@ -1054,18 +1088,22 @@ async fn test_chunk_table() {
         .expect("failed to chunk table");
 
     // Verify the chunked data
-    let select_query = format!("SELECT original_id, chunk_index, chunk FROM {}", output_table_name);
+    let select_query = format!(
+        "SELECT original_id, chunk_index, chunk FROM {}",
+        output_table_name
+    );
     let rows: Vec<(i32, i32, String)> = sqlx::query_as(&select_query)
         .fetch_all(&conn)
         .await
         .expect("failed to select chunked data");
 
-    assert_eq!(rows.len(), 7);
-    assert_eq!(rows[0].2, "This is a ");
-    assert_eq!(rows[1].2, "test strin");
-    assert_eq!(rows[2].2, "g that wil");
-    assert_eq!(rows[3].2, "l be chunk");
-    assert_eq!(rows[4].2, "ed into sm");
-    assert_eq!(rows[5].2, "aller piec");
-    assert_eq!(rows[6].2, "es.");
+    assert_eq!(rows.len(), 8);
+    assert_eq!(rows[0].2, "This is a");
+    assert_eq!(rows[1].2, "test");
+    assert_eq!(rows[2].2, "string");
+    assert_eq!(rows[3].2, "that will");
+    assert_eq!(rows[4].2, "be chunked");
+    assert_eq!(rows[5].2, "into");
+    assert_eq!(rows[6].2, "smaller");
+    assert_eq!(rows[7].2, "pieces.");
 }

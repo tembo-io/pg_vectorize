@@ -11,28 +11,6 @@ use anyhow::Result;
 use pgrx::prelude::*;
 use vectorize_core::types::Model;
 
-fn chunk_text(text: &str, max_chunk_size: usize) -> Vec<String> {
-    let mut chunks = Vec::new();
-    let mut start = 0;
-
-    // Loop through the text and create chunks
-    while start < text.len() {
-        let end = (start + max_chunk_size).min(text.len());
-        let chunk = text[start..end].to_string();
-        chunks.push(chunk);
-        start = end;
-    }
-
-    // Remove any trailing empty chunk
-    if let Some(last_chunk) = chunks.last() {
-        if last_chunk.is_empty() {
-            chunks.pop();
-        }
-    }
-
-    chunks
-}
-
 #[pg_extern]
 fn chunk_table(
     input_table: &str,
@@ -44,8 +22,11 @@ fn chunk_table(
     let max_chunk_size = max_chunk_size as usize;
 
     // Retrieve rows from the input table, ensuring column existence
-    let query = format!("SELECT {}, {} FROM {}", primary_key, column_name, input_table); // Use primary_key instead of hardcoding "id"
-    
+    let query = format!(
+        "SELECT {}, {} FROM {}",
+        primary_key, column_name, input_table
+    ); // Use primary_key instead of hardcoding "id"
+
     // Reverting back to use get_two
     let (id_opt, text_opt): (Option<i32>, Option<String>) = Spi::get_two(&query)?;
     let rows = vec![(id_opt, text_opt)]; // Wrap in a vector if needed
@@ -57,7 +38,10 @@ fn chunk_table(
     for (id_opt, text_opt) in rows {
         // Only process rows where both id and text exist
         if let (Some(id), Some(text)) = (id_opt, text_opt.map(|s| s.to_string())) {
-            let chunks = chunk_text(&text, max_chunk_size);
+            let chunks = chunk_text(
+                &text,
+                max_chunk_size.try_into().expect("failed usize conversion"),
+            );
             for (index, chunk) in chunks.iter().enumerate() {
                 chunked_rows.push((id, index as i32, chunk.clone())); // Add chunk index
             }
@@ -78,14 +62,29 @@ fn chunk_table(
             "INSERT INTO {} (original_id, chunk_index, chunk) VALUES ($1, $2, $3)",
             output_table
         );
-        Spi::run_with_args(&insert_query, Some(vec![
-            (pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID), original_id.into_datum()), // OID for integer
-            (pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID), chunk_index.into_datum()), // OID for integer
-            (pgrx::PgOid::Custom(pgrx::pg_sys::TEXTOID), chunk.into_datum()), // OID for text
-        ]))?;
+        Spi::run_with_args(
+            &insert_query,
+            Some(vec![
+                (
+                    pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID),
+                    original_id.into_datum(),
+                ), // OID for integer
+                (
+                    pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID),
+                    chunk_index.into_datum(),
+                ), // OID for integer
+                (
+                    pgrx::PgOid::Custom(pgrx::pg_sys::TEXTOID),
+                    chunk.into_datum(),
+                ), // OID for text
+            ]),
+        )?;
     }
 
-    Ok(format!("Chunked data inserted into table: {}", output_table))
+    Ok(format!(
+        "Chunked data inserted into table: {}",
+        output_table
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -103,7 +102,6 @@ fn table(
     // cron-like for a cron based update model, or 'realtime' for a trigger-based
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
-
     let model = Model::new(transformer)?;
     init_table(
         job_name,
@@ -129,6 +127,29 @@ fn search(
     where_sql: default!(Option<String>, "NULL"),
 ) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
     let search_results = search::search(
+        &job_name,
+        &query,
+        api_key,
+        return_columns,
+        num_results,
+        where_sql,
+    )?;
+    Ok(TableIterator::new(search_results.into_iter().map(|r| (r,))))
+}
+
+/// EXPERIMENTAL: Hybrid search
+///
+/// This function is experimental and may change in future versions.
+#[pg_extern]
+fn hybrid_search(
+    job_name: String,
+    query: String,
+    api_key: default!(Option<String>, "NULL"),
+    return_columns: default!(Vec<String>, "ARRAY['*']::text[]"),
+    num_results: default!(i32, 10),
+    where_sql: default!(Option<String>, "NULL"),
+) -> Result<TableIterator<'static, (name!(search_results, pgrx::JsonB),)>> {
+    let search_results = search::hybrid_search(
         &job_name,
         &query,
         api_key,
@@ -259,7 +280,8 @@ fn env_interpolate_guc(guc_name: &str) -> Result<String> {
 /// -- ["This is a sample tex", "t to demonstrate ch", "unking."]
 /// ```
 #[pg_extern]
-fn chunk_text(document: &str, max_characters: i32) -> Vec<String> {
-    let splitter = TextSplitter::new(max_characters as usize);
+fn chunk_text(document: &str, max_characters: i64) -> Vec<String> {
+    let max_chars_usize = max_characters as usize;
+    let splitter = TextSplitter::new(max_chars_usize);
     splitter.chunks(document).map(|s| s.to_string()).collect()
 }
