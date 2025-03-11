@@ -33,20 +33,16 @@ jobs:
         with:
           python-version: 3.12.7
       - name: Setup
-        with:
-          working-directory: ./vector-serve/
+        working-directory: ./vector-serve/
         run: make setup
       - name: Init Model Cache
-        with:
-          working-directory: ./vector-serve/
+        working-directory: ./vector-serve/
         run: make download.models
       - name: Lints
-        with:
-          working-directory: ./vector-serve/
+        working-directory: ./vector-serve/
         run: make check
       - name: Tests
-        with:
-          working-directory: ./vector-serve/
+        working-directory: ./vector-serve/
         run: make test
 
   build_and_push_amd64:
