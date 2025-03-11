@@ -1130,14 +1130,24 @@ async fn test_import_embeddings() {
     .await
     .expect("failed to create source table");
 
+    // Create a properly formatted vector string with 384 dimensions
+    let vector_values = (0..384)
+        .map(|i| {
+            if i < 2 {
+                format!("{:.1}", (i as f32 + 1.0) / 10.0)
+            } else {
+                "0.0".to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
+
     // Insert test data with embeddings
     sqlx::query(&format!(
         "INSERT INTO {} (content, embeddings) VALUES
-        ('test content 1', '[0.1, 0.2, {}]'::vector),
-        ('test content 2', '[0.3, 0.4, {}]'::vector)",
-        src_table_name,
-        "0.0".repeat(382), // Fill to 384 dimensions
-        "0.0".repeat(382)
+        ('test content 1', '[{}]'::vector),
+        ('test content 2', '[{}]'::vector)",
+        src_table_name, vector_values, vector_values
     ))
     .execute(&conn)
     .await

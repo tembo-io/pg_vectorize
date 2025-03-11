@@ -316,9 +316,6 @@ fn import_embeddings(
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let expected_dim =
-        runtime.block_on(async { provider.model_dim(&meta.transformer.api_name()).await })?;
-
     let mut count = 0;
 
     // Process rows based on table method
