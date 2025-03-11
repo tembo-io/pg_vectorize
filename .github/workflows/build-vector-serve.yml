@@ -64,7 +64,6 @@ jobs:
       - name: Set version strings
         id: versions
         run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -102,7 +101,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: ./vector-serve/Dockerfile
           context: ./
