@@ -1299,3 +1299,135 @@ async fn test_import_embeddings() {
         "Expected 2 embeddings to be imported for append method"
     );
 }
+
+#[ignore]
+#[tokio::test]
+async fn test_table_from() {
+    let conn = common::init_database().await;
+    common::init_embedding_svc_url(&conn).await;
+    let mut rng = rand::thread_rng();
+    let test_num = rng.gen_range(1..100000);
+
+    // Create source table with embeddings
+    let src_table_name = format!("source_embeddings_test_{}", test_num);
+    sqlx::query(&format!(
+        "CREATE TABLE {} (
+            id SERIAL PRIMARY KEY,
+            content TEXT,
+            embeddings vector(384)
+        )",
+        src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create source table");
+
+    // Create a properly formatted vector string with 384 dimensions
+    let vector_values = (0..384)
+        .map(|i| {
+            if i < 2 {
+                format!("{:.1}", (i as f32 + 1.0) / 10.0)
+            } else {
+                "0.0".to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(", ");
+
+    // Insert test data with embeddings
+    sqlx::query(&format!(
+        "INSERT INTO {} (content, embeddings) VALUES
+        ('test content 1', '[{}]'::vector),
+        ('test content 2', '[{}]'::vector)",
+        src_table_name, vector_values, vector_values
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to insert test data");
+
+    // Create destination table
+    let dest_table_name = format!("dest_table_test_{}", test_num);
+    sqlx::query(&format!(
+        "CREATE TABLE {} (
+            id SERIAL PRIMARY KEY,
+            content TEXT
+        )",
+        dest_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create destination table");
+
+    // Insert matching records
+    sqlx::query(&format!(
+        "INSERT INTO {} (id, content)
+         SELECT id, content FROM {}",
+        dest_table_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to insert destination data");
+
+    let job_name = format!("table_from_test_{}", test_num);
+
+    // Test table_from with realtime schedule
+    sqlx::query(&format!(
+        "SELECT vectorize.table_from(
+            table => '{}',
+            columns => ARRAY['content'],
+            job_name => '{}',
+            primary_key => 'id',
+            src_table => '{}',
+            src_primary_key => 'id',
+            src_embeddings_col => 'embeddings',
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+            schedule => 'realtime'
+        )",
+        dest_table_name, job_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create table from embeddings");
+
+    // Verify embeddings were imported correctly
+    let count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}",
+        job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count embeddings");
+    assert_eq!(count, 2, "Expected 2 embeddings to be imported");
+
+    // Test search functionality
+    let search_results =
+        common::search_with_retry(&conn, "test content", &job_name, 10, 2, 2, None)
+            .await
+            .expect("failed to execute search");
+    assert_eq!(search_results.len(), 2, "Expected 2 search results");
+
+    // Test realtime updates
+    let new_id = 3;
+    sqlx::query(&format!(
+        "INSERT INTO {} (id, content) VALUES ($1, $2)",
+        dest_table_name
+    ))
+    .bind(new_id)
+    .bind("test content 3")
+    .execute(&conn)
+    .await
+    .expect("failed to insert new record");
+
+    // Wait for realtime update to process
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+
+    // Verify the new record was processed
+    let new_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}",
+        job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count embeddings after update");
+    assert_eq!(new_count, 3, "Expected 3 embeddings after update");
+}
