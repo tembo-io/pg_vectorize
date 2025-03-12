@@ -287,12 +287,8 @@ pub fn hybrid_search(
 
     // Getting the results from both full-text and semantic search
     // num_results * 2 to get a larger pool of results to rank
-    let full_text_results = full_text_search(
-        job_name,
-        query,
-        return_columns.clone(),
-        num_results * 2,
-    )?;
+    let full_text_results =
+        full_text_search(job_name, query, return_columns.clone(), num_results * 2)?;
     let semantic_results = search(
         job_name,
         query,
