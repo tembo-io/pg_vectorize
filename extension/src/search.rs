@@ -291,7 +291,7 @@ pub fn hybrid_search(
         job_name,
         query,
         return_columns.clone(),
-        num_results.clone() * 2,
+        num_results * 2,
     )?;
     let semantic_results = search(
         job_name,

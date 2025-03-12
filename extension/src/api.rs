@@ -9,7 +9,6 @@ use crate::transformers::transform;
 use crate::types;
 use crate::util::get_vectorize_meta_spi;
 use text_splitter::TextSplitter;
-use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::types::{JobParams, Model};
 
 use anyhow::Result;
@@ -301,25 +300,8 @@ fn import_embeddings(
     let meta = get_vectorize_meta_spi(job_name)?;
     let job_params: JobParams = serde_json::from_value(meta.params.clone())?;
 
-    // Get model dimension
-    let guc_configs = get_guc_configs(&meta.transformer.source);
-    let provider = get_provider(
-        &meta.transformer.source,
-        guc_configs.api_key.clone(),
-        guc_configs.service_url.clone(),
-        guc_configs.virtual_key.clone(),
-    )?;
-
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_io()
-        .enable_time()
-        .build()
-        .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
-
-    let mut count = 0;
-
     // Process rows based on table method
-    if job_params.table_method == vectorize_core::types::TableMethod::join {
+    let count = if job_params.table_method == vectorize_core::types::TableMethod::join {
         let insert_q = format!(
             "INSERT INTO vectorize._embeddings_{} ({}, embeddings, updated_at)
              SELECT src.{}, src.{}, NOW()
@@ -343,7 +325,7 @@ fn import_embeddings(
         Spi::run(&insert_q)?;
 
         let count_query = format!("SELECT count(*) FROM vectorize._embeddings_{}", job_name);
-        count = Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32;
+        Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
     } else {
         // For append method, update the source table's embeddings column
         let update_q = format!(
@@ -367,8 +349,8 @@ fn import_embeddings(
             "SELECT count(*) FROM {}.{}",
             job_params.schema, job_params.table
         );
-        count = Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32;
-    }
+        Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
+    };
 
     // Clean up realtime jobs if necessary
     if job_params.schedule == "realtime" {
