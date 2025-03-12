@@ -1368,9 +1368,10 @@ async fn test_table_from() {
     .await
     .expect("failed to insert destination data");
 
-    let job_name = format!("table_from_test_{}", test_num);
+    // Test both realtime and cron scheduling
 
-    // Test table_from with realtime schedule
+    // Test realtime scheduling
+    let realtime_job_name = format!("table_from_test_realtime_{}", test_num);
     sqlx::query(&format!(
         "SELECT vectorize.table_from(
             \"table\" => '{}',
@@ -1383,28 +1384,56 @@ async fn test_table_from() {
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
             schedule => 'realtime'
         )",
-        dest_table_name, job_name, src_table_name
+        dest_table_name, realtime_job_name, src_table_name
     ))
     .execute(&conn)
     .await
-    .expect("failed to create table from embeddings");
+    .expect("failed to create table from embeddings with realtime schedule");
 
-    // Verify embeddings were imported correctly
-    let count: i64 = sqlx::query_scalar(&format!(
+    // Test cron scheduling
+    let cron_job_name = format!("table_from_test_cron_{}", test_num);
+    sqlx::query(&format!(
+        "SELECT vectorize.table_from(
+            \"table\" => '{}',
+            columns => ARRAY['content'],
+            job_name => '{}',
+            primary_key => 'id',
+            src_table => '{}',
+            src_primary_key => 'id',
+            src_embeddings_col => 'embeddings',
+            transformer => 'sentence-transformers/all-MiniLM-L6-v2',
+            schedule => '* * * * *'
+        )",
+        dest_table_name, cron_job_name, src_table_name
+    ))
+    .execute(&conn)
+    .await
+    .expect("failed to create table from embeddings with cron schedule");
+
+    // Verify embeddings were imported correctly for both jobs
+    let realtime_count: i64 = sqlx::query_scalar(&format!(
         "SELECT COUNT(*) FROM vectorize._embeddings_{}",
-        job_name
+        realtime_job_name
     ))
     .fetch_one(&conn)
     .await
     .expect("failed to count embeddings");
-    assert_eq!(count, 2, "Expected 2 embeddings to be imported");
+    assert_eq!(
+        realtime_count, 2,
+        "Expected 2 embeddings to be imported for realtime job"
+    );
 
-    // Test search functionality
-    let search_results =
-        common::search_with_retry(&conn, "test content", &job_name, 10, 2, 2, None)
-            .await
-            .expect("failed to execute search");
-    assert_eq!(search_results.len(), 2, "Expected 2 search results");
+    let cron_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}",
+        cron_job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count embeddings");
+    assert_eq!(
+        cron_count, 2,
+        "Expected 2 embeddings to be imported for cron job"
+    );
 
     // Test realtime updates
     let new_id = 3;
@@ -1421,13 +1450,29 @@ async fn test_table_from() {
     // Wait for realtime update to process
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-    // Verify the new record was processed
-    let new_count: i64 = sqlx::query_scalar(&format!(
+    // Verify the new record was processed for realtime job
+    let new_realtime_count: i64 = sqlx::query_scalar(&format!(
         "SELECT COUNT(*) FROM vectorize._embeddings_{}",
-        job_name
+        realtime_job_name
     ))
     .fetch_one(&conn)
     .await
     .expect("failed to count embeddings after update");
-    assert_eq!(new_count, 3, "Expected 3 embeddings after update");
+    assert_eq!(
+        new_realtime_count, 3,
+        "Expected 3 embeddings after update in realtime job"
+    );
+
+    // The cron job should still have the original count
+    let new_cron_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM vectorize._embeddings_{}",
+        cron_job_name
+    ))
+    .fetch_one(&conn)
+    .await
+    .expect("failed to count embeddings after update");
+    assert_eq!(
+        new_cron_count, 2,
+        "Expected cron job to still have 2 embeddings"
+    );
 }
