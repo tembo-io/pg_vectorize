@@ -1260,7 +1260,7 @@ async fn test_import_embeddings() {
     sqlx::query(&format!(
         "SELECT vectorize.table(
             job_name => '{}',
-            table => '{}',
+            \"table\" => '{}',
             primary_key => 'id',
             columns => ARRAY['content'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -1373,7 +1373,7 @@ async fn test_table_from() {
     // Test table_from with realtime schedule
     sqlx::query(&format!(
         "SELECT vectorize.table_from(
-            table => '{}',
+            \"table\" => '{}',
             columns => ARRAY['content'],
             job_name => '{}',
             primary_key => 'id',
