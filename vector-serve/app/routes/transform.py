@@ -8,7 +8,8 @@ from pydantic import BaseModel, conlist
 
 router = APIRouter(tags=["transform"])
 
-logging.basicConfig(level=logging.DEBUG)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(level=LOG_LEVEL)
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
