@@ -31,7 +31,7 @@ ENV UV_LINK_MODE=copy
 COPY vector-serve .
 
 RUN uv venv --python "${PYTHON_VERSION}" && \
-    uv sync --all-groups --frozen && \
+    uv sync --no-dev --frozen && \
     uv run python -m app.models && \
     uv cache clean
 
