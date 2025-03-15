@@ -395,6 +395,12 @@ fn table_from(
 ) -> Result<String> {
     let model = Model::new(transformer)?;
 
+    let update_time_col = if schedule == "realtime" {
+        // updates are based on triggers in the realtime configuration
+        None
+    } else {
+        Some(update_col)
+    };
     // First initialize the table structure without triggers/cron
     init_table(
         job_name,
@@ -402,7 +408,7 @@ fn table_from(
         table,
         columns.clone(),
         primary_key,
-        Some(update_col),
+        update_time_col,
         index_dist_type.into(),
         &model,
         table_method.into(),

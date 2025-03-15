@@ -1351,7 +1351,8 @@ async fn test_table_from() {
     sqlx::query(&format!(
         "CREATE TABLE {} (
             id SERIAL PRIMARY KEY,
-            content TEXT
+            content TEXT,
+            last_updated_at TIMESTAMPTZ DEFAULT NOW()
         )",
         dest_table_name
     ))
