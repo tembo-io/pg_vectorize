@@ -1,15 +1,18 @@
 use crate::chat::ops::{call_chat, call_chat_completions};
 use crate::chat::types::RenderedPrompt;
 use crate::guc::get_guc_configs;
+use crate::init::{init_cron, VECTORIZE_QUEUE};
+use crate::job::{create_event_trigger, create_trigger_handler};
 use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
+use crate::util::get_vectorize_meta_spi;
 use text_splitter::TextSplitter;
+use vectorize_core::types::{JobParams, Model};
 
 use anyhow::Result;
 use pgrx::prelude::*;
-use vectorize_core::types::Model;
 
 #[pg_extern]
 fn chunk_table(
@@ -113,7 +116,7 @@ fn table(
         job_name,
         schema,
         table,
-        columns,
+        columns.clone(),
         primary_key,
         update_time_col,
         index_dist_type.into(),
@@ -290,4 +293,143 @@ fn chunk_text(document: &str, max_characters: i64) -> Vec<String> {
     let max_chars_usize = max_characters as usize;
     let splitter = TextSplitter::new(max_chars_usize);
     splitter.chunks(document).map(|s| s.to_string()).collect()
+}
+
+#[pg_extern]
+fn import_embeddings(
+    job_name: &str,
+    src_table: &str,
+    src_primary_key: &str,
+    src_embeddings_col: &str,
+) -> Result<String> {
+    // Get project metadata
+    let meta = get_vectorize_meta_spi(job_name)?;
+    let job_params: JobParams = serde_json::from_value(meta.params.clone())?;
+
+    // Process rows based on table method
+    let count = if job_params.table_method == vectorize_core::types::TableMethod::join {
+        let insert_q = format!(
+            "INSERT INTO vectorize._embeddings_{} ({}, embeddings, updated_at)
+             SELECT src.{}, src.{}, NOW()
+             FROM {} src
+             LEFT JOIN vectorize._embeddings_{} tgt ON src.{} = tgt.{}
+             WHERE tgt.{} IS NULL
+             ON CONFLICT ({}) DO UPDATE 
+             SET embeddings = EXCLUDED.embeddings, updated_at = NOW()",
+            job_name,
+            job_params.primary_key,
+            src_primary_key,
+            src_embeddings_col,
+            src_table,
+            job_name,
+            src_primary_key,
+            job_params.primary_key,
+            job_params.primary_key,
+            job_params.primary_key
+        );
+
+        Spi::run(&insert_q)?;
+
+        let count_query = format!("SELECT count(*) FROM vectorize._embeddings_{}", job_name);
+        Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
+    } else {
+        // For append method, update the source table's embeddings column
+        let update_q = format!(
+            "UPDATE {}.{} t0 
+             SET {}_embeddings = src.{},
+                 {}_updated_at = NOW()
+             FROM {} src
+             WHERE t0.{} = src.{}",
+            job_params.schema,
+            job_params.table,
+            job_name,
+            src_embeddings_col,
+            job_name,
+            src_table,
+            job_params.primary_key,
+            src_primary_key
+        );
+
+        Spi::run(&update_q)?;
+        let count_query = format!(
+            "SELECT count(*) FROM {}.{}",
+            job_params.schema, job_params.table
+        );
+        Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
+    };
+
+    // Clean up realtime jobs if necessary
+    if job_params.schedule == "realtime" {
+        let delete_q = format!(
+            "DELETE FROM pgmq.q_{} WHERE message->>'job_name' = $1",
+            VECTORIZE_QUEUE
+        );
+        Spi::run_with_args(
+            &delete_q,
+            Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
+        )?;
+    }
+
+    Ok(format!(
+        "Successfully imported embeddings for {} row(s)",
+        count
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+#[pg_extern]
+fn table_from(
+    table: &str,
+    columns: Vec<String>,
+    job_name: &str,
+    primary_key: &str,
+    src_table: &str,
+    src_primary_key: &str,
+    src_embeddings_col: &str,
+    schema: default!(&str, "'public'"),
+    update_col: default!(String, "'last_updated_at'"),
+    index_dist_type: default!(types::IndexDist, "'pgv_hnsw_cosine'"),
+    transformer: default!(&str, "'sentence-transformers/all-MiniLM-L6-v2'"),
+    table_method: default!(types::TableMethod, "'join'"),
+    schedule: default!(&str, "'* * * * *'"),
+) -> Result<String> {
+    let model = Model::new(transformer)?;
+
+    // First initialize the table structure without triggers/cron
+    init_table(
+        job_name,
+        schema,
+        table,
+        columns.clone(),
+        primary_key,
+        Some(update_col),
+        index_dist_type.into(),
+        &model,
+        table_method.into(),
+        "manual", // Use manual schedule initially to prevent immediate job creation
+    )?;
+
+    // Import the embeddings
+    import_embeddings(job_name, src_table, src_primary_key, src_embeddings_col)?;
+
+    // Now set up the triggers or cron job based on the desired schedule
+    if schedule == "realtime" {
+        // Create triggers for realtime updates
+        let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
+        Spi::run(&trigger_handler)?;
+
+        let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
+        let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
+
+        Spi::run(&insert_trigger)?;
+        Spi::run(&update_trigger)?;
+    } else if schedule != "manual" {
+        // Set up cron job for scheduled updates
+        init_cron(schedule, job_name)?;
+    }
+
+    Ok(format!(
+        "Successfully created table from existing embeddings with schedule: {}",
+        schedule
+    ))
 }

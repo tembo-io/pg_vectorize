@@ -34,6 +34,11 @@ pub fn init_pgmq() -> Result<()> {
 }
 
 pub fn init_cron(cron: &str, job_name: &str) -> Result<Option<i64>, spi::Error> {
+    // Skip scheduling for manual schedule
+    if cron == "manual" {
+        return Ok(None);
+    }
+
     let cronjob = format!(
         "
         SELECT cron.schedule(
