@@ -26,9 +26,14 @@ except Exception:
     MULTI_MODEL = 1
 
 
-def parse_header(authorization: str) -> str | None:
+def parse_header(authorization: str | None) -> str | None:
+    """parses hugging face token from the authorization header
+    Returns None if the token is not a hugging face token"""
     if authorization is not None:
-        return authorization.split("Bearer ")[-1]
+        token_value = authorization.split("Bearer ")[-1]
+        is_hf_token = bool(token_value and token_value.startswith("hf_"))
+        if is_hf_token:
+            return token_value
     return None
 
 
@@ -70,9 +75,8 @@ def get_model(
         # and model not in cache
         logging.debug(f"Model: {model_name} not in cache.")
         try:
-            logging.error("api_key: %s", api_key)
             model = SentenceTransformer(
-                model_name, use_auth_token=api_key, trust_remote_code=True
+                model_name, token=api_key, trust_remote_code=True
             )
             # add model to cache
             model_cache[model_name] = model
