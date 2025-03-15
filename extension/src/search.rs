@@ -38,6 +38,16 @@ pub fn init_table(
         error!("realtime schedule is only compatible with the join table method");
     }
 
+    if let Some(col) = &update_col {
+        // validate update_col
+        let update_time_dtype = init::get_column_datatype(schema, table, col)?;
+        if update_time_dtype != "timestamp with time zone" {
+            return Err(anyhow::anyhow!(
+                "update_col: but must be of type `timestamp with time zone. '{col}' is of type `{t}`", col=col, t=update_time_dtype
+            ));
+        }
+    }
+
     // get prim key type
     let pkey_type = init::get_column_datatype(schema, table, primary_key)?;
     init::init_pgmq()?;
@@ -291,7 +301,7 @@ pub fn hybrid_search(
         job_name,
         query,
         return_columns.clone(),
-        num_results.clone() * 2,
+        num_results * 2,
     )?;
     let semantic_results = search(
         job_name,
