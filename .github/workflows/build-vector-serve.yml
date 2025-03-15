@@ -183,6 +183,7 @@ jobs:
             quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-arm64 \
             quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64
 
+          docker manifest annotate quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-arm64 --arch arm64 --os linux
           docker manifest annotate quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }} quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}-amd64 --arch amd64 --os linux
           docker manifest push quay.io/tembo/vector-serve:${{ steps.versions.outputs.SHORT_SHA }}
 
