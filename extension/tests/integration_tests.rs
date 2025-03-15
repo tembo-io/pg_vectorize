@@ -1236,9 +1236,10 @@ async fn test_import_embeddings() {
 
     // Create append destination table
     sqlx::query(&format!(
-        "CREATE TABLE {} (
+        "CREATE TABLE public.{} (
             id SERIAL PRIMARY KEY,
-            content TEXT
+            content TEXT,
+            last_updated_at TIMESTAMPTZ DEFAULT NOW()
         )",
         append_table_name
     ))
