@@ -106,13 +106,19 @@ fn table(
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
     let model = Model::new(transformer)?;
+    let update_time_col = if schedule == "realtime" {
+        // updates are based on triggers in the realtime configuration
+        None
+    } else {
+        Some(update_col)
+    };
     init_table(
         job_name,
         schema,
         table,
         columns.clone(),
         primary_key,
-        Some(update_col),
+        update_time_col,
         index_dist_type.into(),
         &model,
         table_method.into(),
