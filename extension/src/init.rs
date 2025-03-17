@@ -1,4 +1,5 @@
 use crate::{query::check_input, types};
+use vectorize_core::worker::ops::get_table_name;
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
@@ -82,7 +83,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
         ",
         job_name = job_name,
         schema = job_params.schema,
-        table = job_params.table,
+        table = get_table_name(&job_params.table_name).to_string(),
         primary_key = job_params.primary_key,
     )
 }
@@ -90,7 +91,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
 pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = job_params.table.clone();
+    let src_table = get_table_name(&job_params.table_name.clone())?.to_string();
 
     format!(
         "
@@ -111,7 +112,7 @@ pub fn init_embedding_table_query(
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = job_params.table.clone();
+    let src_table = get_table_name(&job_params.table_name.clone()).to_string();
 
     let col_type = format!("vector({model_dim})");
 

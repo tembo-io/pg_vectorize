@@ -4,6 +4,17 @@ use anyhow::Result;
 use serde_json::to_string;
 use sqlx::{Pool, Postgres};
 use std::fmt::Write;
+use pgrx::{prelude::*, pg_sys::Oid};
+
+pub fn get_table_name(oid: &Oid) -> Result<String> {
+    let query = "SELECT relname FROM pg_class WHERE oid = $1";
+    // Supply a vector of one argument: the type OID for an Oid (pgrx::pg_sys::OIDOID)
+    // and the actual datum value from the passed `oid`.
+    let row: Option<String> = Spi::get_one_with_args(query, vec![(pgrx::PgOid::Custom(pgrx::pg_sys::OIDOID), oid.into_datum())])
+        .map_err(|e| anyhow::anyhow!("Query failed: {:?}", e))?;
+    row.ok_or_else(|| anyhow::anyhow!("Table not found for OID: {:?}", oid))
+}
+
 
 pub async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
@@ -69,16 +80,18 @@ fn build_upsert_query(
 pub async fn update_embeddings(
     pool: &Pool<Postgres>,
     schema: &str,
-    table: &str,
+    table_name: &pgrx::pg_sys::Oid,
     project: &str,
     pkey: &str,
     pkey_type: &str,
     embeddings: Vec<PairedEmbeddings>,
 ) -> anyhow::Result<()> {
+    let table = get_table_name(table_name)?.to_string();
+
     if embeddings.len() > 10 {
-        bulk_update_embeddings(pool, schema, table, project, pkey, pkey_type, embeddings).await
+        bulk_update_embeddings(pool, schema, &table, project, pkey, pkey_type, embeddings).await
     } else {
-        update_append_table(pool, embeddings, schema, table, project, pkey, pkey_type).await
+        update_append_table(pool, embeddings, schema, &table, project, pkey, pkey_type).await
     }
 }
 

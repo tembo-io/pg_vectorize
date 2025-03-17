@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
+use vectorize_core::worker::ops::get_table_name;
 
 // TODO: Need to crete a migration and release the new version
 // TODO: Dynamically change the weight of full-text and semantic search
@@ -116,7 +117,7 @@ pub fn init_table(
 
     let valid_params = types::JobParams {
         schema: schema.to_string(),
-        table: table.to_string(),
+        table_name: table,
         columns: columns.clone(),
         update_time_col: update_col,
         table_method: table_method.clone(),
@@ -217,12 +218,12 @@ pub fn full_text_search(
         .join(" || ' ' || ");
 
     let query = format!(
-        "SELECT {return_columns} FROM {schema}.{table}
+        "SELECT {return_columns} FROM {schema}.{table_name}
              WHERE to_tsvector('english', {search_columns})
              @@ to_tsquery('english', '{query}')
              LIMIT {limit};",
         schema = proj_params.schema,
-        table = proj_params.table,
+        table_name = get_table_name(&proj_params.table_name),
         return_columns = return_columns.join(", "),
         search_columns = search_columns, // Dynamically concatenate columns
         query = query
@@ -426,14 +427,14 @@ pub fn cosine_similarity_search(
     where_clause: Option<String>,
 ) -> Result<Vec<JsonB>> {
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = job_params.table_name.clone();
 
     // switch on table method
     let query = match job_params.table_method {
         TableMethod::append => single_table_cosine_similarity(
             project,
             &schema,
-            &table,
+            &get_table_name(&table)?.to_string(),
             return_columns,
             num_results,
             where_clause,
@@ -474,7 +475,7 @@ fn join_table_cosine_similarity(
     where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = get_table_name(&job_params.table_name.clone())?.to_string();
     let join_key = &job_params.primary_key;
     let cols = &return_columns
         .iter()

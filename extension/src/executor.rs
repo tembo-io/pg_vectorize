@@ -4,6 +4,7 @@ use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
 use crate::util::get_pg_conn;
+use vectorize_core::worker::ops::get_table_name;
 use chrono::TimeZone;
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
@@ -129,7 +130,7 @@ pub fn new_rows_query_join(job_name: &str, job_params: &JobParams) -> String {
         .collect::<Vec<_>>()
         .join(",");
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = get_table_name(&job_params.table_name.clone())?.to_string();
 
     let base_query = format!(
         "
@@ -178,7 +179,7 @@ pub fn new_rows_query(job_name: &str, job_params: &JobParams) -> String {
         ",
         record_id = job_params.primary_key,
         schema = job_params.schema,
-        table = job_params.table,
+        table = get_table_name(&job_params.table_name)?.to_string(),
     );
     if let Some(updated_at_col) = &job_params.update_time_col {
         // updated_at_column is not required when `schedule` is realtime

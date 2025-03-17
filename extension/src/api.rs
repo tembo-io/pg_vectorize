@@ -10,6 +10,7 @@ use crate::types;
 use crate::util::get_vectorize_meta_spi;
 use text_splitter::TextSplitter;
 use vectorize_core::types::{JobParams, Model};
+use vectorize_core::worker::ops::get_table_name;
 
 use anyhow::Result;
 use pgrx::prelude::*;
@@ -305,6 +306,7 @@ fn import_embeddings(
     // Get project metadata
     let meta = get_vectorize_meta_spi(job_name)?;
     let job_params: JobParams = serde_json::from_value(meta.params.clone())?;
+    let table = get_table_name(&job_params.table_name)?.to_string();
 
     // Process rows based on table method
     let count = if job_params.table_method == vectorize_core::types::TableMethod::join {
@@ -341,7 +343,7 @@ fn import_embeddings(
              FROM {} src
              WHERE t0.{} = src.{}",
             job_params.schema,
-            job_params.table,
+            table,
             job_name,
             src_embeddings_col,
             job_name,
@@ -353,7 +355,7 @@ fn import_embeddings(
         Spi::run(&update_q)?;
         let count_query = format!(
             "SELECT count(*) FROM {}.{}",
-            job_params.schema, job_params.table
+            job_params.schema, table
         );
         Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
     };

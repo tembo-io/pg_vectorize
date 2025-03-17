@@ -7,6 +7,7 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use thiserror::Error;
+use pgrx::pg_sys;
 
 pub const VECTORIZE_SCHEMA: &str = "vectorize";
 
@@ -104,7 +105,7 @@ pub enum TableMethod {
 #[derive(Clone, Debug, Default, Serialize, Deserialize, FromRow)]
 pub struct JobParams {
     pub schema: String,
-    pub table: String,
+    pub table_name : pg_sys::Oid,
     pub columns: Vec<String>,
     pub update_time_col: Option<String>,
     pub table_method: TableMethod,
