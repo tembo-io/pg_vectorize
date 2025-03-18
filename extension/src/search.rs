@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
-use vectorize_core::worker::ops::get_table_name;
+use crate::util::get_table_name;
 
 // TODO: Need to crete a migration and release the new version
 // TODO: Dynamically change the weight of full-text and semantic search

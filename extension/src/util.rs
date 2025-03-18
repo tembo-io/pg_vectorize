@@ -15,6 +15,18 @@ pub struct Config {
     pub vectorize_socket_url: Option<String>,
 }
 
+pub fn get_table_name(oid: pgrx::pg_sys::Oid) -> Result<String, pgrx::spi::Error> {
+    let query = "SELECT relname FROM pg_class WHERE oid = $1::regclass";
+    let row: Option<String> = pgrx::Spi::get_one_with_args(query, vec![(pgrx::PgOid::Custom(pgrx::pg_sys::OIDOID), oid.into_datum())])?;
+    row.ok_or_else(|| pgrx::spi::Error::NoData)
+}
+
+impl From<pgrx::pg_sys::Oid> for sqlx::Oid {
+    fn from(oid: pgrx::pg_sys::Oid) -> Self {
+        sqlx::Oid(oid.0)  // Extract the inner `u32` value
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {

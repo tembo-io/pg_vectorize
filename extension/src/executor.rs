@@ -4,7 +4,7 @@ use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
 use crate::util::get_pg_conn;
-use vectorize_core::worker::ops::get_table_name;
+use crate::util::get_table_name;
 use chrono::TimeZone;
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;

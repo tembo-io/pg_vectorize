@@ -8,9 +8,9 @@ use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
 use crate::util::get_vectorize_meta_spi;
+use crate::util::get_table_name;
 use text_splitter::TextSplitter;
 use vectorize_core::types::{JobParams, Model};
-use vectorize_core::worker::ops::get_table_name;
 
 use anyhow::Result;
 use pgrx::prelude::*;

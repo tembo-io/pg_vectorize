@@ -1,5 +1,5 @@
 use crate::{query::check_input, types};
-use vectorize_core::worker::ops::get_table_name;
+use crate::util::get_table_name;
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
