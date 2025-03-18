@@ -5,6 +5,8 @@ use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_j
 use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
+use crate::util::get_oid_from_table_name;
+use crate::util::convert_oid;
 
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
@@ -117,7 +119,7 @@ pub fn init_table(
 
     let valid_params = types::JobParams {
         schema: schema.to_string(),
-        table_name: table,
+        table_name: get_oid_from_table_name(&table),
         columns: columns.clone(),
         update_time_col: update_col,
         table_method: table_method.clone(),
@@ -223,7 +225,7 @@ pub fn full_text_search(
              @@ to_tsquery('english', '{query}')
              LIMIT {limit};",
         schema = proj_params.schema,
-        table_name = get_table_name(&proj_params.table_name),
+        table_name = get_table_name(&convert_oid(&proj_params.table_name)).unwrap().to_string(),
         return_columns = return_columns.join(", "),
         search_columns = search_columns, // Dynamically concatenate columns
         query = query
@@ -434,7 +436,7 @@ pub fn cosine_similarity_search(
         TableMethod::append => single_table_cosine_similarity(
             project,
             &schema,
-            &get_table_name(&table)?.to_string(),
+            &get_table_name(&convert_oid(&table))?.to_string(),
             return_columns,
             num_results,
             where_clause,
@@ -475,7 +477,7 @@ fn join_table_cosine_similarity(
     where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
-    let table = get_table_name(&job_params.table_name.clone())?.to_string();
+    let table = get_table_name(&convert_oid(&job_params.table_name.clone())).unwrap().to_string();
     let join_key = &job_params.primary_key;
     let cols = &return_columns
         .iter()

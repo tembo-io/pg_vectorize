@@ -9,6 +9,7 @@ use crate::transformers::transform;
 use crate::types;
 use crate::util::get_vectorize_meta_spi;
 use crate::util::get_table_name;
+use crate::util::convert_oid;
 use text_splitter::TextSplitter;
 use vectorize_core::types::{JobParams, Model};
 
@@ -94,7 +95,7 @@ fn chunk_table(
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table(
-    table: &str,
+    table_name: &str,
     columns: Vec<String>,
     job_name: &str,
     primary_key: &str,
@@ -116,7 +117,7 @@ fn table(
     init_table(
         job_name,
         schema,
-        table,
+        table_name,
         columns.clone(),
         primary_key,
         update_time_col,
@@ -306,7 +307,7 @@ fn import_embeddings(
     // Get project metadata
     let meta = get_vectorize_meta_spi(job_name)?;
     let job_params: JobParams = serde_json::from_value(meta.params.clone())?;
-    let table = get_table_name(&job_params.table_name)?.to_string();
+    let table = get_table_name(&convert_oid(&job_params.table_name))?.to_string();
 
     // Process rows based on table method
     let count = if job_params.table_method == vectorize_core::types::TableMethod::join {
@@ -381,7 +382,7 @@ fn import_embeddings(
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table_from(
-    table: &str,
+    table_name: &str,
     columns: Vec<String>,
     job_name: &str,
     primary_key: &str,
@@ -407,7 +408,7 @@ fn table_from(
     init_table(
         job_name,
         schema,
-        table,
+        table_name,
         columns.clone(),
         primary_key,
         update_time_col,
@@ -426,8 +427,8 @@ fn table_from(
         let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
         Spi::run(&trigger_handler)?;
 
-        let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
-        let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
+        let insert_trigger = create_event_trigger(job_name, schema, table_name, "INSERT");
+        let update_trigger = create_event_trigger(job_name, schema, table_name, "UPDATE");
 
         Spi::run(&insert_trigger)?;
         Spi::run(&update_trigger)?;

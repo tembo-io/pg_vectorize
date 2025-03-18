@@ -5,7 +5,6 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
 use std::env;
 use url::{ParseError, Url};
-
 use crate::guc;
 use vectorize_core::types::{self, Model};
 
@@ -15,17 +14,22 @@ pub struct Config {
     pub vectorize_socket_url: Option<String>,
 }
 
-pub fn get_table_name(oid: pgrx::pg_sys::Oid) -> Result<String, pgrx::spi::Error> {
+pub fn get_table_name(oid: &pgrx::pg_sys::Oid) -> Result<String, pgrx::spi::Error> {
     let query = "SELECT relname FROM pg_class WHERE oid = $1::regclass";
     let row: Option<String> = pgrx::Spi::get_one_with_args(query, vec![(pgrx::PgOid::Custom(pgrx::pg_sys::OIDOID), oid.into_datum())])?;
-    row.ok_or_else(|| pgrx::spi::Error::NoData)
+    row.ok_or_else(|| pgrx::spi::SpiError::NoTupleTable)
+}
+pub fn convert_oid(sqlx_oid: &sqlx::postgres::types::Oid) -> pgrx::pg_sys::Oid {
+    pgrx::pg_sys::Oid::from(sqlx_oid.0)
 }
 
-impl From<pgrx::pg_sys::Oid> for sqlx::Oid {
-    fn from(oid: pgrx::pg_sys::Oid) -> Self {
-        sqlx::Oid(oid.0)  // Extract the inner `u32` value
-    }
+pub fn get_oid_from_table_name(table_name: &str) -> sqlx::postgres::types::Oid {
+    let query = format!("SELECT '{}'::regclass::oid", table_name);
+    let oid: i32= Spi::get_one(&query).expect("Failed to fetch OID").unwrap();
+    let pgOid = pgrx::pg_sys::Oid::from(oid as u32);
+    sqlx::postgres::types::Oid(pgOid.into())
 }
+
 
 impl Default for Config {
     fn default() -> Self {

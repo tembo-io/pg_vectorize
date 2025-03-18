@@ -1,5 +1,6 @@
 use crate::{query::check_input, types};
 use crate::util::get_table_name;
+use crate::util::convert_oid;
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
@@ -83,7 +84,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
         ",
         job_name = job_name,
         schema = job_params.schema,
-        table = get_table_name(&job_params.table_name).to_string(),
+        table = get_table_name(&convert_oid(&job_params.table_name)).unwrap().to_string(),
         primary_key = job_params.primary_key,
     )
 }
@@ -91,7 +92,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
 pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = get_table_name(&job_params.table_name.clone())?.to_string();
+    let src_table = get_table_name(&convert_oid(&job_params.table_name.clone())).unwrap().to_string();
 
     format!(
         "
@@ -112,7 +113,7 @@ pub fn init_embedding_table_query(
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = get_table_name(&job_params.table_name.clone()).to_string();
+    let src_table = get_table_name(&convert_oid(&job_params.table_name.clone())).unwrap().to_string();
 
     let col_type = format!("vector({model_dim})");
 
