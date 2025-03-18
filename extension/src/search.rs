@@ -5,9 +5,10 @@ use crate::job::{create_event_trigger, create_trigger_handler, initalize_table_j
 use crate::transformers::openai;
 use crate::transformers::transform;
 use crate::util;
-use crate::util::get_oid_from_table_name;
 use crate::util::convert_oid;
+use crate::util::get_oid_from_table_name;
 
+use crate::util::get_table_name;
 use anyhow::{Context, Result};
 use pgrx::prelude::*;
 use pgrx::JsonB;
@@ -16,7 +17,6 @@ use std::collections::HashMap;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
-use crate::util::get_table_name;
 
 // TODO: Need to crete a migration and release the new version
 // TODO: Dynamically change the weight of full-text and semantic search
@@ -225,7 +225,9 @@ pub fn full_text_search(
              @@ to_tsquery('english', '{query}')
              LIMIT {limit};",
         schema = proj_params.schema,
-        table_name = get_table_name(&convert_oid(&proj_params.table_name)).unwrap().to_string(),
+        table_name = get_table_name(&convert_oid(&proj_params.table_name))
+            .unwrap()
+            .to_string(),
         return_columns = return_columns.join(", "),
         search_columns = search_columns, // Dynamically concatenate columns
         query = query
@@ -477,7 +479,9 @@ fn join_table_cosine_similarity(
     where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
-    let table = get_table_name(&convert_oid(&job_params.table_name.clone())).unwrap().to_string();
+    let table = get_table_name(&convert_oid(&job_params.table_name.clone()))
+        .unwrap()
+        .to_string();
     let join_key = &job_params.primary_key;
     let cols = &return_columns
         .iter()

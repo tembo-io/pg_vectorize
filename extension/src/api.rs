@@ -7,9 +7,9 @@ use crate::search::{self, init_table};
 use crate::transformers::generic::env_interpolate_string;
 use crate::transformers::transform;
 use crate::types;
-use crate::util::get_vectorize_meta_spi;
-use crate::util::get_table_name;
 use crate::util::convert_oid;
+use crate::util::get_table_name;
+use crate::util::get_vectorize_meta_spi;
 use text_splitter::TextSplitter;
 use vectorize_core::types::{JobParams, Model};
 
@@ -354,10 +354,7 @@ fn import_embeddings(
         );
 
         Spi::run(&update_q)?;
-        let count_query = format!(
-            "SELECT count(*) FROM {}.{}",
-            job_params.schema, table
-        );
+        let count_query = format!("SELECT count(*) FROM {}.{}", job_params.schema, table);
         Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
     };
 

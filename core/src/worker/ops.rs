@@ -2,19 +2,18 @@ use crate::transformers::types::PairedEmbeddings;
 use crate::types;
 use anyhow::Result;
 use serde_json::to_string;
+use sqlx::postgres::types::Oid;
 use sqlx::{Pool, Postgres};
 use std::fmt::Write;
-use sqlx::postgres::types::Oid;
 
-pub async fn get_table_name(pool: &sqlx::PgPool, oid: &sqlx::postgres::types::Oid) -> Result<String, sqlx::Error> {
+pub async fn get_table_name(
+    pool: &sqlx::PgPool,
+    oid: &sqlx::postgres::types::Oid,
+) -> Result<String, sqlx::Error> {
     let query = "SELECT relname FROM pg_class WHERE oid = $1::regclass";
-    let row: (String,) = sqlx::query_as(query)
-        .bind(oid)
-        .fetch_one(pool)
-        .await?;
+    let row: (String,) = sqlx::query_as(query).bind(oid).fetch_one(pool).await?;
     Ok(row.0)
 }
-
 
 pub async fn upsert_embedding_table(
     conn: &Pool<Postgres>,
