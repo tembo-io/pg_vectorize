@@ -82,7 +82,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
         ",
         job_name = job_name,
         schema = job_params.schema,
-        table = job_params.table,
+        table = job_params.relation,
         primary_key = job_params.primary_key,
     )
 }
@@ -90,7 +90,7 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
 pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = job_params.table.clone();
+    let src_table = job_params.relation.clone();
 
     format!(
         "
@@ -111,7 +111,7 @@ pub fn init_embedding_table_query(
 ) -> Vec<String> {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
-    let src_table = job_params.table.clone();
+    let src_table = job_params.relation.clone();
 
     let col_type = format!("vector({model_dim})");
 

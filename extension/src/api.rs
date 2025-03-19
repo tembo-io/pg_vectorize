@@ -93,7 +93,7 @@ fn chunk_table(
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table(
-    table: &str,
+    relation: &str,
     columns: Vec<String>,
     job_name: &str,
     primary_key: &str,
@@ -115,7 +115,7 @@ fn table(
     init_table(
         job_name,
         schema,
-        table,
+        relation,
         columns.clone(),
         primary_key,
         update_time_col,
@@ -341,7 +341,7 @@ fn import_embeddings(
              FROM {} src
              WHERE t0.{} = src.{}",
             job_params.schema,
-            job_params.table,
+            job_params.relation,
             job_name,
             src_embeddings_col,
             job_name,
@@ -353,7 +353,7 @@ fn import_embeddings(
         Spi::run(&update_q)?;
         let count_query = format!(
             "SELECT count(*) FROM {}.{}",
-            job_params.schema, job_params.table
+            job_params.schema, job_params.relation
         );
         Spi::get_one::<i64>(&count_query)?.unwrap_or(0) as i32
     };
@@ -379,7 +379,7 @@ fn import_embeddings(
 #[allow(clippy::too_many_arguments)]
 #[pg_extern]
 fn table_from(
-    table: &str,
+    relation: &str,
     columns: Vec<String>,
     job_name: &str,
     primary_key: &str,
@@ -405,7 +405,7 @@ fn table_from(
     init_table(
         job_name,
         schema,
-        table,
+        relation,
         columns.clone(),
         primary_key,
         update_time_col,
@@ -424,8 +424,8 @@ fn table_from(
         let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
         Spi::run(&trigger_handler)?;
 
-        let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
-        let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
+        let insert_trigger = create_event_trigger(job_name, schema, relation, "INSERT");
+        let update_trigger = create_event_trigger(job_name, schema, relation, "UPDATE");
 
         Spi::run(&insert_trigger)?;
         Spi::run(&update_trigger)?;

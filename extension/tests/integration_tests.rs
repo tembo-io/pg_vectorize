@@ -19,7 +19,7 @@ async fn test_scheduled_job() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -65,7 +65,7 @@ async fn test_hybrid_search() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -170,7 +170,7 @@ async fn test_scheduled_single_table() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -219,7 +219,7 @@ async fn test_realtime_append_fail() {
     let result = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -248,7 +248,7 @@ async fn test_realtime_job() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name', 'description'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -411,7 +411,7 @@ async fn test_static() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name', 'description'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -504,7 +504,7 @@ async fn test_realtime_tabled() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -579,7 +579,7 @@ async fn test_filter_join() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -638,7 +638,7 @@ async fn test_filter_append() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -678,7 +678,7 @@ async fn test_index_dist_type_hnsw_cosine() {
     let query = format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         index_dist_type => '{dist_type}',
@@ -735,7 +735,7 @@ async fn test_index_dist_type_hnsw_l2() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
             job_name => '{job_name}',
-            \"table\" => '{test_table_name}',
+            relation => '{test_table_name}',
             primary_key => 'product_id',
             columns => ARRAY['product_name'],
             index_dist_type => '{dist_type}',
@@ -786,7 +786,7 @@ async fn test_index_dist_type_hnsw_ip() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
             job_name => '{job_name}',
-            \"table\" => '{test_table_name}',
+            relation => '{test_table_name}',
             primary_key => 'product_id',
             columns => ARRAY['product_name'],
             index_dist_type => '{dist_type}',
@@ -848,7 +848,7 @@ async fn test_private_hf_model() {
     let created = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'chuckhend/private-model',
@@ -895,7 +895,7 @@ async fn test_diskann_cosine() {
     let result = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -944,7 +944,7 @@ async fn test_cohere() {
     let result = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'cohere/embed-multilingual-light-v3.0',
@@ -979,7 +979,7 @@ async fn test_event_trigger_on_table_drop() {
     let _ = sqlx::query(&format!(
         "SELECT vectorize.table(
         job_name => '{job_name}',
-        \"table\" => '{test_table_name}',
+        relation => '{test_table_name}',
         primary_key => 'product_id',
         columns => ARRAY['product_name'],
         transformer => 'sentence-transformers/all-MiniLM-L6-v2'
@@ -1183,7 +1183,7 @@ async fn test_import_embeddings() {
     sqlx::query(&format!(
         "SELECT vectorize.table(
             job_name => '{}',
-            \"table\" => '{}',
+            relation => '{}',
             primary_key => 'id',
             columns => ARRAY['content'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -1261,7 +1261,7 @@ async fn test_import_embeddings() {
     sqlx::query(&format!(
         "SELECT vectorize.table(
             job_name => '{}',
-            \"table\" => '{}',
+            relation => '{}',
             primary_key => 'id',
             columns => ARRAY['content'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2',
@@ -1376,7 +1376,7 @@ async fn test_table_from() {
     let realtime_job_name = format!("table_from_test_realtime_{}", test_num);
     sqlx::query(&format!(
         "SELECT vectorize.table_from(
-            \"table\" => '{}',
+            relation => '{}',
             columns => ARRAY['content'],
             job_name => '{}',
             primary_key => 'id',
@@ -1396,7 +1396,7 @@ async fn test_table_from() {
     let cron_job_name = format!("table_from_test_cron_{}", test_num);
     sqlx::query(&format!(
         "SELECT vectorize.table_from(
-            \"table\" => '{}',
+            relation => '{}',
             columns => ARRAY['content'],
             job_name => '{}',
             primary_key => 'id',
