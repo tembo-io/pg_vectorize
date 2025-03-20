@@ -103,7 +103,7 @@ jobs:
 
       - name: Test Core - Integration
         # skip when on external forks
-        if: github.repository == 'tembo-io/pgmq'
+        if: github.repository == 'tembo-io/pg_vectorize'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
