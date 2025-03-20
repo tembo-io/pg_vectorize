@@ -23,7 +23,7 @@ Then create the job.
 ```sql
 SELECT vectorize.table(
     job_name    => 'product_search_openai',
-    "table"     => 'products',
+    relation    => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
     transformer => 'openai/text-embedding-ada-002'

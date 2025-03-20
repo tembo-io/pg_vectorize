@@ -119,7 +119,7 @@ async fn execute_job(
             ops::update_embeddings(
                 dbclient,
                 &job_params.schema,
-                &job_params.table,
+                &job_params.relation,
                 &job_meta.clone().name,
                 &job_params.primary_key,
                 &job_params.pkey_type,

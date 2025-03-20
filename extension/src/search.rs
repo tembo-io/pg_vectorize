@@ -116,7 +116,7 @@ pub fn init_table(
 
     let valid_params = types::JobParams {
         schema: schema.to_string(),
-        table: table.to_string(),
+        relation: table.to_string(),
         columns: columns.clone(),
         update_time_col: update_col,
         table_method: table_method.clone(),
@@ -222,7 +222,7 @@ pub fn full_text_search(
              @@ to_tsquery('english', '{query}')
              LIMIT {limit};",
         schema = proj_params.schema,
-        table = proj_params.table,
+        table = proj_params.relation,
         return_columns = return_columns.join(", "),
         search_columns = search_columns, // Dynamically concatenate columns
         query = query
@@ -426,7 +426,7 @@ pub fn cosine_similarity_search(
     where_clause: Option<String>,
 ) -> Result<Vec<JsonB>> {
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = job_params.relation.clone();
 
     // switch on table method
     let query = match job_params.table_method {
@@ -474,7 +474,7 @@ fn join_table_cosine_similarity(
     where_clause: Option<String>,
 ) -> String {
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = job_params.relation.clone();
     let join_key = &job_params.primary_key;
     let cols = &return_columns
         .iter()

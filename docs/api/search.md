@@ -8,7 +8,7 @@ Initialize a table for vector search. Generates embeddings and index. Creates tr
 
 ```sql
 vectorize."table"(
-    "table" TEXT,
+    "relation" TEXT,
     "columns" TEXT[],
     "job_name" TEXT,
     "primary_key" TEXT,
@@ -23,7 +23,7 @@ vectorize."table"(
 
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
-| table | text | The name of the table to be initialized. |
+| relation | text | The name of the table to be initialized. |
 | columns | text | The name of the columns that contains the content that is used for context for RAG. Multiple columns are concatenated. |
 | job_name | text | A unique name for the project. |
 | primary_key | text | The name of the column that contains the unique record id. |
@@ -47,7 +47,7 @@ Pass the API key into the function call via `args`.
 ```sql
 select vectorize.table(
     job_name    => 'product_search',
-    "table"     => 'products',
+    relation    => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
     transformer =>  'openai/text-embedding-ada-002',
@@ -67,7 +67,7 @@ Then call `vectorize.table()` without providing the API key.
 ```sql
 select vectorize.table(
     job_name    => 'product_search',
-    "table"     => 'products',
+    relation    => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
     transformer =>  'openai/text-embedding-ada-002'
