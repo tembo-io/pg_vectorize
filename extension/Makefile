@@ -94,7 +94,7 @@ test-integration:
 	cargo test ${TEST_NAME} -- --ignored --test-threads=1 --nocapture
 
 test-unit:
-	cargo pgrx test
+	cargo test -- --test-threads=1
 
 test-version:
 	git fetch --tags

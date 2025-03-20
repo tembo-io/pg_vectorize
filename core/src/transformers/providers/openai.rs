@@ -183,6 +183,7 @@ mod integration_tests {
     use super::*;
     use tokio::test as async_test;
 
+    #[ignore]
     #[async_test]
     async fn test_generate_embedding() {
         let provider = OpenAIProvider::new(Some(OPENAI_BASE_URL.to_string()), None);

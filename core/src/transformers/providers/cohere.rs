@@ -113,6 +113,7 @@ mod integration_tests {
     use super::*;
     use tokio::test as async_test;
 
+    #[ignore]
     #[async_test]
     async fn test_generate_embedding() {
         let provider = CohereProvider::new(Some(COHERE_BASE_URL.to_string()), None);

@@ -113,6 +113,7 @@ mod integration_tests {
     use super::*;
     use std::env;
 
+    #[ignore]
     #[tokio::test]
     async fn test_voyage_ai_embedding() {
         let api_key = Some(env::var("VOYAGE_API_KEY").expect("VOYAGE_API_KEY must be set"));
