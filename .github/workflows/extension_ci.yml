@@ -98,6 +98,12 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib libopenblas-dev libreadline-dev
       - name: Test Core
+        run: |
+          cd ../core && cargo test
+
+      - name: Test Core - Integration
+        # skip when on external forks
+        if: github.repository == 'tembo-io/pgmq'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
@@ -105,7 +111,7 @@ jobs:
           PORTKEY_VIRTUAL_KEY_OPENAI: ${{ secrets.PORTKEY_VIRTUAL_KEY_OPENAI }}
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
         run: |
-          cd ../core && cargo test
+          cd ../core && cargo test --ignored
 
   test:
     name: Run tests
