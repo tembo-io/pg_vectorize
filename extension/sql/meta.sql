@@ -34,7 +34,7 @@ BEGIN
             
             -- Perform cleanup: delete the associated job from the vectorize.job table
             DELETE FROM vectorize.job
-            WHERE params ->> 'table' = table_name
+            WHERE params ->> 'relation' = table_name
             AND params ->> 'schema' = schema_name;
         END IF;
     END LOOP;
