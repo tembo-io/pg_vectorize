@@ -295,19 +295,19 @@ If you have already computed embeddings using a compatible model (e.g., using Se
 ```sql
 -- First create the vectorize project
 SELECT vectorize.table(
-    job_name => 'my_search',
-    table => 'my_table',
+    job_name    => 'my_search',
+    relation    => 'my_table',
     primary_key => 'id',
-    columns => ARRAY['content'],
+    columns     => ARRAY['content'],
     transformer => 'sentence-transformers/all-MiniLM-L6-v2'
 );
 
 -- Then import your pre-computed embeddings
 SELECT vectorize.import_embeddings(
-    job_name => 'my_search',
-    src_table => 'my_embeddings_table',
-    src_primary_key => 'id',
-    src_embeddings_col => 'embedding'
+    job_name            => 'my_search',
+    src_table           => 'my_embeddings_table',
+    src_primary_key     => 'id',
+    src_embeddings_col  => 'embedding'
 );
 ```
 
@@ -320,7 +320,7 @@ If you have already computed embeddings using a compatible model, you can create
 ```sql
 -- Create a vectorize table from existing embeddings
 SELECT vectorize.table_from(
-    table => 'my_table',
+    relation => 'my_table',
     columns => ARRAY['content'],
     job_name => 'my_search',
     primary_key => 'id',
