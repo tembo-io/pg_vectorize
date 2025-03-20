@@ -103,7 +103,7 @@ jobs:
 
       - name: Test Core - Integration
         # skip when on external forks
-        if: github.repository == 'tembo-io/pg_vectorize'
+        if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
@@ -158,7 +158,7 @@ jobs:
           echo "\q" | make run
           make test-unit
       - name: integration-test
-        if: github.repository == 'tembo-io/pg_vectorize'
+        if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
