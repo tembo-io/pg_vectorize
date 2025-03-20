@@ -197,7 +197,7 @@ Initialize the RAG project.
 ```sql
 SELECT vectorize.table(
     job_name    => 'product_chat',
-    "table"     => 'products',
+    relation    => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['context'],
     transformer => 'openai/text-embedding-3-small',

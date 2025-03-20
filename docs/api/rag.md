@@ -8,10 +8,9 @@ Creates embeddings for specified data in a Postgres table. Creates index, and tr
 
 ### `vectorize.table`
 
-
 ```sql
 vectorize."table"(
-    "table" TEXT,
+    "relation" TEXT,
     "columns" TEXT[],
     "job_name" TEXT,
     "primary_key" TEXT,
@@ -26,7 +25,7 @@ vectorize."table"(
 
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
-| table | text | The name of the table to be initialized. |
+| relation | text | The name of the table to be initialized. |
 | columns | text | The name of the columns that contains the content that is used for context for RAG. Multiple columns are concatenated. |
 | job_name | text | A unique name for the project. |
 | primary_key | text | The name of the column that contains the unique record id. |
