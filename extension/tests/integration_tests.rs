@@ -2,8 +2,6 @@ mod util;
 use rand::Rng;
 use util::common;
 
-// Integration tests are ignored by default
-#[ignore]
 #[tokio::test]
 async fn test_scheduled_job() {
     let conn = common::init_database().await;
@@ -52,7 +50,6 @@ async fn test_scheduled_job() {
     assert_eq!(result.rows_affected(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_hybrid_search() {
     let conn = common::init_database().await;
@@ -86,7 +83,6 @@ async fn test_hybrid_search() {
     assert_eq!(hybrid_search_results.len(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_chunk_text() {
     let conn = common::init_database().await;
@@ -154,7 +150,6 @@ async fn test_chunk_text() {
     );
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_scheduled_single_table() {
     let conn = common::init_database().await;
@@ -204,7 +199,6 @@ async fn test_scheduled_single_table() {
     assert_eq!(result.rows_affected(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_realtime_append_fail() {
     let conn = common::init_database().await;
@@ -233,7 +227,6 @@ async fn test_realtime_append_fail() {
     assert!(result.is_err());
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_realtime_job() {
     let conn = common::init_database().await;
@@ -329,7 +322,6 @@ async fn test_realtime_job() {
     assert!(found_it);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_rag() {
     let conn = common::init_database().await;
@@ -362,7 +354,6 @@ async fn test_rag() {
     assert_eq!(search_results.len(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_rag_alternate_schema() {
     let conn = common::init_database().await;
@@ -395,7 +386,6 @@ async fn test_rag_alternate_schema() {
     assert_eq!(search_results.len(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_static() {
     // a static test. intended for use across extension version updates
@@ -489,7 +479,6 @@ async fn test_static() {
     assert!(found_it, "resulting records: {:?}", search_results);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_realtime_tabled() {
     let conn = common::init_database().await;
@@ -564,7 +553,6 @@ async fn test_realtime_tabled() {
     assert!(result.len() == 41);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_filter_join() {
     let conn = common::init_database().await;
@@ -623,7 +611,6 @@ async fn test_filter_join() {
     assert_eq!(product_id_val, 1);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_filter_append() {
     let conn = common::init_database().await;
@@ -662,7 +649,6 @@ async fn test_filter_append() {
     assert_eq!(product_id_val, 2);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_index_dist_type_hnsw_cosine() {
     let conn = common::init_database().await;
@@ -719,8 +705,6 @@ async fn test_index_dist_type_hnsw_cosine() {
     );
 }
 
-#[tokio::test]
-#[ignore]
 async fn test_index_dist_type_hnsw_l2() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
@@ -771,7 +755,6 @@ async fn test_index_dist_type_hnsw_l2() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_index_dist_type_hnsw_ip() {
     let conn = common::init_database().await;
     common::init_embedding_svc_url(&conn).await;
@@ -880,7 +863,6 @@ async fn test_private_hf_model() {
     assert_eq!(result.rows_affected(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_diskann_cosine() {
     let conn = common::init_database().await;
@@ -963,7 +945,6 @@ async fn test_cohere() {
     assert_eq!(search_results.len(), 3);
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_event_trigger_on_table_drop() {
     let conn = common::init_database().await;
@@ -1037,7 +1018,6 @@ async fn test_event_trigger_on_table_drop() {
     );
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_chunk_table() {
     let conn = common::init_database().await;
@@ -1108,7 +1088,6 @@ async fn test_chunk_table() {
     assert_eq!(rows[7].2, "pieces.");
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_import_embeddings() {
     let conn = common::init_database().await;
@@ -1301,7 +1280,6 @@ async fn test_import_embeddings() {
     );
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_table_from() {
     let conn = common::init_database().await;
