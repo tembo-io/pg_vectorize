@@ -20,7 +20,7 @@ GRANT SELECT ON ALL SEQUENCES IN SCHEMA vectorize TO pg_monitor;
 ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON TABLES TO pg_monitor;
 ALTER DEFAULT PRIVILEGES IN SCHEMA vectorize GRANT SELECT ON SEQUENCES TO pg_monitor;
 
-CREATE OR REPLACE FUNCTION handle_table_drop()
+CREATE FUNCTION vectorize.handle_table_drop()
 RETURNS event_trigger AS $$
 DECLARE
     obj RECORD;
@@ -34,7 +34,7 @@ BEGIN
             
             -- Perform cleanup: delete the associated job from the vectorize.job table
             DELETE FROM vectorize.job
-            WHERE params ->> 'table' = table_name
+            WHERE params ->> 'relation' = table_name
             AND params ->> 'schema' = schema_name;
         END IF;
     END LOOP;

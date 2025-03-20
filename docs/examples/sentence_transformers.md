@@ -54,7 +54,7 @@ Create a job to vectorize the products table. We'll specify the tables primary k
 ```sql
 SELECT vectorize.table(
     job_name    => 'product_search_hf',
-    "table"     => 'products',
+    relation    => 'products',
     primary_key => 'product_id',
     columns     => ARRAY['product_name', 'description'],
     transformer => 'sentence-transformers/multi-qa-MiniLM-L6-dot-v1',

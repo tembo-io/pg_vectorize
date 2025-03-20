@@ -132,6 +132,7 @@ mod portkey_integration_tests {
     use super::*;
     use tokio::test as async_test;
 
+    #[ignore]
     #[async_test]
     async fn test_portkey_openai() {
         let portkey_api_key = env::var("PORTKEY_API_KEY").expect("PORTKEY_API_KEY not set");

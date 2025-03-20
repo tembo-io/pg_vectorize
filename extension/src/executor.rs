@@ -129,7 +129,7 @@ pub fn new_rows_query_join(job_name: &str, job_params: &JobParams) -> String {
         .collect::<Vec<_>>()
         .join(",");
     let schema = job_params.schema.clone();
-    let table = job_params.table.clone();
+    let table = job_params.relation.clone();
 
     let base_query = format!(
         "
@@ -178,7 +178,7 @@ pub fn new_rows_query(job_name: &str, job_params: &JobParams) -> String {
         ",
         record_id = job_params.primary_key,
         schema = job_params.schema,
-        table = job_params.table,
+        table = job_params.relation,
     );
     if let Some(updated_at_col) = &job_params.update_time_col {
         // updated_at_column is not required when `schedule` is realtime

@@ -36,7 +36,7 @@ The embeddings must match the dimensions expected by the model specified when cr
 -- First create a vectorize project
 SELECT vectorize.table(
     job_name => 'product_search',
-    table => 'products',
+    relation => 'products',
     primary_key => 'id',
     columns => ARRAY['description'],
     transformer => 'sentence-transformers/all-MiniLM-L6-v2'
@@ -57,7 +57,7 @@ If you have pre-computed embeddings and want to create a new vectorize table fro
 
 ```sql
 SELECT vectorize.table_from(
-    table => 'products',
+    relation => 'products',
     columns => ARRAY['description'],
     job_name => 'product_search',
     primary_key => 'id',
@@ -78,7 +78,7 @@ The embeddings must match the dimensions of the specified transformer model.
 
 ### Parameters
 
-- `table`: The table to create or modify
+- `relation`: The table to create or modify
 - `columns`: Array of columns to generate embeddings from
 - `job_name`: Name for this vectorize project
 - `primary_key`: Primary key column in your table
