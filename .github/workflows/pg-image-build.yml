@@ -25,6 +25,7 @@ on:
 jobs:
   build_and_push_amd64:
     name: Build and push AMD64 images
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on:
       - self-hosted
       - dind
@@ -81,6 +82,7 @@ jobs:
 
   build_and_push_arm64:
     name: Build and push ARM64 images
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on:
       - arm64-4x16
     outputs:
