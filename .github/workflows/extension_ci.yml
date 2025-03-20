@@ -157,6 +157,7 @@ jobs:
         run: |
           make test-unit
       - name: integration-test
+        if: github.repository == 'tembo-io/pg_vectorize'
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
