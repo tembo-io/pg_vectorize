@@ -228,7 +228,7 @@ fn init_rag(
 fn rag(
     job_name: &str,
     query: &str,
-    chat_model: default!(String, "'tembo/meta-llama/Meta-Llama-3-8B-Instruct'"),
+    chat_model: default!(String, "'openai/gpt-4o-mini'"),
     // points to the type of prompt template to use
     task: default!(String, "'question_answer'"),
     api_key: default!(Option<String>, "NULL"),

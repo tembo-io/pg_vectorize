@@ -8,41 +8,45 @@ Creates embeddings for specified data in a Postgres table. Creates index, and tr
 
 ### `vectorize.table`
 
+
 ```sql
-vectorize.table(
+vectorize."table"(
+    "table" TEXT,
+    "columns" TEXT[],
     "job_name" TEXT,
-    "table_name" TEXT,
-    "unique_record_id" TEXT,
-    "column" TEXT,
+    "primary_key" TEXT,
     "schema" TEXT DEFAULT 'public',
-    "transformer" TEXT DEFAULT 'tembo/meta-llama/Meta-Llama-3-8B-Instruct',
+    "update_col" TEXT DEFAULT 'last_updated_at',
+    "transformer" TEXT DEFAULT 'sentence-transformers/all-MiniLM-L6-v2',
     "index_dist_type" vectorize.IndexDist DEFAULT 'pgv_hnsw_cosine',
-    "table_method" vectorize.TableMethod DEFAULT 'append'
+    "table_method" vectorize.TableMethod DEFAULT 'join',
+    "schedule" TEXT DEFAULT '* * * * *'
 ) RETURNS TEXT
 ```
 
-**Parameters:**
-
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
-| agent_name | text | A unique name for the project. |
-| table_name | text | The name of the table to be initialized. |
-| unique_record_id | text | The name of the column that contains the unique record id. |
-| column | text | The name of the column that contains the content that is used for context for RAG. |
+| table | text | The name of the table to be initialized. |
+| columns | text | The name of the columns that contains the content that is used for context for RAG. Multiple columns are concatenated. |
+| job_name | text | A unique name for the project. |
+| primary_key | text | The name of the column that contains the unique record id. |
+| args | json | Additional arguments for the transformer. Defaults to '{}'. |
 | schema | text | The name of the schema where the table is located. Defaults to 'public'. |
+| update_col | text | Column specifying the last time the record was updated. Required for cron-like schedule. Defaults to `last_updated_at` |
 | transformer | text | The name of the transformer to use for the embeddings. Defaults to 'text-embedding-ada-002'. |
 | index_dist_type | IndexDist | The name of index type to build. Defaults to 'pgv_hnsw_cosine'. |
-| table_method | TableMethod | The method to use for the table. Defaults to 'append', which adds a column to the existing table. |
+| table_method | TableMethod | `join` to store embeddings in a new table in the vectorize schema. `append` to create columns for embeddings on the source table. Defaults to `join`. |
+| schedule | text | Accepts a cron-like input for a cron based updates. Or `realtime` to set up a trigger. |
 
 Example:
 
 ```sql
 select vectorize.table(
-    job_name          => 'tembo_chat',
-    table_name        => 'tembo_docs',
-    unique_record_id  => 'document_name',
-    "column"          => 'content',
-    transformer       => 'sentence-transformers/all-MiniLM-L12-v2'
+    job_name    => 'tembo_chat',
+    "table"     => 'tembo_docs',
+    primary_key => 'document_name',
+    columns     => ARRAY['content'],
+    transformer => 'sentence-transformers/all-MiniLM-L12-v2'
 );
 ```
 
@@ -81,7 +85,7 @@ vectorize."rag"(
 
 ```sql
 select vectorize.rag(
-    agent_name  => 'tembo_support',
+    job_name    => 'tembo_support',
     query       => 'what are the major features from the tembo kubernetes operator?',
     chat_model  => 'openai/gpt-3.5-turbo',
     force_trim  => 'true'
@@ -112,7 +116,7 @@ Filter the results to just the `chat_response`:
 
 ```sql
 select vectorize.rag(
-    agent_name  => 'tembo_support',
+    job_name    => 'tembo_support',
     query       => 'what are the major features from the tembo kubernetes operator?',
     chat_model  => 'gpt-3.5-turbo',
     force_trim  => 'true'

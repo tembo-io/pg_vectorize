@@ -196,11 +196,12 @@ Initialize the RAG project.
 
 ```sql
 SELECT vectorize.table(
-    job_name            => 'product_chat',
-    table_name          => 'products',
-    "column"            => 'context',
-    unique_record_id    => 'product_id',
-    transformer         => 'openai/text-embedding-3-small'
+    job_name    => 'product_chat',
+    "table"     => 'products',
+    primary_key => 'product_id',
+    columns     => ARRAY['context'],
+    transformer => 'openai/text-embedding-3-small',
+    schedule    => 'realtime'
 );
 ```
 
@@ -222,7 +223,7 @@ And to use a locally hosted Ollama service, change the `chat_model` parameter:
 
 ```sql
 SELECT vectorize.rag(
-    agent_name  => 'product_chat',
+    job_name    => 'product_chat',
     query       => 'What is a pencil?',
     chat_model  => 'ollama/wizardlm2:7b'
 ) -> 'chat_response';
