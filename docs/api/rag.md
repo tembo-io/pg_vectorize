@@ -6,11 +6,11 @@ SQL API for Retrieval Augmented Generation projects.
 
 Creates embeddings for specified data in a Postgres table. Creates index, and triggers to keep embeddings up to date.
 
-### `vectorize.init_rag`
+### `vectorize.table`
 
 ```sql
-vectorize.init_rag(
-    "agent_name" TEXT,
+vectorize.table(
+    "job_name" TEXT,
     "table_name" TEXT,
     "unique_record_id" TEXT,
     "column" TEXT,
@@ -37,8 +37,8 @@ vectorize.init_rag(
 Example:
 
 ```sql
-select vectorize.init_rag(
-    agent_name        => 'tembo_chat',
+select vectorize.table(
+    job_name          => 'tembo_chat',
     table_name        => 'tembo_docs',
     unique_record_id  => 'document_name',
     "column"          => 'content',
@@ -70,7 +70,7 @@ vectorize."rag"(
 
 | Parameter      | Type | Description     |
 | :---        |    :----   |          :--- |
-| agent_name | text | Specify the name provided during vectorize.init_rag |
+| job_name | text | Specify the name provided during vectorize.table |
 | query | text | The user provided query or command provided to the chat completion model.  |
 | task | text | Specifies the name of the prompt template to use. Must exist in vectorize.prompts (prompt_type) |
 | api_key | text | API key for the specified chat model. If OpenAI, this value overrides the config `vectorize.openai_key` |

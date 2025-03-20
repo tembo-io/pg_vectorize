@@ -342,8 +342,8 @@ async fn test_rag() {
 
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.init_rag(
-            agent_name => '{agent_name}',
+        "SELECT vectorize.table(
+            job_name => '{agent_name}',
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',
             \"column\" => 'description',
@@ -375,8 +375,8 @@ async fn test_rag_alternate_schema() {
 
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.init_rag(
-            agent_name => '{agent_name}',
+        "SELECT vectorize.table(
+            job_name => '{agent_name}',
             table_name => '{test_table_name}',
             unique_record_id => 'product_id',
             \"column\" => 'description',

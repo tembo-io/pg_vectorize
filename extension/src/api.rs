@@ -190,6 +190,7 @@ fn encode(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[deprecated(since = "0.22.0", note = "Please use vectorize.table() instead")]
 #[pg_extern]
 fn init_rag(
     agent_name: &str,
@@ -204,6 +205,7 @@ fn init_rag(
     table_method: default!(types::TableMethod, "'join'"),
     schedule: default!(&str, "'* * * * *'"),
 ) -> Result<String> {
+    pgrx::warning!("DEPRECATED: vectorize.init_rag() will be removed in a future version. Please use vectorize.table() instead.");
     // chat only supports single columns transform
     let columns = vec![column.to_string()];
     let transformer_model = Model::new(transformer)?;
@@ -224,7 +226,7 @@ fn init_rag(
 /// creates a table indexed with embeddings for chat completion workloads
 #[pg_extern]
 fn rag(
-    agent_name: &str,
+    job_name: &str,
     query: &str,
     chat_model: default!(String, "'tembo/meta-llama/Meta-Llama-3-8B-Instruct'"),
     // points to the type of prompt template to use
@@ -237,7 +239,7 @@ fn rag(
 ) -> Result<TableIterator<'static, (name!(chat_results, pgrx::JsonB),)>> {
     let model = Model::new(&chat_model)?;
     let resp = call_chat(
-        agent_name,
+        job_name,
         query,
         &model,
         &task,

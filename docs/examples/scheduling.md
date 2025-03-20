@@ -1,6 +1,6 @@
 # Scheduling Embedding Updates
 
-When the source text data is updated, how and when the embeddings are updated is determined by the value set to the `schedule` parameter in `vectorize.table` and `vectorize.init_rag`.
+When the source text data is updated, how and when the embeddings are updated is determined by the value set to the `schedule` parameter in `vectorize.table`s.
 
 The default behavior is `schedule => '* * * * *'`, which means the background worker process checks for changes every minute, and updates the embeddings accordingly. This method requires setting the `updated_at_col` value to point to a colum on the table indicating the time that the input text columns were last changed. `schedule` can be set to any cron-like value.
 
