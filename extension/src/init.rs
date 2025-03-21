@@ -18,11 +18,11 @@ pub fn init_pgmq() -> Result<()> {
         return Ok(());
     } else {
         debug1!("creating queue;");
-        let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        let ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
             let _r = c.update(
                 &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),
                 None,
-                None,
+                &[],
             )?;
             Ok(())
         });
@@ -270,11 +270,7 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
             AND table_name = $2
             AND column_name = $3    
         ",
-        vec![
-            (PgBuiltInOids::TEXTOID.oid(), schema.into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), table.into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
-        ],
+        &[schema.into(), table.into(), column.into()],
     )
     .map_err(|_| {
         anyhow!(

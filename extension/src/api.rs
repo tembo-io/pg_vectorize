@@ -67,20 +67,7 @@ fn chunk_table(
         );
         Spi::run_with_args(
             &insert_query,
-            Some(vec![
-                (
-                    pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID),
-                    original_id.into_datum(),
-                ), // OID for integer
-                (
-                    pgrx::PgOid::Custom(pgrx::pg_sys::INT4OID),
-                    chunk_index.into_datum(),
-                ), // OID for integer
-                (
-                    pgrx::PgOid::Custom(pgrx::pg_sys::TEXTOID),
-                    chunk.into_datum(),
-                ), // OID for text
-            ]),
+            &[original_id.into(), chunk_index.into(), chunk.into()],
         )?;
     }
 
@@ -190,7 +177,6 @@ fn encode(
 }
 
 #[allow(clippy::too_many_arguments)]
-#[deprecated(since = "0.22.0", note = "Please use vectorize.table() instead")]
 #[pg_extern]
 fn init_rag(
     agent_name: &str,
@@ -271,11 +257,8 @@ fn generate(
 
 #[pg_extern]
 fn env_interpolate_guc(guc_name: &str) -> Result<String> {
-    let g: String = Spi::get_one_with_args(
-        "SELECT current_setting($1)",
-        vec![(PgBuiltInOids::TEXTOID.oid(), guc_name.into_datum())],
-    )?
-    .unwrap_or_else(|| panic!("no value set for guc: {guc_name}"));
+    let g: String = Spi::get_one_with_args("SELECT current_setting($1)", &[guc_name.into()])?
+        .unwrap_or_else(|| panic!("no value set for guc: {guc_name}"));
     env_interpolate_string(&g)
 }
 
@@ -366,10 +349,7 @@ fn import_embeddings(
             "DELETE FROM pgmq.q_{} WHERE message->>'job_name' = $1",
             VECTORIZE_QUEUE
         );
-        Spi::run_with_args(
-            &delete_q,
-            Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
-        )?;
+        Spi::run_with_args(&delete_q, &[job_name.into()])?;
     }
 
     Ok(format!(
