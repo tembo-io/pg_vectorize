@@ -177,6 +177,7 @@ fn encode(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[deprecated(since = "0.22.0", note = "Please use vectorize.table() instead")]
 #[pg_extern]
 fn init_rag(
     agent_name: &str,
