@@ -334,11 +334,11 @@ async fn test_rag() {
 
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.init_rag(
-            agent_name => '{agent_name}',
-            table_name => '{test_table_name}',
-            unique_record_id => 'product_id',
-            \"column\" => 'description',
+        "SELECT vectorize.table(
+            job_name => '{agent_name}',
+            relation => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['description'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2'
     );"
     ))
@@ -366,11 +366,11 @@ async fn test_rag_alternate_schema() {
 
     // initialize
     let _ = sqlx::query(&format!(
-        "SELECT vectorize.init_rag(
-            agent_name => '{agent_name}',
-            table_name => '{test_table_name}',
-            unique_record_id => 'product_id',
-            \"column\" => 'description',
+        "SELECT vectorize.table(
+            job_name => '{agent_name}',
+            relation => '{test_table_name}',
+            primary_key => 'product_id',
+            columns => ARRAY['description'],
             transformer => 'sentence-transformers/all-MiniLM-L6-v2'
     );"
     ))

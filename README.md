@@ -195,12 +195,13 @@ Initialize the RAG project.
  We'll use the `openai/text-embedding-3-small` model to generate embeddings on our source documents.
 
 ```sql
-SELECT vectorize.init_rag(
-    agent_name          => 'product_chat',
-    table_name          => 'products',
-    "column"            => 'context',
-    unique_record_id    => 'product_id',
-    transformer         => 'openai/text-embedding-3-small'
+SELECT vectorize.table(
+    job_name    => 'product_chat',
+    relation    => 'products',
+    primary_key => 'product_id',
+    columns     => ARRAY['context'],
+    transformer => 'openai/text-embedding-3-small',
+    schedule    => 'realtime'
 );
 ```
 
@@ -208,7 +209,7 @@ Now we can ask questions of the `products` table and get responses from the `pro
 
 ```sql
 SELECT vectorize.rag(
-    agent_name  => 'product_chat',
+    job_name    => 'product_chat',
     query       => 'What is a pencil?',
     chat_model  => 'openai/gpt-3.5-turbo'
 ) -> 'chat_response';
@@ -222,7 +223,7 @@ And to use a locally hosted Ollama service, change the `chat_model` parameter:
 
 ```sql
 SELECT vectorize.rag(
-    agent_name  => 'product_chat',
+    job_name    => 'product_chat',
     query       => 'What is a pencil?',
     chat_model  => 'ollama/wizardlm2:7b'
 ) -> 'chat_response';
@@ -237,7 +238,7 @@ SELECT vectorize.rag(
 
 ## Updating Embeddings
 
-When the source text data is updated, how and when the embeddings are updated is determined by the value set to the `schedule` parameter in `vectorize.table` and `vectorize.init_rag`.
+When the source text data is updated, how and when the embeddings are updated is determined by the value set to the `schedule` parameter in `vectorize.table`.
 
 The default behavior is `schedule => '* * * * *'`, which means the background worker process checks for changes every minute, and updates the embeddings accordingly. This method requires setting the `updated_at_col` value to point to a colum on the table indicating the time that the input text columns were last changed. `schedule` can be set to any cron-like value.
 

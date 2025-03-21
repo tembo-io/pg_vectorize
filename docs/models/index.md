@@ -195,7 +195,7 @@ The text-generation models are available as part of the [RAG](../api/rag.md) API
 
 ```sql
 SELECT vectorize.rag(
-    agent_name  => 'product_chat',
+    job_name    => 'product_chat',
     query       => 'What is a pencil?',
     chat_model  => 'ollama/wizardlm2:7b'
 );
@@ -218,7 +218,7 @@ Then use that model in your RAG application:
 
 ```sql
 SELECT vectorize.rag(
-    agent_name  => 'product_chat',
+    job_name    => 'product_chat',
     query       => 'What is a pencil?'
     chat_model  => 'ollama/llama3'
 );

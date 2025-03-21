@@ -17,7 +17,7 @@ use tiktoken_rs::{get_bpe_from_model, model::get_context_size, CoreBPE};
 use vectorize_core::types::{JobParams, VectorizeMeta};
 
 pub fn call_chat(
-    agent_name: &str,
+    job_name: &str,
     query: &str,
     chat_model: &Model,
     task: &str,
@@ -26,7 +26,7 @@ pub fn call_chat(
     force_trim: bool,
 ) -> Result<ChatResponse> {
     // get job metadata
-    let project_meta: VectorizeMeta = get_vectorize_meta_spi(agent_name)?;
+    let project_meta: VectorizeMeta = get_vectorize_meta_spi(job_name)?;
 
     let job_params = serde_json::from_value::<JobParams>(project_meta.params.clone())
         .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
@@ -60,14 +60,7 @@ pub fn call_chat(
     let pk = job_params.primary_key;
     let columns = vec![pk.clone(), content_column.clone()];
 
-    let raw_search = search::search(
-        agent_name,
-        query,
-        api_key.clone(),
-        columns,
-        num_context,
-        None,
-    )?;
+    let raw_search = search::search(job_name, query, api_key.clone(), columns, num_context, None)?;
 
     let mut search_results: Vec<ContextualSearch> = Vec::new();
     for s in raw_search {
