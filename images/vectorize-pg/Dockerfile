@@ -23,7 +23,7 @@ RUN $HOME/.cargo/bin/rustup default stable
 
 # install pgrx and dependencies
 # compiling vectorscale requires pgrx 0.12.9
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.12.9--locked
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.12.9 --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg$PG_MAJ $(which pg_config)
 
 # set pgrx to use the correct pg_config
