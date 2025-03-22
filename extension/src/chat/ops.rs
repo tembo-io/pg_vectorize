@@ -85,7 +85,7 @@ pub fn call_chat(
     // read prompt template
     let res_prompts: Result<PromptTemplate, spi::Error> = Spi::connect(|c| {
         let q = format!("select * from vectorize.prompts where prompt_type = '{task}'");
-        let tup_table = c.select(&q, None, None)?;
+        let tup_table = c.select(&q, None, &[])?;
         let mut sys_prompt = String::new();
         let mut user_prompt = String::new();
         for row in tup_table {

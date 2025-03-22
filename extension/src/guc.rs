@@ -9,10 +9,8 @@ use crate::transformers::generic::env_interpolate_string;
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
-pub static OPENAI_BASE_URL: GucSetting<Option<&CStr>> =
-    GucSetting::<Option<&'static CStr>>::new(Some(unsafe {
-        CStr::from_bytes_with_nul_unchecked(b"https://api.openai.com/v1\0")
-    }));
+pub static OPENAI_BASE_URL: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(Some(c"https://api.openai.com/v1"));
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
 pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);

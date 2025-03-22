@@ -45,20 +45,15 @@ fn _handle_table_update(job_name: &str, record_ids: Vec<String>, inputs: Vec<Str
 
     // send the job message to the queue
     let query = "select pgmq.send($1, $2::jsonb);";
-    let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+    let _ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
         let _r = c.update(
             query,
             None,
-            Some(vec![
-                (PgBuiltInOids::TEXTOID.oid(), VECTORIZE_QUEUE.into_datum()),
-                (
-                    PgBuiltInOids::JSONBOID.oid(),
-                    pgrx::JsonB(
-                        serde_json::to_value(job_message).expect("failed parsing job message"),
-                    )
-                    .into_datum(),
-                ),
-            ]),
+            &[
+                VECTORIZE_QUEUE.into(),
+                pgrx::JsonB(serde_json::to_value(job_message).expect("failed parsing job message"))
+                    .into(),
+            ],
         )?;
         Ok(())
     });
@@ -135,7 +130,7 @@ pub fn initalize_table_job(
     let mut inputs: Vec<Inputs> = Vec::new();
     let bpe = cl100k_base().unwrap();
     let _: Result<_, spi::Error> = Spi::connect(|c| {
-        let rows = c.select(&rows_need_update_query, None, None)?;
+        let rows = c.select(&rows_need_update_query, None, &[])?;
         for row in rows {
             let ipt = row["input_text"]
                 .value::<String>()?
@@ -171,20 +166,17 @@ pub fn initalize_table_job(
             inputs: b,
         };
         let query = "select pgmq.send($1, $2::jsonb);";
-        let _ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        let _ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
             let _r = c.update(
                 query,
                 None,
-                Some(vec![
-                    (PgBuiltInOids::TEXTOID.oid(), VECTORIZE_QUEUE.into_datum()),
-                    (
-                        PgBuiltInOids::JSONBOID.oid(),
-                        pgrx::JsonB(
-                            serde_json::to_value(job_message).expect("failed parsing job message"),
-                        )
-                        .into_datum(),
-                    ),
-                ]),
+                &[
+                    VECTORIZE_QUEUE.into(),
+                    pgrx::JsonB(
+                        serde_json::to_value(job_message).expect("failed parsing job message"),
+                    )
+                    .into(),
+                ],
             )?;
             Ok(())
         });

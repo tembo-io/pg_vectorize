@@ -51,6 +51,7 @@ jobs:
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml extension/Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "PGRX_VER=$(/usr/local/bin/stoml extension/Cargo.toml dependencies.pgrx | tr -d '="')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -66,6 +67,7 @@ jobs:
         if: github.event_name != 'release'
         run: |
             docker build \
+                --build-arg PGRX_VER=${{ steps.versions.outputs.PGRX_VER }} \
                 -f ./images/vectorize-pg/Dockerfile \
                 -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64 .
             docker push quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-amd64
@@ -74,6 +76,7 @@ jobs:
         if: github.event_name == 'release'
         run: |
             docker build \
+                --build-arg PGRX_VER=${{ steps.versions.outputs.PGRX_VER }} \
                 -f ./images/vectorize-pg/Dockerfile \
                 -t quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-amd64 \
                 -t quay.io/tembo/vectorize-pg:latest-amd64 .
@@ -109,6 +112,7 @@ jobs:
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "TAG_VER=$(/usr/local/bin/stoml extension/Cargo.toml package.version)" >> $GITHUB_OUTPUT
+          echo "PGRX_VER=$(/usr/local/bin/stoml extension/Cargo.toml dependencies.pgrx | tr -d '="')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -125,6 +129,7 @@ jobs:
         if: github.event_name != 'release'
         run: |
             docker build \
+                --build-arg PGRX_VER=${{ steps.versions.outputs.PGRX_VER }} \
                 -f ./images/vectorize-pg/Dockerfile \
                 --platform linux/arm64 \
                 -t quay.io/tembo/vectorize-pg:${{ steps.versions.outputs.SHORT_SHA }}-arm64 .
@@ -134,6 +139,7 @@ jobs:
         if: github.event_name == 'release'
         run: |
             docker build \
+                --build-arg PGRX_VER=${{ steps.versions.outputs.PGRX_VER }} \
                 -f ./images/vectorize-pg/Dockerfile \
                 --platform linux/arm64 \
                 -t quay.io/tembo/vectorize-pg:v${{ steps.versions.outputs.TAG_VER }}-arm64 \

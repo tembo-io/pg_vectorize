@@ -73,11 +73,7 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
         WHERE name = $1
     ";
     let result: Result<types::VectorizeMeta> = Spi::connect(|client| {
-        let tup_table: SpiTupleTable = client.select(
-            query,
-            Some(1),
-            Some(vec![(PgBuiltInOids::TEXTOID.oid(), job_name.into_datum())]),
-        )?;
+        let tup_table: SpiTupleTable = client.select(query, Some(1), &[job_name.into()])?;
         if tup_table.is_empty() {
             return Err(anyhow::anyhow!(
                 "project '{}' not yet initialized. Please initialize the project.",
