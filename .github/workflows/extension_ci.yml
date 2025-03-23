@@ -15,7 +15,6 @@ on:
   push:
     branches:
       - main
-      - v0.22.0
     paths-ignore:
       - "README.md"
       - docs/**
