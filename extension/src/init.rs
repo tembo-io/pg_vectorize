@@ -1,4 +1,4 @@
-use crate::{query::check_input, types};
+use crate::{guc, query::check_input, types};
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
@@ -18,11 +18,11 @@ pub fn init_pgmq() -> Result<()> {
         return Ok(());
     } else {
         debug1!("creating queue;");
-        let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+        let ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
             let _r = c.update(
                 &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),
                 None,
-                None,
+                &[],
             )?;
             Ok(())
         });
@@ -87,14 +87,18 @@ fn create_project_view(job_name: &str, job_params: &JobParams) -> String {
     )
 }
 
-pub fn init_index_query(job_name: &str, job_params: &JobParams) -> String {
+pub fn init_index_query(job_name: &str, idx_type: &str, job_params: &JobParams) -> String {
     check_input(job_name).expect("invalid job name");
     let src_schema = job_params.schema.clone();
     let src_table = job_params.relation.clone();
+    match idx_type.to_uppercase().as_str() {
+        "GIN" | "GIST" => {} // Do nothing, it's valid
+        _ => panic!("Expected 'GIN' or 'GIST', got '{}' index type", idx_type),
+    }
 
     format!(
         "
-        CREATE INDEX IF NOT EXISTS {job_name}_idx on {schema}.{table} using GIN (to_tsvector('english', {columns}));
+        CREATE INDEX IF NOT EXISTS {job_name}_idx on {schema}.{table} using {idx_type} (to_tsvector('english', {columns}));
         ",
         job_name = job_name,
         schema = src_schema,
@@ -154,7 +158,7 @@ pub fn init_embedding_table_query(
             ]
         }
         TableMethod::join => {
-            vec![
+            let mut stmts = vec![
                 create_embedding_table(
                     job_name,
                     &job_params.primary_key,
@@ -167,10 +171,14 @@ pub fn init_embedding_table_query(
                 // also create a view over the source table and the embedding table, for this project
                 drop_project_view(job_name),
                 create_project_view(job_name, job_params),
-                // Currently creating a GIN index within this function
-                // TODO: Find a long term solution for this
-                init_index_query(job_name, job_params),
-            ]
+            ];
+
+            // Currently creating a GIN index within this function
+            // TODO: Find a long term solution for this
+            if let Some(indx_type_guc) = guc::get_guc(guc::VectorizeGuc::TextIndexType) {
+                stmts.push(init_index_query(job_name, &indx_type_guc, job_params))
+            }
+            stmts
         }
     }
 }
@@ -270,11 +278,7 @@ pub fn get_column_datatype(schema: &str, table: &str, column: &str) -> Result<St
             AND table_name = $2
             AND column_name = $3    
         ",
-        vec![
-            (PgBuiltInOids::TEXTOID.oid(), schema.into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), table.into_datum()),
-            (PgBuiltInOids::TEXTOID.oid(), column.into_datum()),
-        ],
+        &[schema.into(), table.into(), column.into()],
     )
     .map_err(|_| {
         anyhow!(

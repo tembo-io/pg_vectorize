@@ -887,7 +887,7 @@ async fn test_diskann_cosine() {
     ))
     .execute(&conn)
     .await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "{:?}", result.err());
 
     let search_results: Vec<common::SearchJSON> =
         match util::common::search_with_retry(&conn, "mobile devices", &job_name, 10, 2, 3, None)

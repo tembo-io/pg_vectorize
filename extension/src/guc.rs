@@ -9,10 +9,8 @@ use crate::transformers::generic::env_interpolate_string;
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
     GucSetting::<Option<&CStr>>::new(None);
-pub static OPENAI_BASE_URL: GucSetting<Option<&CStr>> =
-    GucSetting::<Option<&'static CStr>>::new(Some(unsafe {
-        CStr::from_bytes_with_nul_unchecked(b"https://api.openai.com/v1\0")
-    }));
+pub static OPENAI_BASE_URL: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(Some(c"https://api.openai.com/v1"));
 pub static OPENAI_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static BATCH_SIZE: GucSetting<i32> = GucSetting::<i32>::new(10000);
 pub static NUM_BGW_PROC: GucSetting<i32> = GucSetting::<i32>::new(1);
@@ -31,6 +29,9 @@ pub static PORTKEY_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<
 pub static VOYAGE_API_KEY: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VOYAGE_SERVICE_URL: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static SEMANTIC_WEIGHT: GucSetting<i32> = GucSetting::<i32>::new(50);
+// EXPERIMENTAL
+pub static FTS_INDEX_TYPE: GucSetting<Option<&'static CStr>> =
+    GucSetting::<Option<&'static CStr>>::new(None);
 
 // initialize GUCs
 pub fn init_guc() {
@@ -207,6 +208,15 @@ pub fn init_guc() {
         GucContext::Suset,
         GucFlags::default(),
     );
+
+    GucRegistry::define_string_guc(
+        "vectorize.experimental_fts_index_type",
+        "index type for hybrid search",
+        "valid text index type. e.g. GIN",
+        &FTS_INDEX_TYPE,
+        GucContext::Suset,
+        GucFlags::default(),
+    );
 }
 
 // for handling of GUCs that can be error prone
@@ -227,6 +237,7 @@ pub enum VectorizeGuc {
     PortkeyServiceUrl,
     VoyageApiKey,
     VoyageServiceUrl,
+    TextIndexType,
 }
 
 /// a convenience function to get this project's GUCs
@@ -247,6 +258,7 @@ pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
         VectorizeGuc::PortkeyServiceUrl => PORTKEY_SERVICE_URL.get(),
         VectorizeGuc::VoyageApiKey => VOYAGE_API_KEY.get(),
         VectorizeGuc::VoyageServiceUrl => VOYAGE_SERVICE_URL.get(),
+        VectorizeGuc::TextIndexType => FTS_INDEX_TYPE.get(),
     };
     if let Some(cstr) = val {
         if let Ok(s) = handle_cstr(cstr) {
