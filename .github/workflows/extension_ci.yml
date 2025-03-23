@@ -103,7 +103,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "extension-test"
           workspaces: |
             vectorize
           # Additional directories to cache
