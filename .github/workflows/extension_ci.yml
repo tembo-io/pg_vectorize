@@ -108,7 +108,7 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y wget pkg-config libssl-dev git gcc postgresql-client libopenblas-dev libreadline-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
