@@ -24,6 +24,15 @@ on:
     types:
       - created
 jobs:
+  debug-values:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug values
+        run: |
+          echo "PR head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+          echo "Current repository: ${{ github.repository }}"
+          echo "Comparison result: ${{ github.event.pull_request.head.repo.full_name == github.repository }}"
+
   lint:
     name: Run linters
     runs-on: ubuntu-latest
