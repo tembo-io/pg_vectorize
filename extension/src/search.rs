@@ -135,6 +135,7 @@ pub fn init_table(
             &init_job_q,
             None,
             &[
+                job_name.into(),
                 index_dist_type.to_string().into(),
                 transformer.to_string().into(),
                 params.into(),
