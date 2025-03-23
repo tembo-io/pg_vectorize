@@ -90,6 +90,7 @@ jobs:
     runs-on:
       - self-hosted
       - dind
+      - large-8x8
     services:
       # Label used to access the service container
       vector-serve:
