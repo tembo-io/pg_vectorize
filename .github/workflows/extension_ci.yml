@@ -15,6 +15,7 @@ on:
   push:
     branches:
       - main
+      - v0.22.0
     paths-ignore:
       - "README.md"
       - docs/**
@@ -109,7 +110,7 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y make wget pkg-config libssl-dev git gcc postgresql-client libopenblas-dev libreadline-dev libicu-dev
+          sudo apt-get update && sudo apt-get install -y build-essential libreadline-dev zlib1g-dev flex bison libclang-dev postgresql-client libicu-dev make wget pkg-config libssl-dev git gcc libopenblas-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
