@@ -50,15 +50,16 @@ jobs:
       - name: Install project dependencies
         run: |
           make setup
-      - name: Test previous version (main))
+          cargo install pg-trunk
+      - name: Test previous version (v0.20.0)
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
         run: |
+          trunk install pg_vectorize --version 0.20.0 --pg-config $(cargo pgrx info pg-config pg17)
           git fetch --tags
-          git checkout main
-          echo "\q" | make run
+          git checkout tags/v0.20.0
           cargo test -- --ignored --test-threads=1
       - name: Test branch's version
         env:
