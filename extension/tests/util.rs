@@ -54,6 +54,10 @@ pub mod common {
             .expect("failed to create extension");
 
         // Optional dependencies
+        let _ = sqlx::query("DROP EXTENSION IF EXISTS vectorscale CASCADE")
+            .execute(&conn)
+            .await
+            .expect("failed to drop vectorscale extension");
         let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE")
             .execute(&conn)
             .await
