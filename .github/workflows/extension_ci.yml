@@ -85,10 +85,10 @@ jobs:
 
   test:
     name: Run tests
-    runs-on: ubuntu-latest
-    # runs-on:
-    #   - self-hosted
-    #   - dind
+    # runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - dind
     services:
       # Label used to access the service container
       vector-serve:
@@ -109,19 +109,10 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y make wget pkg-config libssl-dev git gcc postgresql-client libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y make wget pkg-config libssl-dev git gcc postgresql-client libopenblas-dev libreadline-dev libicu-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
-      - name: Restore cached binaries
-        uses: actions/cache@v4
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
       - name: setup-tests
         run: |
           make setup
