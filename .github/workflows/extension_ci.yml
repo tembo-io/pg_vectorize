@@ -23,36 +23,6 @@ on:
     types:
       - created
 jobs:
-  dependencies:
-    name: Install dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # rust needed to install trunk
-      - name: Install Rust stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install stoml and pg-trunk
-        shell: bash
-        run: |
-          set -xe
-          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-          mv stoml_linux_amd64 stoml
-          chmod +x stoml
-          sudo mv stoml /usr/local/bin/
-          cargo install pg-trunk
-
-      - name: Cache binaries
-        uses: actions/cache@v4
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
-
   lint:
     name: Run linters
     runs-on: ubuntu-latest
@@ -115,8 +85,9 @@ jobs:
 
   test:
     name: Run tests
-    needs: dependencies
-    runs-on: ubuntu-24.04
+    runs-on:
+      - self-hosted
+      - dind
     services:
       # Label used to access the service container
       vector-serve:
