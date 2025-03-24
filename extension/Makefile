@@ -107,6 +107,7 @@ test-version:
 	cargo test -- --ignored --test-threads=1
 
 test-update:
+        cargo install cargo-pgrx --locked --version ${PGRX_VERSION}
 	echo "\q" | make run
 	psql ${DATABASE_URL} -c "CREATE EXTENSION IF NOT EXISTS vectorscale"
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
