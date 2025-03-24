@@ -34,7 +34,7 @@ LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'table_wrapper';
 /* </end connected objects> */
 
-DROP FUNCTION vectorize."table_from";
+DROP FUNCTION IF EXISTS vectorize."table_from";
 -- src/api.rs:380
 -- vectorize::api::table_from
 CREATE  FUNCTION vectorize."table_from"(
@@ -67,8 +67,7 @@ SET params = jsonb_set(
 WHERE params ? 'table';
 
 -- Update the function to reference "relation" instead of "table"
-DROP FUNCTION vectorize."handle_table_drop";
-CREATE FUNCTION vectorize.handle_table_drop()
+CREATE OR REPLACE FUNCTION vectorize.handle_table_drop()
 RETURNS event_trigger AS $$
 DECLARE
     obj RECORD;

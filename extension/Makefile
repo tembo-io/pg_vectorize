@@ -4,6 +4,7 @@ DISTVERSION  = $(shell grep -m 1 '^version' Trunk.toml | sed -e 's/[^"]*"\([^"]*
 PG_VERSION:=17
 DATABASE_URL:=postgres://${USER}:${USER}@localhost:288${PG_VERSION}/postgres
 PGRX_PG_CONFIG:=$(shell cargo pgrx info pg-config pg${PG_VERSION})
+PGRX_VERSION := $(shell grep -E "^pgrx\s*=" Cargo.toml | cut -d'"' -f2 | tr -d '=')
 UPGRADE_FROM_VER:=0.16.0
 BRANCH:=$(git rev-parse --abbrev-ref HEAD)
 RUST_LOG:=debug
@@ -86,15 +87,17 @@ install-vectorscale:
 	fi; \
 	git clone https://github.com/timescale/pgvectorscale.git && \
 	cd pgvectorscale/pgvectorscale && \
+	cargo install cargo-pgrx --locked --version $$(grep -E "^pgrx\s*=" Cargo.toml | cut -d'"' -f2 | tr -d '=') && \
 	cargo pgrx install --pg-config=${PGRX_PG_CONFIG} && \
 	cd ../.. && rm -rf pgvectorscale
+	cargo install cargo-pgrx --locked --version ${PGRX_VERSION}
 
 test-integration:
 	echo "\q" | make run
 	cargo test ${TEST_NAME} -- --ignored --test-threads=1 --nocapture
 
 test-unit:
-	cargo test -- --test-threads=1
+	cargo test ${TEST_NAME} -- --test-threads=1
 
 test-version:
 	git fetch --tags
@@ -104,6 +107,7 @@ test-version:
 	cargo test -- --ignored --test-threads=1
 
 test-update:
+	cargo install cargo-pgrx --locked --version ${PGRX_VERSION}
 	echo "\q" | make run
 	psql ${DATABASE_URL} -c "CREATE EXTENSION IF NOT EXISTS vectorscale"
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"

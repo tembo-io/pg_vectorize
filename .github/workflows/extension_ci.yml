@@ -23,36 +23,6 @@ on:
     types:
       - created
 jobs:
-  dependencies:
-    name: Install dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # rust needed to install trunk
-      - name: Install Rust stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install stoml and pg-trunk
-        shell: bash
-        run: |
-          set -xe
-          wget https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64 &> /dev/null
-          mv stoml_linux_amd64 stoml
-          chmod +x stoml
-          sudo mv stoml /usr/local/bin/
-          cargo install pg-trunk
-
-      - name: Cache binaries
-        uses: actions/cache@v4
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
-
   lint:
     name: Run linters
     runs-on: ubuntu-latest
@@ -103,7 +73,7 @@ jobs:
 
       - name: Test Core - Integration
         # skip when on external forks
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.repository_owner == 'tembo-io'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}
@@ -115,8 +85,7 @@ jobs:
 
   test:
     name: Run tests
-    needs: dependencies
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     services:
       # Label used to access the service container
       vector-serve:
@@ -129,7 +98,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "extension-test"
           workspaces: |
             vectorize
           # Additional directories to cache
@@ -137,19 +105,10 @@ jobs:
             /home/runner/.pgrx
       - name: Install sys dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-server-dev-16 libopenblas-dev libreadline-dev
+          sudo apt-get update && sudo apt-get install -y build-essential libreadline-dev zlib1g-dev flex bison libclang-dev postgresql-client libicu-dev make wget pkg-config libssl-dev git gcc libopenblas-dev
       - uses: ./.github/actions/pgx-init
         with:
           working-directory: ./extension
-      - name: Restore cached binaries
-        uses: actions/cache@v4
-        with:
-          path: |
-            /usr/local/bin/stoml
-            ~/.cargo/bin/trunk
-          key: ${{ runner.os }}-bins-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-bins-
       - name: setup-tests
         run: |
           make setup
@@ -158,7 +117,7 @@ jobs:
           echo "\q" | make run
           make test-unit
       - name: integration-test
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.repository_owner == 'tembo-io'
         env:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           CO_API_KEY: ${{ secrets.CO_API_KEY }}

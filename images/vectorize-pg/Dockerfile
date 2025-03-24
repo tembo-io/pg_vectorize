@@ -21,9 +21,9 @@ WORKDIR /vectorize
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN $HOME/.cargo/bin/rustup default stable
 
-# install pgrx
-ARG PGRX_VER=0.12.5
-RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
+# install pgrx and dependencies
+# compiling vectorscale requires pgrx 0.12.9
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=0.12.9 --locked
 RUN $HOME/.cargo/bin/cargo pgrx init --pg$PG_MAJ $(which pg_config)
 
 # set pgrx to use the correct pg_config
@@ -39,6 +39,10 @@ RUN export PATH="${HOME}/.cargo/bin:$PATH" && \
 	make setup.dependencies PGRX_PG_CONFIG=$(cargo pgrx info pg-config pg${PG_MAJ})
 
 # install pg-vectorize
+ARG PGRX_VER
+RUN $HOME/.cargo/bin/cargo install cargo-pgrx --version=$PGRX_VER --locked
+RUN $HOME/.cargo/bin/cargo pgrx init --pg$PG_MAJ $(which pg_config)
+
 RUN cd extension && \
 	$HOME/.cargo/bin/cargo pgrx install --pg-config=$(which pg_config)
 

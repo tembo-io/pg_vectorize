@@ -15,9 +15,6 @@ use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
 
-// TODO: Need to crete a migration and release the new version
-// TODO: Dynamically change the weight of full-text and semantic search
-
 #[allow(clippy::too_many_arguments)]
 pub fn init_table(
     job_name: &str,
@@ -133,22 +130,16 @@ pub fn init_table(
     let init_job_q = init::init_job_query();
     // using SPI here because it is unlikely that this code will be run anywhere but inside the extension.
     // background worker will likely be moved to an external container or service in near future
-    let ran: Result<_, spi::Error> = Spi::connect(|mut c| {
+    let ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
         match c.update(
             &init_job_q,
             None,
-            Some(vec![
-                (PgBuiltInOids::TEXTOID.oid(), job_name.into_datum()),
-                (
-                    PgBuiltInOids::TEXTOID.oid(),
-                    index_dist_type.to_string().into_datum(),
-                ),
-                (
-                    PgBuiltInOids::TEXTOID.oid(),
-                    transformer.to_string().into_datum(),
-                ),
-                (PgBuiltInOids::JSONBOID.oid(), params.into_datum()),
-            ]),
+            &[
+                job_name.into(),
+                index_dist_type.to_string().into(),
+                transformer.to_string().into(),
+                params.into(),
+            ],
         ) {
             Ok(_) => (),
             Err(e) => {
@@ -161,9 +152,9 @@ pub fn init_table(
 
     let init_embed_q =
         init::init_embedding_table_query(job_name, &valid_params, &index_dist_type, model_dim);
-    let ran_semantic: Result<_, spi::Error> = Spi::connect(|mut c| {
+    let ran_semantic: Result<_, spi::Error> = Spi::connect_mut(|c| {
         for q in init_embed_q {
-            let _r = c.update(&q, None, None)?;
+            let _r = c.update(&q, None, &[])?;
         }
         Ok(())
     });
@@ -178,10 +169,10 @@ pub fn init_table(
             let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
             let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
             let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
-            let _: Result<_, spi::Error> = Spi::connect(|mut c| {
-                let _r = c.update(&trigger_handler, None, None)?;
-                let _r = c.update(&insert_trigger, None, None)?;
-                let _r = c.update(&update_trigger, None, None)?;
+            let _: Result<_, spi::Error> = Spi::connect_mut(|c| {
+                let _r = c.update(&trigger_handler, None, &[])?;
+                let _r = c.update(&insert_trigger, None, &[])?;
+                let _r = c.update(&update_trigger, None, &[])?;
                 Ok(())
             });
         }
@@ -235,7 +226,7 @@ pub fn full_text_search(
 
     Spi::connect(|client| {
         let mut results: Vec<JsonB> = Vec::new();
-        let tup_table = client.select(&query, None, None)?;
+        let tup_table = client.select(&query, None, &[])?;
 
         for row in tup_table {
             let mut row_result = serde_json::json!({});
@@ -448,14 +439,7 @@ pub fn cosine_similarity_search(
     };
     Spi::connect(|client| {
         let mut results: Vec<JsonB> = Vec::new();
-        let tup_table = client.select(
-            &query,
-            None,
-            Some(vec![(
-                PgBuiltInOids::FLOAT8ARRAYOID.oid(),
-                embeddings.into_datum(),
-            )]),
-        )?;
+        let tup_table = client.select(&query, None, &[embeddings.into()])?;
         for row in tup_table {
             match row["results"].value()? {
                 Some(r) => results.push(r),
