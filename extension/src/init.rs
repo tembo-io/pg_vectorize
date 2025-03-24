@@ -17,13 +17,31 @@ pub fn init_pgmq() -> Result<()> {
         debug1!("queue already exists");
         return Ok(());
     } else {
-        debug1!("creating queue;");
+        let qt = match guc::get_guc(guc::VectorizeGuc::QueueType) {
+            Some(t) => {
+                notice!("creating queue with type: `{}`", t);
+                match t.parse() {
+                    Ok(qt) => qt,
+                    Err(e) => {
+                        notice!("error parsing queue from guc vectorize.queue_type, `{}`. Defaulting to `unlogged`", e);
+                        types::QueueType::Unlogged
+                    }
+                }
+            }
+            None => {
+                notice!("vectorize.queue_type not set. Defaulting to `unlogged`");
+                types::QueueType::Unlogged
+            }
+        };
+
+        let create_statement = match qt {
+            types::QueueType::Unlogged => "SELECT pgmq.create_unlogged($1);",
+            types::QueueType::Standard => "SELECT pgmq.create($1);",
+        };
+
+        debug1!("creating `{:?}` queue;", qt);
         let ran: Result<_, spi::Error> = Spi::connect_mut(|c| {
-            let _r = c.update(
-                &format!("SELECT pgmq.create('{VECTORIZE_QUEUE}');"),
-                None,
-                &[],
-            )?;
+            let _r = c.update(create_statement, None, &[VECTORIZE_QUEUE.into()])?;
             Ok(())
         });
         if let Err(e) = ran {

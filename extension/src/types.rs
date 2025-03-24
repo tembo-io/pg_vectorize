@@ -61,3 +61,22 @@ impl From<IndexDist> for CoreIndexDist {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum QueueType {
+    Standard,
+    Unlogged,
+}
+
+impl std::str::FromStr for QueueType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "standard" => Ok(QueueType::Standard),
+            "unlogged" => Ok(QueueType::Unlogged),
+            _ => Err(format!("Unknown queue type: {}", s)),
+        }
+    }
+}
