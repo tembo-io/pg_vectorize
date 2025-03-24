@@ -34,7 +34,7 @@ LANGUAGE c /* Rust */
 AS 'MODULE_PATHNAME', 'table_wrapper';
 /* </end connected objects> */
 
-DROP FUNCTION vectorize."table_from";
+DROP FUNCTION IF EXISTS vectorize."table_from";
 -- src/api.rs:380
 -- vectorize::api::table_from
 CREATE  FUNCTION vectorize."table_from"(
