@@ -60,6 +60,8 @@ jobs:
           trunk install vectorize --version 0.20.0 --pg-config $(cargo pgrx info pg-config pg17)
           git fetch --tags
           git checkout tags/v0.20.0
+          # pgrx=0.12.5 required for v0.20.0
+          cargo install cargo-pgrx --version 0.12.5 --locked
           make test-integration
       - name: Test branch's version
         env:
