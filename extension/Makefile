@@ -15,6 +15,9 @@ ARCH := $(shell uname -m)
 sqlx-cache:
 	cargo sqlx prepare --database-url=${DATABASE_URL}
 
+bench:
+	DATABASE_URL=${DATABASE_URL} cargo bench
+
 format:
 	SQLX_OFFLINE=${SQLX_OFFLINE} cargo fmt --all
 	SQLX_OFFLINE=${SQLX_OFFLINE} cargo clippy
