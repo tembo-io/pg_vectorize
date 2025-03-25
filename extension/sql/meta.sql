@@ -67,7 +67,6 @@ DECLARE
 BEGIN
     job_message = jsonb_build_object(
         'job_name', job_name,
-        'job_meta', to_jsonb(project_meta),
         'record_ids', record_ids
     );
     
