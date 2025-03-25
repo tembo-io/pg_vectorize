@@ -21,7 +21,7 @@ format:
 
 # ensure the DATABASE_URL is not used, since pgrx will stop postgres during compile
 run:
-	SQLX_OFFLINE=true DATABASE_URL=${DATABASE_URL} cargo pgrx run pg${PG_VERSION} postgres
+	SQLX_OFFLINE=${SQLX_OFFLINE} DATABASE_URL=${DATABASE_URL} cargo pgrx run pg${PG_VERSION} postgres
 
 META.json: META.json.in Trunk.toml
 	@sed "s/@CARGO_VERSION@/$(DISTVERSION)/g" META.json.in > META.json
