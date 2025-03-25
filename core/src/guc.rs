@@ -48,7 +48,6 @@ pub async fn get_guc(guc: VectorizeGuc, pool: &PgPool) -> Option<String> {
         VectorizeGuc::VoyageServiceUrl => "voyage_service_url",
         VectorizeGuc::TextIndexType => "experimental_fts_index_type",
     };
-    // Build a dynamic query to show the GUC value
     let query = format!("SHOW vectorize.{}", guc_name);
 
     // Execute the query and extract the string value

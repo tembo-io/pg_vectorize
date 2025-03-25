@@ -1,7 +1,4 @@
-use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
-
 use serde::{Deserialize, Serialize};
-use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -152,7 +149,7 @@ pub struct Model {
     pub name: String,
 }
 
-use serde::de::{self, Deserializer};
+use serde::de::Deserializer;
 use serde::Serializer;
 
 fn string_to_model<'de, D>(deserializer: D) -> Result<Model, D::Error>
