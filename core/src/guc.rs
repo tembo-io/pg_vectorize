@@ -49,8 +49,6 @@ pub async fn get_guc(guc: VectorizeGuc, pool: &PgPool) -> Option<String> {
         VectorizeGuc::TextIndexType => "experimental_fts_index_type",
     };
     let query = format!("SHOW vectorize.{}", guc_name);
-
-    // Execute the query and extract the string value
     let row: (String,) = sqlx::query_as(&query)
         .fetch_one(pool)
         .await
