@@ -404,7 +404,7 @@ fn table_from(
     // Now set up the triggers or cron job based on the desired schedule
     if schedule == "realtime" {
         // Create triggers for realtime updates
-        let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
+        let trigger_handler = create_trigger_handler(job_name, primary_key);
         Spi::run(&trigger_handler)?;
 
         let insert_trigger = create_event_trigger(job_name, schema, relation, "INSERT");

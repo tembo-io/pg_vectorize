@@ -5,6 +5,7 @@ use crate::util::get_vectorize_meta_spi;
 use anyhow::{anyhow, Result};
 use handlebars::Handlebars;
 use pgrx::prelude::*;
+use vectorize_core::guc::ModelGucConfig;
 use vectorize_core::transformers::providers::ollama::OllamaProvider;
 use vectorize_core::transformers::providers::openai::OpenAIProvider;
 use vectorize_core::transformers::providers::portkey::PortkeyProvider;
@@ -141,7 +142,7 @@ fn render_user_message(user_prompt_template: &str, context: &str, query: &str) -
 pub fn call_chat_completions(
     prompts: RenderedPrompt,
     model: &Model,
-    guc_configs: &guc::ModelGucConfig,
+    guc_configs: &ModelGucConfig,
 ) -> Result<String> {
     let messages = vec![
         ChatMessageRequest {

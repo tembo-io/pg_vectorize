@@ -1,13 +1,40 @@
+use crate::transformers::types::Inputs;
 use crate::transformers::{http_handler, providers};
 use crate::types::{JobMessage, JobParams};
 use crate::worker::ops;
-use anyhow::Result;
 use log::error;
 use pgmq::{Message, PGMQueueExt};
 use sqlx::{Pool, Postgres};
 use std::env;
+use tiktoken_rs::cl100k_base;
 
 use crate::types::VectorizeMeta;
+
+use anyhow::{anyhow, Result};
+
+// errors if input contains non-alphanumeric characters or underscore
+// in other worse - valid column names only
+pub fn check_input(input: &str) -> Result<()> {
+    let valid = input
+        .as_bytes()
+        .iter()
+        .all(|&c| c.is_ascii_alphanumeric() || c == b'_');
+    match valid {
+        true => Ok(()),
+        false => Err(anyhow!("Invalid Input: {}", input)),
+    }
+}
+
+pub fn collapse_to_csv(strings: &[String]) -> String {
+    strings
+        .iter()
+        .map(|s| {
+            check_input(s).expect("Failed to validate input");
+            s.as_str()
+        })
+        .collect::<Vec<_>>()
+        .join("|| ', ' ||")
+}
 
 pub async fn poll_job(
     conn: &Pool<Postgres>,
@@ -27,7 +54,7 @@ pub async fn poll_job(
     let read_ct: i32 = msg.read_ct;
     let msg_id: i64 = msg.msg_id;
     if read_ct <= config.max_retries {
-        execute_job(conn, msg, config).await?;
+        execute_job(conn, msg).await?;
     } else {
         error!(
             "message exceeds max retry of {}, archiving msg_id: {}",
@@ -86,34 +113,71 @@ pub fn from_env_default(key: &str, default: &str) -> String {
 }
 
 /// processes a single job from the queue
-async fn execute_job(
-    dbclient: &Pool<Postgres>,
-    msg: Message<JobMessage>,
-    _cfg: &Config,
-) -> Result<()> {
+pub async fn execute_job(dbclient: &Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
     let job_meta: VectorizeMeta = msg.message.job_meta;
-    let job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
+    let mut job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
+    let bpe = cl100k_base().unwrap();
 
-    let virtual_key = if let Some(args) = job_params.args.clone() {
-        args.get("virtual_key").map(|v| v.to_string())
-    } else {
-        None
-    };
+    use crate::guc;
+
+    let guc_configs = guc::get_guc_configs(&job_meta.transformer.source, dbclient).await;
+    // if api_key found in GUC, then use that and re-assign
+    if let Some(k) = guc_configs.api_key {
+        job_params.api_key = Some(k);
+    }
 
     let provider = providers::get_provider(
         &job_meta.transformer.source,
         job_params.api_key.clone(),
-        None,
-        virtual_key,
+        guc_configs.service_url,
+        guc_configs.virtual_key,
     )?;
 
+    let cols = collapse_to_csv(&job_params.columns);
+
+    let job_records_query = format!(
+        "
+    SELECT
+        {primary_key}::text as record_id,
+        {cols} as input_text
+    FROM {schema}.{relation}
+    WHERE {primary_key} = ANY ($1::{pk_type}[])",
+        primary_key = job_params.primary_key,
+        cols = cols,
+        schema = job_params.schema,
+        relation = job_params.relation,
+        pk_type = job_params.pkey_type
+    );
+
+    #[derive(sqlx::FromRow)]
+    struct Res {
+        record_id: String,
+        input_text: String,
+    }
+
+    let job_records: Vec<Res> = sqlx::query_as(&job_records_query)
+        .bind(&msg.message.record_ids)
+        .fetch_all(dbclient)
+        .await?;
+
+    let inputs: Vec<Inputs> = job_records
+        .iter()
+        .map(|row| {
+            let token_estimate = bpe.encode_with_special_tokens(&row.input_text).len() as i32;
+            Inputs {
+                record_id: row.record_id.clone(),
+                inputs: row.input_text.trim().to_owned(),
+                token_estimate,
+            }
+        })
+        .collect();
+
     let embedding_request =
-        providers::prepare_generic_embedding_request(&job_meta.transformer, &msg.message.inputs);
+        providers::prepare_generic_embedding_request(&job_meta.transformer, &inputs);
 
     let embeddings = provider.generate_embedding(&embedding_request).await?;
 
-    let paired_embeddings =
-        http_handler::merge_input_output(msg.message.inputs, embeddings.embeddings);
+    let paired_embeddings = http_handler::merge_input_output(inputs, embeddings.embeddings);
     match job_params.clone().table_method {
         crate::types::TableMethod::append => {
             ops::update_embeddings(

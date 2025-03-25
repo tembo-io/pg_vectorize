@@ -2,6 +2,7 @@ use crate::{guc, query::check_input, types};
 use pgrx::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
+use vectorize_core::guc::VectorizeGuc;
 use vectorize_core::types::IndexDist;
 use vectorize_core::types::{JobParams, TableMethod, VECTORIZE_SCHEMA};
 
@@ -175,7 +176,7 @@ pub fn init_embedding_table_query(
 
             // Currently creating a GIN index within this function
             // TODO: Find a long term solution for this
-            if let Some(indx_type_guc) = guc::get_guc(guc::VectorizeGuc::TextIndexType) {
+            if let Some(indx_type_guc) = guc::get_guc(VectorizeGuc::TextIndexType) {
                 stmts.push(init_index_query(job_name, &indx_type_guc, job_params))
             }
             stmts

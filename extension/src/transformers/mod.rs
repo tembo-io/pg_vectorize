@@ -5,6 +5,7 @@ pub mod openai;
 use crate::guc;
 use pgrx::prelude::*;
 
+use vectorize_core::guc::ModelGucConfig;
 use vectorize_core::transformers::providers::{self, prepare_generic_embedding_request};
 use vectorize_core::transformers::types::Inputs;
 use vectorize_core::types::Model;
@@ -16,7 +17,7 @@ pub fn transform(input: &str, transformer: &Model, api_key: Option<String>) -> V
         .build()
         .unwrap_or_else(|e| error!("failed to initialize tokio runtime: {}", e));
 
-    let guc_configs: guc::ModelGucConfig = guc::get_guc_configs(&transformer.source);
+    let guc_configs: ModelGucConfig = guc::get_guc_configs(&transformer.source);
     let api_key = if let Some(k) = api_key {
         Some(k)
     } else {

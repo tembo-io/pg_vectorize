@@ -3,6 +3,7 @@ use anyhow::{Context, Result};
 
 use pgrx::prelude::*;
 
+use vectorize_core::guc::ModelGucConfig;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::types::TransformerMetadata;
 use vectorize_core::types::Model;
@@ -22,7 +23,7 @@ pub fn mod_info(model_name: &str, api_key: default!(Option<String>, "NULL")) -> 
 
 pub fn sync_get_model_info(
     model: &Model,
-    guc_configs: &guc::ModelGucConfig,
+    guc_configs: &ModelGucConfig,
 ) -> Result<TransformerMetadata> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_io()
@@ -40,7 +41,7 @@ pub fn sync_get_model_info(
 
 pub async fn get_model_info(
     model: &Model,
-    guc_configs: &guc::ModelGucConfig,
+    guc_configs: &ModelGucConfig,
 ) -> Result<TransformerMetadata> {
     let provider = get_provider(
         &model.source,

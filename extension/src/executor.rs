@@ -4,10 +4,8 @@ use crate::guc::BATCH_SIZE;
 use crate::init::VECTORIZE_QUEUE;
 use crate::query::check_input;
 use crate::util::get_pg_conn;
-use chrono::TimeZone;
 use sqlx::error::Error;
 use sqlx::postgres::PgRow;
-use sqlx::types::chrono::Utc;
 use sqlx::{Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
 use vectorize_core::errors::DatabaseError;
@@ -63,10 +61,6 @@ fn job_execute(job_name: String) {
             .unwrap_or_else(|e| error!("failed to get job metadata: {}", e));
         let job_params = serde_json::from_value::<JobParams>(meta.params.clone())
             .unwrap_or_else(|e| error!("failed to deserialize job params: {}", e));
-        let _last_completion = match meta.last_completion {
-            Some(t) => t,
-            None => Utc.with_ymd_and_hms(970, 1, 1, 0, 0, 0).unwrap(),
-        };
 
         let new_or_updated_rows = get_new_updates(&conn, &job_name, job_params)
             .await
@@ -82,10 +76,11 @@ fn job_execute(job_name: String) {
                     max_batch_size
                 );
                 for b in batches {
+                    let record_ids = b.iter().map(|i| i.record_id.clone()).collect::<Vec<_>>();
                     let msg = JobMessage {
                         job_name: job_name.clone(),
                         job_meta: meta.clone(),
-                        inputs: b,
+                        record_ids,
                     };
                     let msg_id = queue
                         .send(VECTORIZE_QUEUE, &msg)
@@ -109,8 +104,8 @@ pub async fn get_vectorize_meta(
     let row = sqlx::query_as!(
         VectorizeMeta,
         "
-        SELECT 
-            job_id, name, index_dist_type, transformer, params, last_completion
+        SELECT
+            job_id, name, index_dist_type, transformer, params
         FROM vectorize.job
         WHERE name = $1
         ",

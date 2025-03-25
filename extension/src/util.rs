@@ -5,6 +5,7 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
 use std::env;
 use url::{ParseError, Url};
+use vectorize_core::guc::VectorizeGuc;
 
 use crate::guc;
 use vectorize_core::types::{self, Model};
@@ -110,7 +111,6 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
             index_dist_type: index_dist_type.into(),
             transformer: transformer_model,
             params: serde_json::to_value(params).unwrap(),
-            last_completion: None,
         })
     });
     result
@@ -119,14 +119,14 @@ pub fn get_vectorize_meta_spi(job_name: &str) -> Result<types::VectorizeMeta> {
 pub async fn get_pg_conn() -> Result<Pool<Postgres>> {
     let mut cfg = Config::default();
 
-    if let Some(host) = guc::get_guc(guc::VectorizeGuc::Host) {
+    if let Some(host) = guc::get_guc(VectorizeGuc::Host) {
         info!("Using socket url from GUC: {:?}", host);
         cfg.vectorize_socket_url = Some(host);
     };
 
     let mut opts = get_pg_options(cfg)?;
 
-    if let Some(dbname) = guc::get_guc(guc::VectorizeGuc::DatabaseName) {
+    if let Some(dbname) = guc::get_guc(VectorizeGuc::DatabaseName) {
         opts = opts.database(&dbname)
     };
 
