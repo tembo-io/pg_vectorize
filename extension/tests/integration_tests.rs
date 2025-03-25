@@ -939,7 +939,7 @@ async fn test_cohere() {
     ))
     .execute(&conn)
     .await;
-    tx.commit().await.unwrap();
+
     assert!(result.is_ok());
 
     let search_results: Vec<common::SearchJSON> =
