@@ -184,7 +184,7 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    initalize_table_job(job_name, &valid_params, index_dist_type, transformer)?;
+    initalize_table_job(job_name, &valid_params)?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 

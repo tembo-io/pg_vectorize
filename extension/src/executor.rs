@@ -10,7 +10,8 @@ use sqlx::{Pool, Postgres, Row};
 use tiktoken_rs::cl100k_base;
 use vectorize_core::errors::DatabaseError;
 use vectorize_core::transformers::types::Inputs;
-use vectorize_core::types::{JobMessage, JobParams, TableMethod, VectorizeMeta};
+use vectorize_core::types::{JobMessage, JobParams, TableMethod};
+use vectorize_core::worker::base::get_vectorize_meta;
 
 // creates batches based on total token count
 // batch_size is the max token count per batch
@@ -79,7 +80,6 @@ fn job_execute(job_name: String) {
                     let record_ids = b.iter().map(|i| i.record_id.clone()).collect::<Vec<_>>();
                     let msg = JobMessage {
                         job_name: job_name.clone(),
-                        job_meta: meta.clone(),
                         record_ids,
                     };
                     let msg_id = queue
@@ -94,26 +94,6 @@ fn job_execute(job_name: String) {
             }
         };
     })
-}
-
-// get job meta
-pub async fn get_vectorize_meta(
-    job_name: &str,
-    conn: &Pool<Postgres>,
-) -> Result<VectorizeMeta, DatabaseError> {
-    let row = sqlx::query_as!(
-        VectorizeMeta,
-        "
-        SELECT
-            job_id, name, index_dist_type, transformer, params
-        FROM vectorize.job
-        WHERE name = $1
-        ",
-        job_name.to_string(),
-    )
-    .fetch_one(conn)
-    .await?;
-    Ok(row)
 }
 
 pub fn new_rows_query_join(job_name: &str, job_params: &JobParams) -> String {

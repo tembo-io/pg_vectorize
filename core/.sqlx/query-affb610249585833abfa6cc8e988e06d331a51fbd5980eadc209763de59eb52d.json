@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            job_id, name, index_dist_type, transformer, params\n        FROM vectorize.job\n        WHERE name = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "job_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "index_dist_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "transformer",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "params",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "affb610249585833abfa6cc8e988e06d331a51fbd5980eadc209763de59eb52d"
+}

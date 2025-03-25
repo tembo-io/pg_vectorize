@@ -1,7 +1,10 @@
+use crate::errors::DatabaseError;
+use crate::guc;
 use crate::transformers::types::Inputs;
 use crate::transformers::{http_handler, providers};
 use crate::types::{JobMessage, JobParams};
 use crate::worker::ops;
+
 use log::error;
 use pgmq::{Message, PGMQueueExt};
 use sqlx::{Pool, Postgres};
@@ -112,13 +115,31 @@ pub fn from_env_default(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
+// get job meta
+pub async fn get_vectorize_meta(
+    job_name: &str,
+    conn: &Pool<Postgres>,
+) -> Result<VectorizeMeta, DatabaseError> {
+    let row = sqlx::query_as!(
+        VectorizeMeta,
+        "
+        SELECT
+            job_id, name, index_dist_type, transformer, params
+        FROM vectorize.job
+        WHERE name = $1
+        ",
+        job_name.to_string(),
+    )
+    .fetch_one(conn)
+    .await?;
+    Ok(row)
+}
+
 /// processes a single job from the queue
 pub async fn execute_job(dbclient: &Pool<Postgres>, msg: Message<JobMessage>) -> Result<()> {
-    let job_meta: VectorizeMeta = msg.message.job_meta;
+    let job_meta = get_vectorize_meta(&msg.message.job_name, dbclient).await?;
     let mut job_params: JobParams = serde_json::from_value(job_meta.params.clone())?;
     let bpe = cl100k_base().unwrap();
-
-    use crate::guc;
 
     let guc_configs = guc::get_guc_configs(&job_meta.transformer.source, dbclient).await;
     // if api_key found in GUC, then use that and re-assign

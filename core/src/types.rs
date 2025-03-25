@@ -122,7 +122,6 @@ fn default_schedule() -> String {
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct JobMessage {
     pub job_name: String,
-    pub job_meta: VectorizeMeta,
     pub record_ids: Vec<String>,
 }
 

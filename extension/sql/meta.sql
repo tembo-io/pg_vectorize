@@ -63,25 +63,8 @@ CREATE FUNCTION vectorize._handle_table_update(
     record_ids text[]
 ) RETURNS void AS $$
 DECLARE
-    project_meta record;
     job_message jsonb;
 BEGIN
-    -- Check if job metadata exists
-    SELECT 
-        job_id,
-        name,
-        index_dist_type,
-        transformer,
-        params
-    INTO project_meta
-    FROM vectorize.job
-    WHERE name = job_name;
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'failed to get project metadata';
-    END IF;
-    
-    -- Create the job message
     job_message = jsonb_build_object(
         'job_name', job_name,
         'job_meta', to_jsonb(project_meta),

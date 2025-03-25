@@ -6,7 +6,7 @@ use crate::init::VECTORIZE_QUEUE;
 use pgrx::prelude::*;
 use tiktoken_rs::cl100k_base;
 use vectorize_core::transformers::types::Inputs;
-use vectorize_core::types::{IndexDist, JobMessage, JobParams, Model, TableMethod, VectorizeMeta};
+use vectorize_core::types::{JobMessage, JobParams, TableMethod};
 
 static TRIGGER_FN_PREFIX: &str = "vectorize.handle_update_";
 
@@ -47,12 +47,7 @@ EXECUTE FUNCTION vectorize.handle_update_{job_name}();",
 
 // creates batches of embedding jobs
 // typically used on table init
-pub fn initalize_table_job(
-    job_name: &str,
-    job_params: &JobParams,
-    index_dist_type: IndexDist,
-    transformer: &Model,
-) -> Result<()> {
+pub fn initalize_table_job(job_name: &str, job_params: &JobParams) -> Result<()> {
     // start with initial batch load
     let rows_need_update_query: String = match job_params.table_method {
         TableMethod::append => new_rows_query(job_name, job_params),
@@ -80,19 +75,10 @@ pub fn initalize_table_job(
 
     let max_batch_size = BATCH_SIZE.get();
     let batches = create_batches(inputs, max_batch_size);
-    let vectorize_meta = VectorizeMeta {
-        name: job_name.to_string(),
-        // TODO: in future, lookup job id once this gets put into use
-        // job_id is currently not used, job_name is unique
-        job_id: 0,
-        params: serde_json::to_value(job_params.clone()).unwrap(),
-        index_dist_type: index_dist_type.clone(),
-        transformer: transformer.clone(),
-    };
+
     for b in batches {
         let job_message = JobMessage {
             job_name: job_name.to_string(),
-            job_meta: vectorize_meta.clone(),
             record_ids: b.iter().map(|i| i.record_id.clone()).collect(),
         };
         let query = "select pgmq.send($1, $2::jsonb);";
