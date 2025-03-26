@@ -62,6 +62,7 @@ jobs:
           git checkout tags/v0.20.0
           # pgrx=0.12.5 required for v0.20.0
           cargo install cargo-pgrx --version 0.12.5 --locked
+          # use integration tests for v0.20.0
           make test-integration
       - name: Test branch's version
         env:

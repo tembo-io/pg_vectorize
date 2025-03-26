@@ -1,7 +1,4 @@
-use chrono::serde::ts_seconds_option::deserialize as from_tsopt;
-
 use serde::{Deserialize, Serialize};
-use sqlx::types::chrono::Utc;
 use sqlx::FromRow;
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -125,8 +122,7 @@ fn default_schedule() -> String {
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct JobMessage {
     pub job_name: String,
-    pub job_meta: VectorizeMeta,
-    pub inputs: Vec<crate::transformers::types::Inputs>,
+    pub record_ids: Vec<String>,
 }
 
 // schema for every job
@@ -136,10 +132,12 @@ pub struct VectorizeMeta {
     pub job_id: i64,
     pub name: String,
     pub index_dist_type: IndexDist,
+    #[serde(
+        deserialize_with = "string_to_model",
+        serialize_with = "model_to_string"
+    )]
     pub transformer: Model,
     pub params: serde_json::Value,
-    #[serde(deserialize_with = "from_tsopt")]
-    pub last_completion: Option<chrono::DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -148,6 +146,25 @@ pub struct Model {
     // the model's namespace + model name
     pub fullname: String,
     pub name: String,
+}
+
+use serde::de::Deserializer;
+use serde::Serializer;
+
+fn string_to_model<'de, D>(deserializer: D) -> Result<Model, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(Model::from(s))
+}
+
+// New serialization function
+fn model_to_string<S>(model: &Model, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&model.fullname)
 }
 
 impl Model {

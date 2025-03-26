@@ -1,10 +1,10 @@
+use anyhow::Result;
 use core::ffi::CStr;
 use pgrx::*;
 
-use anyhow::Result;
-use vectorize_core::types::ModelSource;
-
 use crate::transformers::generic::env_interpolate_string;
+use vectorize_core::guc::{ModelGucConfig, VectorizeGuc};
+use vectorize_core::types::ModelSource;
 
 pub static VECTORIZE_HOST: GucSetting<Option<&CStr>> = GucSetting::<Option<&CStr>>::new(None);
 pub static VECTORIZE_DATABASE_NAME: GucSetting<Option<&CStr>> =
@@ -219,27 +219,6 @@ pub fn init_guc() {
     );
 }
 
-// for handling of GUCs that can be error prone
-#[derive(Clone, Debug)]
-pub enum VectorizeGuc {
-    Host,
-    DatabaseName,
-    OpenAIServiceUrl,
-    OpenAIKey,
-    TemboAIKey,
-    EmbeddingServiceUrl,
-    EmbeddingServiceApiKey,
-    OllamaServiceUrl,
-    TemboServiceUrl,
-    CohereApiKey,
-    PortkeyApiKey,
-    PortkeyVirtualKey,
-    PortkeyServiceUrl,
-    VoyageApiKey,
-    VoyageServiceUrl,
-    TextIndexType,
-}
-
 /// a convenience function to get this project's GUCs
 pub fn get_guc(guc: VectorizeGuc) -> Option<String> {
     let val = match guc {
@@ -280,13 +259,6 @@ fn handle_cstr(cstr: &CStr) -> Result<String> {
     } else {
         Err(anyhow::anyhow!("failed to convert CStr to str"))
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ModelGucConfig {
-    pub api_key: Option<String>,
-    pub service_url: Option<String>,
-    pub virtual_key: Option<String>,
 }
 
 pub fn get_guc_configs(model_source: &ModelSource) -> ModelGucConfig {

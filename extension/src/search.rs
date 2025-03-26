@@ -11,6 +11,7 @@ use pgrx::prelude::*;
 use pgrx::JsonB;
 use serde_json::Value;
 use std::collections::HashMap;
+use vectorize_core::guc::VectorizeGuc;
 use vectorize_core::transformers::providers::get_provider;
 use vectorize_core::transformers::providers::ollama::check_model_host;
 use vectorize_core::types::{self, Model, ModelSource, TableMethod, VectorizeMeta};
@@ -67,7 +68,7 @@ pub fn init_table(
             error!("Tembo not implemented for search yet");
         }
         ModelSource::Ollama => {
-            let url = match guc::get_guc(guc::VectorizeGuc::OllamaServiceUrl) {
+            let url = match guc::get_guc(VectorizeGuc::OllamaServiceUrl) {
                 Some(k) => k,
                 None => {
                     error!("failed to get Ollama url from GUC");
@@ -166,7 +167,7 @@ pub fn init_table(
         "realtime" => {
             // setup triggers
             // create the trigger if not exists
-            let trigger_handler = create_trigger_handler(job_name, &columns, primary_key);
+            let trigger_handler = create_trigger_handler(job_name, primary_key);
             let insert_trigger = create_event_trigger(job_name, schema, table, "INSERT");
             let update_trigger = create_event_trigger(job_name, schema, table, "UPDATE");
             let _: Result<_, spi::Error> = Spi::connect_mut(|c| {
@@ -183,7 +184,7 @@ pub fn init_table(
         }
     }
     // start with initial batch load
-    initalize_table_job(job_name, &valid_params, index_dist_type, transformer)?;
+    initalize_table_job(job_name, &valid_params)?;
     Ok(format!("Successfully created job: {job_name}"))
 }
 

@@ -52,7 +52,6 @@ async fn bench_insert_triggers() {
     .await
     .expect("failed to init job");
 
-    println!("Downloading data...");
     let bench_data = download_dataset().await;
 
     insert_data(&pool, bench_data).await;
@@ -88,6 +87,8 @@ async fn download_dataset() -> Vec<ChatData> {
 
         // Save the downloaded content to local file
         fs::write(file_path, &content).unwrap();
+    } else {
+        println!("File found locally.");
     }
     let data: Vec<ChatData> = read_jsonl_file(file_path);
 

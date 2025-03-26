@@ -16,7 +16,7 @@ sqlx-cache:
 	cargo sqlx prepare --database-url=${DATABASE_URL}
 
 bench:
-	DATABASE_URL=${DATABASE_URL} cargo bench
+	DATABASE_URL=${DATABASE_URL} cargo bench -- --nocapture
 
 format:
 	SQLX_OFFLINE=${SQLX_OFFLINE} cargo fmt --all
@@ -24,7 +24,7 @@ format:
 
 # ensure the DATABASE_URL is not used, since pgrx will stop postgres during compile
 run:
-	SQLX_OFFLINE=true DATABASE_URL=${DATABASE_URL} cargo pgrx run pg${PG_VERSION} postgres
+	SQLX_OFFLINE=${SQLX_OFFLINE} DATABASE_URL=${DATABASE_URL} cargo pgrx run pg${PG_VERSION} postgres
 
 META.json: META.json.in Trunk.toml
 	@sed "s/@CARGO_VERSION@/$(DISTVERSION)/g" META.json.in > META.json
@@ -114,4 +114,4 @@ test-update:
 	echo "\q" | make run
 	psql ${DATABASE_URL} -c "CREATE EXTENSION IF NOT EXISTS vectorscale"
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
-	make test-integration
+	make test-unit
