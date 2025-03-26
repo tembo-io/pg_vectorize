@@ -16,7 +16,7 @@ sqlx-cache:
 	cargo sqlx prepare --database-url=${DATABASE_URL}
 
 bench:
-	DATABASE_URL=${DATABASE_URL} cargo bench
+	DATABASE_URL=${DATABASE_URL} cargo bench -- --nocapture
 
 format:
 	SQLX_OFFLINE=${SQLX_OFFLINE} cargo fmt --all

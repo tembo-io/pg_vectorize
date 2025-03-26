@@ -38,6 +38,31 @@ pub fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
     groups
 }
 
+#[pg_extern]
+pub fn batch_texts(
+    record_ids: Vec<String>,
+    batch_size: i32,
+) -> TableIterator<'static, (name!(array, Vec<String>),)> {
+    let batch_size = batch_size as usize;
+
+    let total_records = record_ids.len();
+    if batch_size == 0 || total_records <= batch_size {
+        return TableIterator::new(vec![record_ids].into_iter().map(|arr| (arr,)));
+    }
+
+    let num_batches = (total_records + batch_size - 1) / batch_size;
+
+    let mut batches = Vec::with_capacity(num_batches);
+
+    for i in 0..num_batches {
+        let start = i * batch_size;
+        let end = std::cmp::min(start + batch_size, total_records);
+
+        batches.push(record_ids[start..end].to_vec());
+    }
+    TableIterator::new(batches.into_iter().map(|arr| (arr,)))
+}
+
 // called by pg_cron on schedule
 // identifiers new inputs and enqueues them
 #[pg_extern]
