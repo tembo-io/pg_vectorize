@@ -114,4 +114,4 @@ test-update:
 	echo "\q" | make run
 	psql ${DATABASE_URL} -c "CREATE EXTENSION IF NOT EXISTS vectorscale"
 	psql ${DATABASE_URL} -c "ALTER EXTENSION vectorize UPDATE"
-	make test-integration
+	make test-unit
