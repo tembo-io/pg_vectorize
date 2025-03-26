@@ -11,12 +11,12 @@ DECLARE
 BEGIN
     -- create jobs of size batch_size
     batch_size := current_setting('vectorize.batch_size')::integer;
-    FOR batch_result IN SELECT batches FROM vectorize.batch_texts(record_ids, batch_size) LOOP
+    FOR batch_result IN SELECT batch FROM vectorize.batch_texts(record_ids, batch_size) LOOP
         job_messages := array_append(
             job_messages,
             jsonb_build_object(
                 'job_name', job_name,
-                'record_ids', batch_result.batches
+                'record_ids', batch_result.batch
             )
         );
     END LOOP;

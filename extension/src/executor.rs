@@ -42,7 +42,7 @@ pub fn create_batches(data: Vec<Inputs>, batch_size: i32) -> Vec<Vec<Inputs>> {
 pub fn batch_texts(
     record_ids: Vec<String>,
     batch_size: i32,
-) -> TableIterator<'static, (name!(array, Vec<String>),)> {
+) -> TableIterator<'static, (name!(batch, Vec<String>),)> {
     let batch_size = batch_size as usize;
 
     let total_records = record_ids.len();
