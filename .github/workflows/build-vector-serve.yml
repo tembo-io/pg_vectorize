@@ -48,9 +48,10 @@ jobs:
   build_and_push_amd64:
     name: Build and push AMD64 images
     runs-on:
-      - self-hosted
-      - dind
-      - large-8x8
+      - "runs-on=${{ github.run_id }}-build-push-amd64"
+      - "runner=large-amd64"
+      - "cpu=8"
+      - "ram=16"
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
@@ -112,7 +113,10 @@ jobs:
   build_and_push_arm64:
     name: Build and push ARM64 images
     runs-on:
-      - arm64-4x16
+      - "runs-on=${{ github.run_id }}-build-push-arm64"
+      - "runner=large-arm64"
+      - "cpu=8"
+      - "ram=16"
     outputs:
       short_sha: ${{ steps.versions.outputs.SHORT_SHA }}
     steps:
